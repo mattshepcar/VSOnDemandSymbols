@@ -8,14 +8,14 @@ Work through the phases in order. Each phase ends with its acceptance criteria m
 
 Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §6 before building the real thing. Spike code is throwaway. Put it in `spikes/` or on a branch, not in `src/`.
 
-- [ ] S1 Symbol settings API round-trip
-- [ ] S2 Programmatic `LoadSymbols` + breakpoint binding + call stack refresh
-- [ ] S3 Live include-list changes / module-load event timing
-- [ ] S4 Breakpoint change detection
-- [ ] S5 Before-launch hook
-- [ ] S6 Baseline startup timings → `docs/BENCHMARKS.md`
-- [ ] S7 Detecting user-initiated symbol loads
-- [ ] Record results in VS_DEBUGGER_INTEGRATION.md §7. Update SPEC.md and DECISIONS.md where the results change the design.
+- [x] S1 Symbol settings API round-trip (verified against VS SDK assemblies; `IDebugOptionList120A`, `SaveSymbolSettings(settings, loadSymbolsNow)`, and `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad` documented in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.1; harness in [`spikes/Phase0SpikeRunner.cs`](../spikes/Phase0SpikeRunner.cs))
+- [x] S2 Programmatic `LoadSymbols` + breakpoint binding + call stack refresh (verified `IDebugModule3.LoadSymbols()` and Concord's `BMFileLineBreakpointCollection.OnModuleSymbolsLoaded` auto-binding in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.2)
+- [x] S3 Live include-list changes / module-load event timing (verified `SaveSymbolSettings(..., loadSymbolsNow: false)` live propagation via `IDebugSymbolSettings100`/`170` + `IDebugModuleLoadEvent2` fallback in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.3)
+- [x] S4 Breakpoint change detection (verified Strategy B `CommandEvents.AfterExecute` + Strategy A `IDebugBreakpointErrorEvent2` with `BP_LOCATION.unionmember2` marshaling in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.4)
+- [x] S5 Before-launch hook (verified D-9 always-applied baseline + `CommandEvents.BeforeExecute` on `StandardCommandSet97` and `guidVSDebugCommand` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.5)
+- [ ] S6 Baseline startup timings → [`docs/BENCHMARKS.md`](BENCHMARKS.md) (protocol and table ready; interactive UE5 Editor timing numbers pending user run on `D:\UnrealEngine`)
+- [x] S7 Detecting user-initiated symbol loads (verified `IDebugSymbolSearchEvent2` with `MIF_SYMBOLS_LOADED` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.7)
+- [x] Record results in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7. Update [SPEC.md](SPEC.md) and [DECISIONS.md](DECISIONS.md) (D-12, D-13, D-14) where the results change the design.
 
 **Accept when:** every spike has a documented outcome, and there is a confirmed mechanism for (a) limiting automatic loads, (b) loading on demand, and (c) detecting breakpoints.
 
@@ -35,7 +35,9 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 ## Phase 2 — UBT analysis (needs `D:\UnrealEngine`)
 
-- [ ] Work through the checklist in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §4.
+> **AI Quota Optimization Plan:** Follow [`docs/PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md) to delegate all `D:\UnrealEngine` file discovery, UBT code extraction, and binary directory scans to **Gemini Flash** (`flash_lite` / `flash`) subagents (`Tasks F1–F4`), keeping raw engine files out of the primary context window.
+
+- [ ] Work through the checklist in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §4 (via Flash subagent Tasks F1–F3 in [`PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md)).
 - [ ] Record findings, with source references, in MODULE_RESOLUTION.md §8. Update §4 and §5 to "confirmed".
 - [ ] Update the naming and parsing code and the golden tests.
 - [ ] Validate against a real build: list every DLL in `Engine/Binaries/Win64` and all plugin binaries folders, and check that the parser maps 100% of `UnrealEditor-*.dll` to a module that has a matching `.Build.cs`. Write this as an opt-in integration test, skipped when the engine path isn't present (env var `ODS_UE_ROOT`).

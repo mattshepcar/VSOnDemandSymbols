@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectCapability Include="CreateVsixContainer" />
+    <Compile Remove="spikes\**" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="17.14.40265" ExcludeAssets="runtime" />

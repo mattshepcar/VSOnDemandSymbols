@@ -56,7 +56,7 @@ Automatically keep symbol loading limited to the modules that are likely to be n
 
 ## 4. How it works (overview)
 
-1. While a qualifying solution is open (and the extension is enabled), the extension puts the Visual Studio symbol settings into **"Load only specified modules"** mode. It also turns off **"Always load symbols located next to modules"**. Unreal PDBs live next to their DLLs, so leaving that option on would defeat the purpose.
+1. While a qualifying solution is open (and the extension is enabled), the extension puts the Visual Studio symbol settings into **"Load only specified modules"** ("Automatically choose what module symbols to search for") mode (`IsManualLoad = true`). It also turns off **"Always load symbols located next to modules"** (`IsLoadAdjacent = false`, because Unreal PDBs live next to their DLLs) and **"Automatically include additional symbols when needed"** (`AutomaticSymbolLoad = false`, so call-stack symbol loading obeys the extension's `CallStackMode` and never-load rules; see D-13).
 2. Before each launch or attach, the extension computes the **wanted set** and writes the matching DLL names into the VS include list. VS then loads those symbols natively, at the earliest possible moment. That matters for breakpoints in module startup code such as `StartupModule()`.
 3. While the session runs, the extension listens to debugger events. When a trigger fires for a module that is loaded but has no symbols, the extension asks the debugger to load symbols for that module right away. If the module is not loaded yet, the extension adds it to the include list and also watches for its load event.
 4. When the solution closes, the extension is disabled, or VS shuts down, the user's original symbol settings are restored.
@@ -227,14 +227,14 @@ A debug session qualifies when the extension is enabled, the Scope allows the so
 
 | Event | Action |
 |---|---|
-| Qualifying solution opened, extension enabled | Back up the user's symbol settings to disk (§9.2). Apply on-demand mode: manual-load on, load-adjacent off, include list = the user's own entries ∪ the wanted set. |
+| Qualifying solution opened, extension enabled | Back up the user's symbol settings to disk (§9.2). Apply on-demand mode: manual-load on, load-adjacent off, automatic-symbol-load (`AutomaticSymbolLoad`) off, include list = the user's own entries ∪ the wanted set. |
 | Before launch/attach (Debug.Start, Step Into to start, Attach to Process, Reattach) | Recompute the wanted set: prune the MRU, run the recently-built scan, resolve breakpoints. Rewrite the include list. |
 | Trigger during a session | Load symbols now if the module is loaded. Otherwise add it to the include list. |
 | Session ends | MRU bookkeeping (MRU-3). Save state. Store `LastSessionStartUtc` (start time of the session that just ended). |
 | Solution closed / extension disabled / Scope changed to exclude / VS shutdown | Restore the user's settings from the backup. Delete the backup file. |
 | VS starts and a backup file exists (previous crash) | Restore from the backup before doing anything else. Log it. |
 
-Only these settings are ever modified: **manual-load mode**, **load-adjacent**, and the **include list**. Symbol paths, cache folder, symbol servers and the exclude list are never touched. If the user edits the include list while on-demand mode is active, entries that the extension didn't add are kept as user entries on restore.
+Only these settings are ever modified: **manual-load mode** (`IsManualLoad`), **load-adjacent** (`IsLoadAdjacent`), **automatic additional symbol load** (`IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`), and the **include list** (`IncludeList`). Symbol paths, cache folder, symbol servers and the exclude list are never touched. If the user edits the include list while on-demand mode is active, entries that the extension didn't add are kept as user entries on restore.
 
 > Disabling the extension during a session takes effect at the next session. The log says so. The user can still use VS's built-in "Load All Symbols".
 
@@ -345,7 +345,7 @@ The options page uses a `DialogPage`, which works in both VS 2022 and VS 2026.
 ### 9.2 Symbol settings backup (global)
 
 - Path: `%LOCALAPPDATA%/OnDemandSymbols/<VS instance id>[_<root suffix>]/symbol-settings-backup.json`. The instance ID separates VS 2022, VS 2026 and the Experimental instance.
-- Contents: the user's original manual-load flag, load-adjacent flag, include list, the include list as applied by the extension, a timestamp, and the PID of the VS process that applied it.
+- Contents: the user's original manual-load flag, load-adjacent flag, automatic-symbol-load flag (`AutomaticSymbolLoad`), include list, the include list as applied by the extension, a timestamp, and the PID of the VS process that applied it.
 - On startup, if a backup exists and its PID isn't a live process of this VS instance, restore it (crash recovery).
 
 ### 9.3 Extension options
@@ -386,4 +386,4 @@ These are answered with the defaults above. Revisit them during implementation.
 1. Should an attach session count as a "run" for MRU pruning? **Default: yes.**
 2. Should the main editor EXE plus a small core set (`Core`, `CoreUObject`, `Engine`) be always-loaded by default to make early crash stacks nicer? **Default: EXE only.** The call-stack trigger covers the rest.
 3. When several Unreal processes are debugged in one session (for example editor plus a PIE client process), are their triggers shared? **Default: yes**, keys are per solution.
-4. If VS already loads symbols for call-stack modules on its own in "only specified modules" mode, should the call-stack trigger (CS-1) defer to it and only record MRU hits? To be decided after spike S1 ([VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md)).
+4. If VS already loads symbols for call-stack modules on its own in "only specified modules" mode, should the call-stack trigger (CS-1) defer to it and only record MRU hits? **Resolved (D-13):** VS 17.0+ exposes `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`, which the extension sets to `false` while active so CS-1 (`CallStackMode`) and `NeverLoadPatterns` have deterministic control.

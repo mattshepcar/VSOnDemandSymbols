@@ -65,7 +65,9 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 & $msbuild VSOnDemandSymbols.slnx /restore /p:Configuration=Debug /m /v:minimal
 
 # Unit tests (Core only — no VS needed)
-dotnet test tests/VSOnDemandSymbols.Core.Tests -c Debug
+dotnet run --project tests/VSOnDemandSymbols.Core.Tests
+# Or via dotnet test outside sandbox:
+# dotnet test tests/VSOnDemandSymbols.Core.Tests -c Debug
 
 # Opt-in Unreal integration tests
 $env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet test tests/VSOnDemandSymbols.Core.Tests --filter Category=Unreal
@@ -82,7 +84,8 @@ $env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet test tests/VSOnDemandSymbols.Core.T
 3. Implement in small, buildable steps. Add or extend unit tests for all Core logic, mirroring the requirement IDs in test names (for example `Mru_PrunesOnSixthRun_MRU5`).
 4. Build and run the tests. Fix warnings you introduced.
 5. Tick the checkbox in IMPLEMENTATION_PLAN.md. Record spike results, UBT findings or design changes in the right doc (VS_DEBUGGER_INTEGRATION.md §7, MODULE_RESOLUTION.md §8, DECISIONS.md).
-6. Summarise what changed, what was verified, and which manual tests the user should run.
+6. Commit to git after completing each stage or phase, and at logical checkpoints when it makes sense (e.g. green test pass, major component addition or refactoring), so changes can be backtracked or compared with previous implementations. Use descriptive commit messages citing requirement IDs where applicable.
+7. Summarise what changed, what was verified, and which manual tests the user should run.
 
 ## Definition of done (per change)
 
@@ -90,6 +93,7 @@ $env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet test tests/VSOnDemandSymbols.Core.T
 - Behaviour matches SPEC.md (or the spec has been updated, with a decision entry).
 - No UI-thread blocking, no unguarded event handlers, no change to symbol settings outside `SymbolSettingsController`.
 - Docs and the progress tracker are updated.
+- Changes are committed to git with a clear, descriptive message.
 
 ## Don'ts
 

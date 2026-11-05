@@ -2,8 +2,9 @@
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
     <Identity Id="VSOnDemandSymbols.d46f1838-c1d1-4b8a-b1d2-c1673443aee8" Version="1.0" Language="en-US" Publisher="VSOnDemandSymbols" />
-    <DisplayName>VSOnDemandSymbols</DisplayName>
-    <Description>Empty VSIX Project.</Description>
+    <DisplayName>On-Demand Symbols</DisplayName>
+    <Description>On-demand symbol loading for large native C++ applications, such as Unreal Engine 5.</Description>
+    <Icon>Resources\Icon.png</Icon>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.14, )">

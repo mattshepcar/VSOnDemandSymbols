@@ -1,0 +1,4 @@
+void AMyPluginActor::Tick()
+{
+}
+

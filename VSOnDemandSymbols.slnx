@@ -1,5 +1,11 @@
 <Solution>
-  <Project Path="VSOnDemandSymbols.csproj">
-    <Deploy />
-  </Project>
+  <Folder Name="/src/">
+    <Project Path="src/VSOnDemandSymbols/VSOnDemandSymbols.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="src/VSOnDemandSymbols.Core/VSOnDemandSymbols.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VSOnDemandSymbols.Core.Tests/VSOnDemandSymbols.Core.Tests.csproj" />
+  </Folder>
 </Solution>

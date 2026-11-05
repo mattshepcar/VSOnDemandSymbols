@@ -21,15 +21,15 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 ## Phase 1 — Project structure and Core library
 
-- [ ] Move the VSIX project to `src/VSOnDemandSymbols/`. Update the `.slnx`. Fix the manifest metadata (display name "On-Demand Symbols", description, icon placeholder).
-- [ ] Create `src/VSOnDemandSymbols.Core` (netstandard2.0, nullable enabled) and `tests/VSOnDemandSymbols.Core.Tests` (xUnit).
-- [ ] Abstractions: `IClock`, `IFileSystem`, `ILogger`, `IProjectModelProvider`.
-- [ ] `ModuleKey`, `WildcardPattern` (including the `ue:` prefix), `TriggerReason`.
-- [ ] `MruStore` with the exact pruning semantics of SPEC §5.6, with tests for MRU-3 to MRU-7, including the boundary cases (5th vs 6th run, exactly 24 h).
-- [ ] `StateRepository` (JSON, atomic write, corrupt-file recovery, schema version).
-- [ ] `LoadPolicy` (SPEC §5.7) with tests.
-- [ ] `RecentlyBuiltScanner` including first-session window and mass-rebuild guard, with tests.
-- [ ] Unreal resolver skeleton: Build.cs walk-up, Intermediate path special case, owner detection, manifest reader, DLL name parser, all using the *provisional* rules. Fixture trees under `tests/.../Fixtures/`.
+- [x] Move the VSIX project to `src/VSOnDemandSymbols/`. Update the `.slnx`. Fix the manifest metadata (display name "On-Demand Symbols", description, icon placeholder).
+- [x] Create `src/VSOnDemandSymbols.Core` (netstandard2.0, nullable enabled) and `tests/VSOnDemandSymbols.Core.Tests` (xUnit).
+- [x] Abstractions: `IClock`, `IFileSystem`, `ILogger`, `IProjectModelProvider`.
+- [x] `ModuleKey`, `WildcardPattern` (including the `ue:` prefix), `TriggerReason`.
+- [x] `MruStore` with the exact pruning semantics of SPEC §5.6, with tests for MRU-3 to MRU-7, including the boundary cases (5th vs 6th run, exactly 24 h).
+- [x] `StateRepository` (JSON, atomic write, corrupt-file recovery, schema version).
+- [x] `LoadPolicy` (SPEC §5.7) with tests.
+- [x] `RecentlyBuiltScanner` including first-session window and mass-rebuild guard, with tests.
+- [x] Unreal resolver skeleton: Build.cs walk-up, Intermediate path special case, owner detection, manifest reader, DLL name parser, all using the *provisional* rules. Fixture trees under `tests/.../Fixtures/`.
 
 **Accept when:** Core builds, all unit tests pass, the VSIX still builds and loads in the Experimental instance.
 

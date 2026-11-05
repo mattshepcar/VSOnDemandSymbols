@@ -71,6 +71,36 @@ public class UnrealResolverTests
     }
 
     [Fact]
+    public void Resolve_IntermediateIncWithSubFolder_ExtractsModuleNameFromPath()
+    {
+        string genCpp = Path.Combine(_fixtureProjectRoot, "Intermediate", "Build", "Win64", "UnrealEditor", "Inc", "SubFolder", "MyGame", "UHT", "MyActor.gen.cpp");
+        var keys = _resolver.Resolve(genCpp);
+
+        Assert.Single(keys);
+        Assert.Equal("MyGame", keys[0].Name);
+    }
+
+    [Fact]
+    public void Resolve_IntermediateUnityWithPartition_ExtractsModuleNameFromPath()
+    {
+        string unityCpp = Path.Combine(_fixtureProjectRoot, "Intermediate", "Build", "Win64", "UnrealEditor", "Development", "MyGame", "Module.MyGame.2.cpp");
+        var keys = _resolver.Resolve(unityCpp);
+
+        Assert.Single(keys);
+        Assert.Equal("MyGame", keys[0].Name);
+    }
+
+    [Fact]
+    public void Resolve_IntermediateUnityLegacyPartition_ExtractsModuleNameFromPath()
+    {
+        string legacyUnityCpp = Path.Combine(_fixtureProjectRoot, "Intermediate", "Build", "Win64", "UnrealEditor", "Development", "MyGame", "Module.MyGame.1_of_4.cpp");
+        var keys = _resolver.Resolve(legacyUnityCpp);
+
+        Assert.Single(keys);
+        Assert.Equal("MyGame", keys[0].Name);
+    }
+
+    [Fact]
     public void GetCandidateFileNames_UsesModulesManifest()
     {
         var key = new ModuleKey(ModuleKind.Unreal, "MyGame");

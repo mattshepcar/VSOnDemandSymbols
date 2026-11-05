@@ -11,11 +11,11 @@ namespace VSOnDemandSymbols.Core.Modules;
 public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNaming
 {
     private static readonly Regex IntermediateIncRegex = new(
-        @"[/\\]Intermediate[/\\]Build[/\\][^/\\]+[/\\](?:[^/\\]+[/\\])?Inc[/\\](?<module>[^/\\]+)",
+        @"[/\\]Intermediate[/\\]Build[/\\][^/\\]+[/\\](?:[^/\\]+[/\\])?(?:Inc[/\\](?:.*[/\\])?(?<module>[^/\\]+)[/\\]UHT[/\\]|Inc[/\\](?<module>[^/\\]+)[/\\])",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static readonly Regex IntermediateUnityRegex = new(
-        @"[/\\]Intermediate[/\\]Build[/\\][^/\\]+[/\\](?:[^/\\]+[/\\])*(?:Module\.(?<module>[A-Za-z0-9_]+)(?:\.\d+)?\.cpp)",
+        @"[/\\]Intermediate[/\\]Build[/\\][^/\\]+[/\\](?:[^/\\]+[/\\])*(?:Module\.(?<module>[A-Za-z0-9_]+)(?:\.\d+(?:_of_\d+)?)?\.cpp)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private readonly IFileSystem _fileSystem;
@@ -201,6 +201,7 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
         if (!string.IsNullOrEmpty(EngineRoot))
         {
             dirs.Add(Path.Combine(EngineRoot, "Binaries", "Win64"));
+            dirs.Add(Path.Combine(EngineRoot, "Engine", "Binaries", "Win64"));
         }
         return dirs;
     }

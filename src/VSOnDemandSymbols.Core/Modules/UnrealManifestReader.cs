@@ -15,6 +15,9 @@ public sealed class UnrealModuleManifestDto
 
     [JsonProperty("Modules")]
     public Dictionary<string, string> Modules { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    [JsonProperty("LibraryDependencies")]
+    public Dictionary<string, List<string>>? LibraryDependencies { get; set; }
 }
 
 public sealed class UnrealManifestReader

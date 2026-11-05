@@ -37,10 +37,10 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 > **AI Quota Optimization Plan:** Follow [`docs/PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md) to delegate all `D:\UnrealEngine` file discovery, UBT code extraction, and binary directory scans to **Gemini Flash** (`flash_lite` / `flash`) subagents (`Tasks F1–F4`), keeping raw engine files out of the primary context window.
 
-- [ ] Work through the checklist in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §4 (via Flash subagent Tasks F1–F3 in [`PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md)).
-- [ ] Record findings, with source references, in MODULE_RESOLUTION.md §8. Update §4 and §5 to "confirmed".
-- [ ] Update the naming and parsing code and the golden tests.
-- [ ] Validate against a real build: list every DLL in `Engine/Binaries/Win64` and all plugin binaries folders, and check that the parser maps 100% of `UnrealEditor-*.dll` to a module that has a matching `.Build.cs`. Write this as an opt-in integration test, skipped when the engine path isn't present (env var `ODS_UE_ROOT`).
+- [x] Work through the checklist in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §4 (via Flash subagent Tasks F1–F3 in [`PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md)).
+- [x] Record findings, with source references, in MODULE_RESOLUTION.md §8. Update §4 and §5 to "confirmed".
+- [x] Update the naming and parsing code and the golden tests.
+- [x] Validate against a real build: list every DLL in `Engine/Binaries/Win64` and all plugin binaries folders, and check that the parser maps 100% of `UnrealEditor-*.dll` to a module that has a matching `.Build.cs`. Write this as an opt-in integration test, skipped when the engine path isn't present (env var `ODS_UE_ROOT`).
 
 **Accept when:** the reverse map and forward map round-trip for every module in a real engine build.
 

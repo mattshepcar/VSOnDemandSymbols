@@ -114,12 +114,11 @@ public sealed class StateRepository
         }
     }
 
-    public static SolutionState CreateFromMru(MruStore store, DateTime? lastSessionStartUtc = null, int sessionCount = 0, bool? forceUnrealMode = null)
+    public static SolutionState CreateFromMru(MruStore store, int sessionCount = 0, bool? forceUnrealMode = null)
     {
         var state = new SolutionState
         {
             SchemaVersion = CurrentSchemaVersion,
-            LastSessionStartUtc = lastSessionStartUtc,
             SessionCount = sessionCount,
             ForceUnrealMode = forceUnrealMode
         };
@@ -179,4 +178,3 @@ public sealed class StateRepository
         store.LoadEntries(entries);
     }
 }
-

@@ -5,7 +5,6 @@
 **On-Demand Symbols** is a Visual Studio extension (VSIX) that speeds up debugging large native C++ applications, mainly the **Unreal Engine 5 editor** (about 800 DLLs). It puts the debugger into "load only specified modules" mode, then loads symbols automatically for exactly the modules that are needed:
 - modules with breakpoints
 - modules on the call stack when execution breaks
-- modules rebuilt since the last session
 - a most-recently-used list, pruned after 5 runs or 1 day
 
 **Read [docs/SPEC.md](docs/SPEC.md) before writing any code.** It's the source of truth for behaviour. Requirement IDs (BP-1, CS-2, MRU-4, NF-1, …) are referenced throughout. Cite them in code comments, commits and tests where relevant.

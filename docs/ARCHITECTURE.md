@@ -57,7 +57,6 @@ flowchart TD
         POL["LoadPolicy"]
         MRU["MruStore"]
         REPO["StateRepository"]
-        RBS["RecentlyBuiltScanner"]
     end
     PKG --> SSC
     PKG --> ST
@@ -70,7 +69,6 @@ flowchart TD
     BW --> POL
     CST --> POL
     FAT --> POL
-    RBS --> POL
     POL --> SL
     SL --> MR
     RES --> NAM
@@ -90,12 +88,11 @@ flowchart TD
 | `SymbolSettingsController` | Back up, apply and restore VS symbol settings boolean flags (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`; SPEC §7.4, §9.2). **Never modifies `IncludeList` or `ExcludeList`.** Single owner of all writes to symbol settings. Idempotent. | UI |
 | `ConcordSymbolMonitor` | IDE-side Concord component (`ComponentLevel = 210000`, in-process in `devenv.exe`). Implements `IDkmModuleInstanceLoadNotification`, `IDkmModuleInstanceUnloadNotification`, `IDkmModuleSymbolsLoadedNotification`, `IDkmBreakpointManagerNotification`, and `IDkmProcessExitNotification`. Calls `moduleInstance.TryLoadSymbols()` synchronously on module load when the module matches the wanted set. | Concord engine worker thread (off UI thread) |
 | `ConcordSymbolBridge` | Thread-safe in-process bridge holding the current immutable wanted-set snapshot and routing Concord notifications to `LoadedModuleRegistry`, `BreakpointWatcher`, `SymbolLoader`, and `OutputLog`. | Any (lock-free / concurrent) |
-| `SessionTracker` | Session start/end, qualification (SPEC §7.3), run counting, `LastSessionStartUtc`. | UI / Engine |
+| `SessionTracker` | Session start/end, qualification (SPEC §7.3), run counting. | UI / Engine |
 | `LoadedModuleRegistry` | For each process: loaded modules → (`DkmModuleInstance`, path, `ModuleKey?`, symbol state). Reverse-maps each module to a key once, at load. | Any (`ConcurrentDictionary`) |
 | `SymbolLoader` | De-duplicating queue of load requests (key + reason). Calls `DkmModuleInstance.TryLoadSymbols()`, tracks the result, and logs. Never loads the same module twice per session. | Background / Concord worker thread |
 | `BreakpointWatcher` | Detects breakpoint changes via `CommandEvents.AfterExecute` (design-time and run-time) plus Concord `IDkmBreakpointManagerNotification` (`DkmPendingFileLineBreakpoint` / `DkmPendingFunctionBreakpoint`), resolves files to keys, raises `Breakpoint` triggers. | UI for DTE, background for resolution |
 | `CallStackTrigger` / `FrameActivationTrigger` | SPEC §5.2 and §5.3. Examines frames on break / frame activation and queues `SymbolLoader` for modules without symbols. | UI / background |
-| `RecentlyBuiltScanner` (Core) | Stats DLLs/PDBs in the binaries folders against the reference time; applies the mass-rebuild guard. | Background |
 | `LoadPolicy` (Core) | Computes the wanted set (SPEC §5.7) and answers "should module X load?" for a reason; applies the always/never patterns. | Any (immutable snapshots) |
 | `MruStore` (Core) | Hits, run increments, pruning, pin/forget. | Any (locked) |
 | `StateRepository` (Core) | Load/save of `state.json` with atomic writes and schema versioning. | Background |
@@ -117,7 +114,7 @@ sequenceDiagram
     participant C as ConcordSymbolMonitor
     U->>VS: F5
     VS->>H: Debug.Start BeforeExecute
-    H->>P: Prune MRU, scan recently built, resolve breakpoints
+    H->>P: Prune MRU, resolve breakpoints
     P-->>H: Wanted set (keys → DLL names)
     H->>B: Publish immutable WantedSet snapshot
     VS->>C: Launch UnrealEditor.exe (manual-load mode active)

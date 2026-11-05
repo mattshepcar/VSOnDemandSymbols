@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.Mru;
@@ -36,7 +35,6 @@ public class StateRepositoryTests
         var state = new SolutionState
         {
             SchemaVersion = 1,
-            LastSessionStartUtc = new DateTime(2026, 11, 5, 20, 0, 0, DateTimeKind.Utc),
             SessionCount = 42,
             ForceUnrealMode = true
         };
@@ -58,7 +56,6 @@ public class StateRepositoryTests
         var loaded = _repository.Load(path);
         Assert.NotNull(loaded);
         Assert.Equal(1, loaded.SchemaVersion);
-        Assert.Equal(state.LastSessionStartUtc, loaded.LastSessionStartUtc);
         Assert.Equal(42, loaded.SessionCount);
         Assert.True(loaded.ForceUnrealMode);
         Assert.Single(loaded.Modules);
@@ -94,7 +91,7 @@ public class StateRepositoryTests
         store.RecordHit(key, TriggerReason.CallStack, "Crash.cpp:10", new[] { "UnrealEditor-Engine.dll" });
         store.Pin(key);
 
-        var state = StateRepository.CreateFromMru(store, clock.UtcNow, sessionCount: 5);
+        var state = StateRepository.CreateFromMru(store, sessionCount: 5);
         Assert.Single(state.Modules);
 
         var restoredStore = new MruStore(clock);
@@ -109,4 +106,3 @@ public class StateRepositoryTests
         Assert.Contains("UnrealEditor-Engine.dll", entry.Binaries);
     }
 }
-

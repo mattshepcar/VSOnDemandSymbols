@@ -31,7 +31,7 @@ An IDE-side Concord component (`ConcordSymbolMonitor`, `ComponentLevel = 210000`
 - Because `ComponentLevel = 210000` is above `RemotingBoundary` (`100000`) and below Concord's `BreakpointManager` (`228441`), it runs **in-process inside `devenv.exe`** on the Concord engine worker thread, **before** `BreakpointManager` attempts to bind breakpoints on module load.
 - Implements `IDkmModuleInstanceLoadNotification` (filtered to `<RuntimeId RequiredValue="DkmRuntimeId.Native" />`):
   - Per `vsdconfig.xsd`: *"When this notification fires, the target process will be suspended and can be examined."*
-  - Checks whether `moduleInstance.Name` (or its parsed `ModuleKey`) is in the precomputed `WantedSet` (or qualifies as recently built under RB-2).
+  - Checks whether `moduleInstance.Name` (or its parsed `ModuleKey`) is in the precomputed `WantedSet`.
   - If wanted and `moduleInstance.SymbolFileId == null`, calls **`moduleInstance.TryLoadSymbols()`** synchronously while the target process is paused at the OS loader event—guaranteeing that symbols are loaded and breakpoints in `DllMain` or `StartupModule()` bind before any module code executes.
 
 ---
@@ -72,7 +72,7 @@ We combine two clean, documented mechanisms (Strategy B + Concord Strategy A):
 2. **Pre-launch refresh (`CommandEvents.BeforeExecute`):** Subscribe to `CommandEvents.BeforeExecute` for:
    - `StandardCommandSet97`: `cmdidStart = 295` (F5), `cmdidRestart = 296`, `cmdidStepInto = 248` (F11), `cmdidStepOver = 249` (F10), `cmdidRunToCursor = 251` (Ctrl+F10), `cmdidDebugProcesses = 213` (Attach to Process).
    - `guidVSDebugCommand`: `cmdidReattach = 0xF010` (Reattach to Process), `cmdidSingleProcStepInto = 0x0156`, `cmdidSingleProcStepOver = 0x0157`.
-   When `DTE.Debugger.CurrentMode == dbgDebugMode.dbgDesignMode`, `BeforeExecute` runs synchronously before launch, pruning the MRU, diffing breakpoints, running the recently-built binary scan (bounded by the NF-2 timeout), and publishing the immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
+   When `DTE.Debugger.CurrentMode == dbgDebugMode.dbgDesignMode`, `BeforeExecute` runs synchronously before launch, pruning the MRU, diffing breakpoints, and publishing the immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
 
 ---
 

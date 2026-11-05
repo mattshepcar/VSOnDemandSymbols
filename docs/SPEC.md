@@ -66,13 +66,11 @@ flowchart LR
     subgraph Inputs
         BP["Breakpoints"]
         CS["Call stacks on break"]
-        RB["Recently built binaries"]
         MRU["MRU and pinned list"]
         AL["Always-load patterns"]
     end
     BP --> POL["Load policy"]
     CS --> POL
-    RB --> POL
     MRU --> POL
     AL --> POL
     NL["Never-load patterns"] --> POL
@@ -118,15 +116,9 @@ Each trigger has a **reason code**. The reason is logged and stored in the MRU e
 | FA-1 | When the user activates a stack frame (double-clicks it in the Call Stack, Threads or Parallel Stacks window, or switches the current thread) and that frame's module has no symbols, the extension loads them. Setting: `LoadOnFrameActivation` (default `true`). |
 | FA-2 | When FA-1 fires for a thread whose stack hasn't been examined, the whole stack of that thread is examined, as in CS-1 with `CurrentThread` semantics. |
 
-### 5.4 Recently built — reason `RecentlyBuilt`
+### 5.4 Recently built — *(removed per [DECISIONS.md](DECISIONS.md) D-16)*
 
-| ID | Requirement |
-|---|---|
-| RB-1 | A module is "recently built" if its DLL **or** its PDB has a last-write time later than the start time of the previous qualifying session for this solution (`LastSessionStartUtc`). Only binary timestamps are used. Source file edits are deliberately not considered (see DECISIONS.md D-2). |
-| RB-2 | Recently built modules are computed **before launch**, by scanning the known binaries folders (§6.4), and added to the wanted set. As a safety net, a module that loads during the session is also checked at its Concord module-load event (`OnModuleInstanceLoad`). |
-| RB-3 | **First session** (no `LastSessionStartUtc` yet): binaries modified within `FirstSessionRecentWindowMinutes` (default 60) count as recently built. |
-| RB-4 | **Mass-rebuild guard:** if more than `RecentlyBuiltMaxModules` (default 40) modules qualify in one session, the rule is suspended for that session and a warning is logged. This happens after an engine rebuild or a header change in Core. Modules already in the MRU or pinned list are unaffected. |
-| RB-5 | Unreal hot reload (`UnrealEditor-X-1234.dll`) and Live Coding patch modules are always new files, so they qualify under RB-1. The extension must make sure their symbols load, because breakpoints in patched code depend on them. Live Coding patches are exempt from the RB-4 guard. |
+Binary modification timestamps (`RB-1`–`RB-5`) are not used as a trigger. Symbols are loaded at startup only for modules with breakpoints, modules in the MRU or pinned lists, and `AlwaysLoadPatterns`. Hot-reload (`UnrealEditor-X-1234.dll`) and Live Coding patch modules (`*.patch_N.exe`) map to their parent `ModuleKey` via the DLL name parser (§6.2), so if the module has a breakpoint or is in the MRU/pinned list, its patch symbols load automatically.
 
 ### 5.5 Manual loads — reason `Manual`
 
@@ -155,7 +147,6 @@ Wanted = AlwaysLoad patterns
        ∪ Pinned keys
        ∪ MRU keys (after pruning)
        ∪ Breakpoint keys
-       ∪ RecentlyBuilt keys (unless the mass-rebuild guard tripped)
        ∪ keys triggered earlier in this session
        − NeverLoad patterns
 ```
@@ -188,11 +179,6 @@ Full detail is in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md). Summary:
 2. Read the active configuration's `TargetPath`.
 3. If the project builds a static library, follow reverse project references to the DLL/EXE projects that link it. Every such output becomes a key.
 4. Files that aren't in any project: try the nearest project folder above the file. Otherwise the file is unresolved (BP-6).
-
-### 6.4 Binaries folders (used for the recently-built scan)
-
-- **Unreal:** `Engine/Binaries/Win64`, `<Project>/Binaries/Win64`, and `Binaries/Win64` under every plugin folder of the engine and the project. The plugin folder list is cached at solution open and refreshed lazily.
-- **MSBuild:** the output directories of the solution's C++ projects for the active configuration.
 
 ---
 
@@ -228,10 +214,10 @@ A debug session qualifies when the extension is enabled, the Scope allows the so
 | Event | Action |
 |---|---|
 | Qualifying solution opened, extension enabled | Back up the user's symbol settings flags to disk (§9.2). Apply manual-load mode: `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`. The user's `IncludeList` is left untouched (D-15). |
-| Before launch/attach (Debug.Start, Step Into to start, Attach to Process, Reattach) | Recompute the wanted set: prune the MRU, run the recently-built scan, resolve breakpoints. Publish the wanted set snapshot to the Concord component (`ConcordSymbolMonitor`). |
-| Module loads during a session (`IDkmModuleInstanceLoadNotification`) | Concord component checks the wanted set (and RB-2 safety net) while the target process is paused at the DLL load event; if wanted, calls `DkmModuleInstance.TryLoadSymbols()` synchronously before `DllMain` / `StartupModule()`. |
+| Before launch/attach (Debug.Start, Step Into to start, Attach to Process, Reattach) | Recompute the wanted set: prune the MRU and resolve breakpoints. Publish the wanted set snapshot to the Concord component (`ConcordSymbolMonitor`). |
+| Module loads during a session (`IDkmModuleInstanceLoadNotification`) | Concord component checks the wanted set while the target process is paused at the DLL load event; if wanted, calls `DkmModuleInstance.TryLoadSymbols()` synchronously before `DllMain` / `StartupModule()`. |
 | Trigger during a session | Call `DkmModuleInstance.TryLoadSymbols()` now if the module is loaded. Otherwise add it to the live wanted set snapshot so `OnModuleInstanceLoad` loads it when mapped. |
-| Session ends | MRU bookkeeping (MRU-3). Save state. Store `LastSessionStartUtc` (start time of the session that just ended). |
+| Session ends | MRU bookkeeping (MRU-3). Save state. |
 | Solution closed / extension disabled / Scope changed to exclude / VS shutdown | Restore the user's settings from the backup. Delete the backup file. |
 | VS starts and a backup file exists (previous crash) | Restore from the backup before doing anything else. Log it. |
 
@@ -252,11 +238,11 @@ Only these three boolean flags are ever modified: **manual-load mode** (`IsManua
 ### 8.2 Output window pane — "On-Demand Symbols"
 
 At `Info` level, it logs:
-- Session start: `Session #42 — UnrealEditor.exe — wanted 17 modules (pinned 2, MRU 9, breakpoints 3, recently built 2, always 1); pruned 4 from MRU.`
+- Session start: `Session #42 — UnrealEditor.exe — wanted 15 modules (pinned 2, MRU 9, breakpoints 3, always 1); pruned 4 from MRU.`
 - Each load: `[12:01:03.512] Loading symbols: UnrealEditor-MyGame.dll — Breakpoint: MyActor.cpp(42)`
 - Failures: `Symbols not found for UnrealEditor-Foo.dll (searched: ...)`
-- Session end: `Session ended — 812 modules loaded, symbols for 23 (17 at load, 6 on demand). MRU: 21 entries.`
-- Warnings: mass-rebuild guard tripped, unresolved breakpoint files, settings restored after a crash.
+- Session end: `Session ended — 812 modules loaded, symbols for 21 (15 at load, 6 on demand). MRU: 21 entries.`
+- Warnings: unresolved breakpoint files, settings restored after a crash.
 
 `Verbose` adds resolution details and skipped triggers. `Diagnostic` adds raw debugger events and timing.
 
@@ -297,9 +283,6 @@ On a C/C++ file in Solution Explorer, a document tab, or the code editor context
 | Call stack | `CallStackMaxFrames` | 128 |
 | Call stack | `CallStackIncludeExternalModules` | true |
 | Call stack | `LoadOnFrameActivation` | true |
-| Recently built | `LoadRecentlyBuilt` | true |
-| Recently built | `RecentlyBuiltMaxModules` | 40 |
-| Recently built | `FirstSessionRecentWindowMinutes` | 60 |
 | MRU | `MruEnabled` | true |
 | MRU | `MruMaxRuns` | 5 |
 | MRU | `MruMaxAgeHours` | 24 |
@@ -325,7 +308,6 @@ The options page uses a `DialogPage`, which works in both VS 2022 and VS 2026.
 ```json
 {
   "schemaVersion": 1,
-  "lastSessionStartUtc": "2026-11-05T20:00:00Z",
   "sessionCount": 42,
   "forceUnrealMode": null,
   "modules": {

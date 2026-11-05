@@ -7,7 +7,6 @@
 - Required coverage:
   - **MruStore:** hits, run increments, pruning at exactly `MruMaxRuns` and exactly `MruMaxAge`, the EITHER semantics, pinned entries never pruned, `MruMaxEntries` eviction order, forget/pin/unpin.
   - **LoadPolicy:** set algebra of SPEC §5.7, never-load wins over triggers but not over manual loads, pattern matching including `ue:` patterns.
-  - **RecentlyBuiltScanner:** reference time, first-session window, mass-rebuild guard, Live Coding exemption, DLL-only vs PDB-only newer.
   - **Unreal resolver:** every golden case in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §7, plus multiple-Build.cs folders, deep nesting, plugin/project/engine owners, Intermediate paths, unresolved paths, cache invalidation.
   - **DLL name parser:** positive and negative cases, including Windows API-set DLLs, third-party DLLs with hyphens, and hot reload / config suffixes.
   - **StateRepository:** round-trip, atomic write, corrupt file recovery, unknown future schema version (refuse to overwrite; log it).
@@ -31,8 +30,8 @@ Run these against a real UE 5.x project (C++ game module plus one project plugin
 | M5 | Pause (Break All) during gameplay | Current thread stack fully symbolized (default mode). |
 | M6 | Trigger an `ensure()` / `check()` failure | All threads' stacks symbolized. |
 | M7 | Double-click a frame on another thread in the Threads window | That thread's frames are symbolized (FA-1/FA-2). |
-| M8 | Edit and rebuild a game module, then F5 | The module loads with reason `RecentlyBuilt`. |
-| M9 | Rebuild the whole engine module set (or touch a Core header), then F5 | Mass-rebuild guard warning; no mass load. |
+| M8 | *(Removed per D-16)* | — |
+| M9 | *(Removed per D-16)* | — |
 | M10 | Live Coding patch (Ctrl+Alt+F11) with a breakpoint in the changed function | The patch's symbols load; the breakpoint in the patched code is hit. |
 | M11 | Run 6 sessions without touching module X (triggered in session 0) | X is loaded in sessions 1–5 and pruned at the start of session 6. |
 | M12 | Advance the clock / wait 24 h after X's trigger, then F5 | X is pruned. |

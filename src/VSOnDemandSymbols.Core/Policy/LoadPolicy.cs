@@ -96,8 +96,6 @@ public sealed class LoadPolicy
         IEnumerable<ModuleKey> pinnedKeys,
         IEnumerable<ModuleKey> mruKeys,
         IEnumerable<ModuleKey> breakpointKeys,
-        IEnumerable<ModuleKey> recentlyBuiltKeys,
-        bool recentlyBuiltGuardTripped,
         IEnumerable<ModuleKey>? sessionTriggeredKeys = null,
         Func<ModuleKey, IReadOnlyList<string>>? getCandidateBinaries = null)
     {
@@ -127,11 +125,6 @@ public sealed class LoadPolicy
             foreach (var k in breakpointKeys) wanted.Add(k);
         }
 
-        if (!recentlyBuiltGuardTripped && recentlyBuiltKeys != null)
-        {
-            foreach (var k in recentlyBuiltKeys) wanted.Add(k);
-        }
-
         if (sessionTriggeredKeys != null)
         {
             foreach (var k in sessionTriggeredKeys) wanted.Add(k);
@@ -146,4 +139,3 @@ public sealed class LoadPolicy
         return wanted;
     }
 }
-

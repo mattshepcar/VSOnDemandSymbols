@@ -9,9 +9,6 @@ public sealed class SolutionState
     [JsonProperty("schemaVersion")]
     public int SchemaVersion { get; set; } = 1;
 
-    [JsonProperty("lastSessionStartUtc")]
-    public DateTime? LastSessionStartUtc { get; set; }
-
     [JsonProperty("sessionCount")]
     public int SessionCount { get; set; }
 
@@ -48,4 +45,3 @@ public sealed class ModuleStateDto
     [JsonProperty("triggerCount")]
     public int TriggerCount { get; set; }
 }
-

@@ -28,7 +28,7 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 - [x] `MruStore` with the exact pruning semantics of SPEC §5.6, with tests for MRU-3 to MRU-7, including the boundary cases (5th vs 6th run, exactly 24 h).
 - [x] `StateRepository` (JSON, atomic write, corrupt-file recovery, schema version).
 - [x] `LoadPolicy` (SPEC §5.7) with tests.
-- [x] `RecentlyBuiltScanner` including first-session window and mass-rebuild guard, with tests.
+- [x] ~~`RecentlyBuiltScanner`~~ *(removed per [DECISIONS.md](DECISIONS.md) D-16)*
 - [x] Unreal resolver skeleton: Build.cs walk-up, Intermediate path special case, owner detection, manifest reader, DLL name parser, all using the *provisional* rules. Fixture trees under `tests/.../Fixtures/`.
 
 **Accept when:** Core builds, all unit tests pass, the VSIX still builds and loads in the Experimental instance.
@@ -60,7 +60,6 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 - [ ] Breakpoints: before launch (BP-1), live (BP-2), disabled (BP-3), qualified function breakpoints (BP-4), unresolved warnings (BP-6).
 - [ ] Call stack modes (CS-1 to CS-6).
 - [ ] Frame activation (FA-1, FA-2).
-- [ ] Recently built: before-launch scan plus the load-event safety net (RB-1 to RB-5).
 - [ ] Manual-load detection (ML-1).
 - [ ] MRU hit recording for all triggers; run bookkeeping at session end.
 - [ ] MSBuild resolver through `ProjectModelProvider` (needed for `AllNative` scope), tested on `tests/Samples/NativeSample`.

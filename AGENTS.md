@@ -30,7 +30,7 @@
 
 ## Golden rules
 
-1. **Never leave the user's VS symbol settings modified.** All writes go through `SymbolSettingsController`, which backs up first and restores on close, disable, exit and crash recovery (SPEC §7.4, §9.2). Only the manual-load flag, the load-adjacent flag and the include list may be changed. **Never** touch symbol paths, servers, the cache or the exclude list.
+1. **Never leave the user's VS symbol settings modified.** All writes go through `SymbolSettingsController`, which backs up first and restores on close, disable, exit and crash recovery (SPEC §7.4, §9.2). Only the manual-load flag (`IsManualLoad`), the load-adjacent flag (`IsLoadAdjacent`), and the automatic additional symbol load flag (`AutomaticSymbolLoad`) may be changed. **Never** touch symbol paths, servers, the cache, the include list, or the exclude list (D-15).
 2. **Never break the debug session.** Every debugger event handler is wrapped in try/catch and logs failures (NF-5).
 3. **Keep the module-load path cheap.** About 800 module loads happen at startup. No file I/O, no blocking, no LINQ-heavy allocation in that handler (NF-1). Precompute everything before launch.
 4. **Core stays VS-free.** Logic that can be tested without VS (resolution, naming, MRU, policy, state) lives in `VSOnDemandSymbols.Core` (netstandard2.0) with unit tests. The VSIX project is a thin adapter.

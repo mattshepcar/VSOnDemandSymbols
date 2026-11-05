@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration xmlns="http://schemas.microsoft.com/vstudio/vsdconfig/2008">
+  <!--
+    IDE-side Concord component (ComponentLevel = 210000 > RemotingBoundary 100000,
+    and < BreakpointManager 228441 so OnModuleInstanceLoad loads symbols before
+    BreakpointManager binds breakpoints on module load).
+  -->
+  <ManagedComponent
+    ComponentId="7c2f4b80-3e51-4a92-8b6e-91c2d4a5e601"
+    ComponentLevel="210000"
+    AssemblyName="VSOnDemandSymbols">
+
+    <Class Name="VSOnDemandSymbols.Spikes.ConcordSpikeMonitor">
+      <Implements>
+        <InterfaceGroup>
+          <Filter>
+            <RuntimeId RequiredValue="DkmRuntimeId.Native" />
+          </Filter>
+          <Interface Name="IDkmModuleInstanceLoadNotification" />
+          <Interface Name="IDkmModuleInstanceUnloadNotification" />
+          <Interface Name="IDkmModuleSymbolsLoadedNotification" />
+        </InterfaceGroup>
+
+        <InterfaceGroup>
+          <Filter>
+            <EngineId RequiredValue="DkmEngineId.NativeEng" />
+            <EngineId RequiredValue="DkmEngineId.COMPlusNativeEng" />
+          </Filter>
+          <Interface Name="IDkmBreakpointManagerNotification" />
+          <Interface Name="IDkmProcessExitNotification" />
+        </InterfaceGroup>
+      </Implements>
+    </Class>
+
+  </ManagedComponent>
+</Configuration>

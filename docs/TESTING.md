@@ -27,7 +27,7 @@ Run these against a real UE 5.x project (C++ game module plus one project plugin
 | M1 | Fresh state, no breakpoints, F5 | Only the always-load list gets symbols. The log shows the session summary. Startup is close to the S6 "empty include list" baseline. |
 | M2 | Breakpoint in a game module `.cpp` set **before** F5 | The module's symbols load at module load; the breakpoint is hit. Reason `Breakpoint`. |
 | M3 | Breakpoint set in an engine module (`Engine/Source/Runtime/Engine/...`) **while running** | Symbols load immediately; the breakpoint turns solid and is hit. |
-| M4 | Breakpoint in a plugin module that loads late (LoadingPhase PostEngineInit or on demand), set while running before it loads | Symbols load when the module loads; the breakpoint is hit (see the S3 caveat). |
+| M4 | Breakpoint in a plugin module that loads late (LoadingPhase PostEngineInit or on demand), set while running before it loads | Symbols load synchronously in Concord `OnModuleInstanceLoad` when the module loads; the breakpoint in `StartupModule()` binds and is hit. |
 | M5 | Pause (Break All) during gameplay | Current thread stack fully symbolized (default mode). |
 | M6 | Trigger an `ensure()` / `check()` failure | All threads' stacks symbolized. |
 | M7 | Double-click a frame on another thread in the Threads window | That thread's frames are symbolized (FA-1/FA-2). |

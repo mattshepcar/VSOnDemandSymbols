@@ -1,6 +1,6 @@
 # Benchmarks — Startup & Symbol Loading Performance
 
-This document records baseline measurements from Phase 0 (Spike S6) and final extension measurements from Phase 6 against non-functional requirements **NF-1** (`< 0.1 ms` average per `IDebugModuleLoadEvent2` on the UI thread) and **NF-2** (`< 300 ms` warm / `< 2 s` cold pre-launch wanted-set computation).
+This document records baseline measurements from Phase 0 (Spike S6) and final extension measurements from Phase 6 against non-functional requirements **NF-1** (`< 0.1 ms` average per `IDkmModuleInstanceLoadNotification` on the Concord worker thread, `0 ms` on the VS UI thread) and **NF-2** (`< 300 ms` warm / `< 2 s` cold pre-launch wanted-set computation).
 
 ---
 
@@ -53,7 +53,8 @@ Measure wall-clock time from pressing **F5 (`Debug.Start`)** until the Unreal Ed
 
 | Metric | Requirement | Measured (Synthetic 800-module test) | Measured (UE5 Editor) | Status |
 |---|---|---|---|---|
-| **NF-1:** `IDebugModuleLoadEvent2` handler average time on UI thread | `< 0.1 ms` (`100 µs`) | *TBD* | *TBD* | Pending |
+| **NF-1:** `IDkmModuleInstanceLoadNotification` handler average time (Concord worker thread) | `< 0.1 ms` (`100 µs`) | *TBD* | *TBD* | Pending |
 | **NF-2 (Warm):** Pre-launch wanted-set computation (cached `.Build.cs` & manifests) | `< 300 ms` | *TBD* | *TBD* | Pending |
 | **NF-2 (Cold):** Pre-launch wanted-set computation (cold cache, full engine solution) | `< 2000 ms` | *TBD* | *TBD* | Pending |
-| **S2:** Single `IDebugModule3.LoadSymbols()` call duration (`UnrealEditor-Engine.dll`) | Logged for reference | *TBD* | *TBD* | Pending |
+| **S2:** Single `DkmModuleInstance.TryLoadSymbols()` call duration (`UnrealEditor-Engine.dll`) | Logged for reference | *TBD* | *TBD* | Pending |
+

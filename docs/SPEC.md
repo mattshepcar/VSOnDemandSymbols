@@ -56,10 +56,10 @@ Automatically keep symbol loading limited to the modules that are likely to be n
 
 ## 4. How it works (overview)
 
-1. While a qualifying solution is open (and the extension is enabled), the extension puts the Visual Studio symbol settings into **"Load only specified modules"** ("Automatically choose what module symbols to search for") mode (`IsManualLoad = true`). It also turns off **"Always load symbols located next to modules"** (`IsLoadAdjacent = false`, because Unreal PDBs live next to their DLLs) and **"Automatically include additional symbols when needed"** (`AutomaticSymbolLoad = false`, so call-stack symbol loading obeys the extension's `CallStackMode` and never-load rules; see D-13).
-2. Before each launch or attach, the extension computes the **wanted set** and writes the matching DLL names into the VS include list. VS then loads those symbols natively, at the earliest possible moment. That matters for breakpoints in module startup code such as `StartupModule()`.
-3. While the session runs, the extension listens to debugger events. When a trigger fires for a module that is loaded but has no symbols, the extension asks the debugger to load symbols for that module right away. If the module is not loaded yet, the extension adds it to the include list and also watches for its load event.
-4. When the solution closes, the extension is disabled, or VS shuts down, the user's original symbol settings are restored.
+1. While a qualifying solution is open (and the extension is enabled), the extension puts the Visual Studio symbol settings into **"Load only specified modules"** ("Automatically choose what module symbols to search for") mode (`IsManualLoad = true`). It also turns off **"Always load symbols located next to modules"** (`IsLoadAdjacent = false`, because Unreal PDBs live next to their DLLs) and **"Automatically include additional symbols when needed"** (`AutomaticSymbolLoad = false`, so call-stack symbol loading obeys the extension's `CallStackMode` and never-load rules; see D-13). The user's own include and exclude lists are never modified (see D-15).
+2. Before each launch or attach, the extension computes the **wanted set** and publishes it to its in-process **Concord debugger component** (`ConcordSymbolMonitor`). As each native DLL loads (`IDkmModuleInstanceLoadNotification`), the target process is paused inside the loader notification; if the DLL matches the wanted set, the Concord component calls `DkmModuleInstance.TryLoadSymbols()` synchronously right there. That happens off the VS UI thread (NF-1) and before `DllMain` or `StartupModule()` runs.
+3. While the session runs, the Concord component and IDE event hooks listen for triggers. When a trigger fires for a module that is already loaded without symbols, the extension calls `DkmModuleInstance.TryLoadSymbols()` right away. If the module is not loaded yet, its key is added to the live wanted set so `OnModuleInstanceLoad` loads its symbols the moment the DLL maps into the process.
+4. When the solution closes, the extension is disabled, or VS shuts down, the user's original symbol settings flags are restored.
 
 ```mermaid
 flowchart LR
@@ -76,8 +76,8 @@ flowchart LR
     MRU --> POL
     AL --> POL
     NL["Never-load patterns"] --> POL
-    POL -->|"before launch"| INC["VS include list"]
-    POL -->|"during session"| LS["Load symbols now"]
+    POL -->|"at module load (Concord)"| OML["OnModuleInstanceLoad → TryLoadSymbols()"]
+    POL -->|"during session"| LS["TryLoadSymbols() now"]
     POL --> LOG["Output pane log"]
     POL --> STATE["Per-solution state (.vs)"]
 ```
@@ -123,7 +123,7 @@ Each trigger has a **reason code**. The reason is logged and stored in the MRU e
 | ID | Requirement |
 |---|---|
 | RB-1 | A module is "recently built" if its DLL **or** its PDB has a last-write time later than the start time of the previous qualifying session for this solution (`LastSessionStartUtc`). Only binary timestamps are used. Source file edits are deliberately not considered (see DECISIONS.md D-2). |
-| RB-2 | Recently built modules are computed **before launch**, by scanning the known binaries folders (§6.4), and added to the include list. As a safety net, a module that loads during the session is also checked at its load event. |
+| RB-2 | Recently built modules are computed **before launch**, by scanning the known binaries folders (§6.4), and added to the wanted set. As a safety net, a module that loads during the session is also checked at its Concord module-load event (`OnModuleInstanceLoad`). |
 | RB-3 | **First session** (no `LastSessionStartUtc` yet): binaries modified within `FirstSessionRecentWindowMinutes` (default 60) count as recently built. |
 | RB-4 | **Mass-rebuild guard:** if more than `RecentlyBuiltMaxModules` (default 40) modules qualify in one session, the rule is suspended for that session and a warning is logged. This happens after an engine rebuild or a header change in Core. Modules already in the MRU or pinned list are unaffected. |
 | RB-5 | Unreal hot reload (`UnrealEditor-X-1234.dll`) and Live Coding patch modules are always new files, so they qualify under RB-1. The extension must make sure their symbols load, because breakpoints in patched code depend on them. Live Coding patches are exempt from the RB-4 guard. |
@@ -221,20 +221,21 @@ The engine root is the folder containing `Engine/Build/Build.version` found this
 
 ### 7.3 Session qualification
 
-A debug session qualifies when the extension is enabled, the Scope allows the solution, and the session debugs native code. In `UnrealOnly` mode, a process whose image name doesn't match `UnrealProcessPatterns` (default `UnrealEditor*.exe;UE4Editor*.exe;<ProjectName>*.exe`) is still debugged with the include-list behaviour, because the settings are global, but triggers and MRU bookkeeping are skipped for it, and it doesn't count as a run.
+A debug session qualifies when the extension is enabled, the Scope allows the solution, and the session debugs native code. In `UnrealOnly` mode, a process whose image name doesn't match `UnrealProcessPatterns` (default `UnrealEditor*.exe;UE4Editor*.exe;<ProjectName>*.exe`) is still debugged with the manual-load setting (because VS symbol settings are global), so for non-matching processes the Concord component can either leave them in manual mode or load their symbols if desired; triggers and MRU bookkeeping are skipped for non-qualifying processes, and they don't count as a run.
 
 ### 7.4 Lifecycle of the VS symbol settings
 
 | Event | Action |
 |---|---|
-| Qualifying solution opened, extension enabled | Back up the user's symbol settings to disk (§9.2). Apply on-demand mode: manual-load on, load-adjacent off, automatic-symbol-load (`AutomaticSymbolLoad`) off, include list = the user's own entries ∪ the wanted set. |
-| Before launch/attach (Debug.Start, Step Into to start, Attach to Process, Reattach) | Recompute the wanted set: prune the MRU, run the recently-built scan, resolve breakpoints. Rewrite the include list. |
-| Trigger during a session | Load symbols now if the module is loaded. Otherwise add it to the include list. |
+| Qualifying solution opened, extension enabled | Back up the user's symbol settings flags to disk (§9.2). Apply manual-load mode: `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`. The user's `IncludeList` is left untouched (D-15). |
+| Before launch/attach (Debug.Start, Step Into to start, Attach to Process, Reattach) | Recompute the wanted set: prune the MRU, run the recently-built scan, resolve breakpoints. Publish the wanted set snapshot to the Concord component (`ConcordSymbolMonitor`). |
+| Module loads during a session (`IDkmModuleInstanceLoadNotification`) | Concord component checks the wanted set (and RB-2 safety net) while the target process is paused at the DLL load event; if wanted, calls `DkmModuleInstance.TryLoadSymbols()` synchronously before `DllMain` / `StartupModule()`. |
+| Trigger during a session | Call `DkmModuleInstance.TryLoadSymbols()` now if the module is loaded. Otherwise add it to the live wanted set snapshot so `OnModuleInstanceLoad` loads it when mapped. |
 | Session ends | MRU bookkeeping (MRU-3). Save state. Store `LastSessionStartUtc` (start time of the session that just ended). |
 | Solution closed / extension disabled / Scope changed to exclude / VS shutdown | Restore the user's settings from the backup. Delete the backup file. |
 | VS starts and a backup file exists (previous crash) | Restore from the backup before doing anything else. Log it. |
 
-Only these settings are ever modified: **manual-load mode** (`IsManualLoad`), **load-adjacent** (`IsLoadAdjacent`), **automatic additional symbol load** (`IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`), and the **include list** (`IncludeList`). Symbol paths, cache folder, symbol servers and the exclude list are never touched. If the user edits the include list while on-demand mode is active, entries that the extension didn't add are kept as user entries on restore.
+Only these three boolean flags are ever modified: **manual-load mode** (`IsManualLoad`), **load-adjacent** (`IsLoadAdjacent`), and **automatic additional symbol load** (`IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`). Symbol paths, cache folder, symbol servers, the **include list** (`IncludeList`), and the **exclude list** (`ExcludeList`) are never touched (D-15).
 
 > Disabling the extension during a session takes effect at the next session. The log says so. The user can still use VS's built-in "Load All Symbols".
 
@@ -345,7 +346,7 @@ The options page uses a `DialogPage`, which works in both VS 2022 and VS 2026.
 ### 9.2 Symbol settings backup (global)
 
 - Path: `%LOCALAPPDATA%/OnDemandSymbols/<VS instance id>[_<root suffix>]/symbol-settings-backup.json`. The instance ID separates VS 2022, VS 2026 and the Experimental instance.
-- Contents: the user's original manual-load flag, load-adjacent flag, automatic-symbol-load flag (`AutomaticSymbolLoad`), include list, the include list as applied by the extension, a timestamp, and the PID of the VS process that applied it.
+- Contents: the user's original manual-load flag (`IsManualLoad`), load-adjacent flag (`IsLoadAdjacent`), automatic-symbol-load flag (`AutomaticSymbolLoad`), a timestamp, and the PID of the VS process that applied it.
 - On startup, if a backup exists and its PID isn't a live process of this VS instance, restore it (crash recovery).
 
 ### 9.3 Extension options
@@ -358,7 +359,7 @@ Stored through `DialogPage` in the VS settings store (global per VS instance).
 
 | ID | Requirement |
 |---|---|
-| NF-1 | Handling a module-load event must take under 0.1 ms on average on the UI thread: a hash lookup, no file I/O, no allocation-heavy work. |
+| NF-1 | Handling a module-load event (`IDkmModuleInstanceLoadNotification`) for a non-wanted module must take under 0.1 ms on average on the Concord worker thread (and 0 ms on the VS UI thread): a hash lookup, no file I/O, no allocation-heavy work. |
 | NF-2 | Wanted-set computation before launch must take under 300 ms with a warm cache, and under 2 s cold for a full engine solution. It runs off the UI thread; launch waits for it, with a timeout of 2 s, after which the last known wanted set is used. |
 | NF-3 | No blocking file I/O on the UI thread. Follow the VS threading rules (`JoinableTaskFactory`). |
 | NF-4 | The package loads in the background (`AllowsBackgroundLoading`), and auto-loads only when a solution with C++ projects is open (UI context rule). |
@@ -374,8 +375,7 @@ Stored through `DialogPage` in the VS settings store (global per VS instance).
 1. Code from headers inlined into other modules: breakpoints in it only bind in modules whose symbols are loaded (BP-5).
 2. Unqualified function breakpoints don't trigger loads (BP-4).
 3. Monolithic builds get no benefit (§2.2).
-4. A breakpoint in a module's startup code set *during* a session, before that module has loaded, depends on the include list being applied live (see [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) spike S3). If the debugger doesn't support that, the load-event fallback may be too late for code that runs during module load.
-5. While on-demand mode is active, the VS symbol options page shows the extension's settings. The extension adds a note to its log and tool window explaining this.
+4. While on-demand mode is active, the VS symbol options page shows manual-load mode enabled (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`). The extension adds a note to its log and tool window explaining this.
 
 ---
 

@@ -8,14 +8,14 @@ Work through the phases in order. Each phase ends with its acceptance criteria m
 
 Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §6 before building the real thing. Spike code is throwaway. Put it in `spikes/` or on a branch, not in `src/`.
 
-- [x] S1 Symbol settings API round-trip (verified against VS SDK assemblies; `IDebugOptionList120A`, `SaveSymbolSettings(settings, loadSymbolsNow)`, and `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad` documented in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.1; harness in [`spikes/Phase0SpikeRunner.cs`](../spikes/Phase0SpikeRunner.cs))
-- [x] S2 Programmatic `LoadSymbols` + breakpoint binding + call stack refresh (verified `IDebugModule3.LoadSymbols()` and Concord's `BMFileLineBreakpointCollection.OnModuleSymbolsLoaded` auto-binding in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.2)
-- [x] S3 Live include-list changes / module-load event timing (verified `SaveSymbolSettings(..., loadSymbolsNow: false)` live propagation via `IDebugSymbolSettings100`/`170` + `IDebugModuleLoadEvent2` fallback in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.3)
-- [x] S4 Breakpoint change detection (verified Strategy B `CommandEvents.AfterExecute` + Strategy A `IDebugBreakpointErrorEvent2` with `BP_LOCATION.unionmember2` marshaling in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.4)
-- [x] S5 Before-launch hook (verified D-9 always-applied baseline + `CommandEvents.BeforeExecute` on `StandardCommandSet97` and `guidVSDebugCommand` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.5)
+- [x] S1 Symbol settings API round-trip (verified `IVsDebuggerSymbolSettingsManager120A` + `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad` toggling manual-load mode without modifying `IncludeList`; documented in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.1; harness in [`spikes/Phase0SpikeRunner.cs`](../spikes/Phase0SpikeRunner.cs))
+- [x] S2 Programmatic `LoadSymbols` + breakpoint binding + call stack refresh (verified Concord `DkmModuleInstance.TryLoadSymbols()` and `BMFileLineBreakpointCollection.OnModuleSymbolsLoaded` auto-binding in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.2)
+- [x] S3 Module-load event timing & Concord `.vsdconfig` compilation (verified Concord `IDkmModuleInstanceLoadNotification` suspends the target process on the Concord engine thread at `ComponentLevel = 210000`, allowing synchronous `TryLoadSymbols()` before `DllMain`/`StartupModule()`; verified `.vsdconfigxml` → `.vsdconfig` compilation with `vsdconfigtool.exe` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.3)
+- [x] S4 Breakpoint change detection (verified Concord `IDkmBreakpointManagerNotification` with strongly typed `DkmPendingFileLineBreakpoint` / `DkmPendingFunctionBreakpoint` + Strategy B `CommandEvents.AfterExecute` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.4)
+- [x] S5 Before-launch hook (verified D-9/D-15 always-applied manual-load mode + `CommandEvents.BeforeExecute` on `StandardCommandSet97` and `guidVSDebugCommand` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.5)
 - [ ] S6 Baseline startup timings → [`docs/BENCHMARKS.md`](BENCHMARKS.md) (protocol and table ready; interactive UE5 Editor timing numbers pending user run on `D:\UnrealEngine`)
-- [x] S7 Detecting user-initiated symbol loads (verified `IDebugSymbolSearchEvent2` with `MIF_SYMBOLS_LOADED` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.7)
-- [x] Record results in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7. Update [SPEC.md](SPEC.md) and [DECISIONS.md](DECISIONS.md) (D-12, D-13, D-14) where the results change the design.
+- [x] S7 Detecting user-initiated symbol loads (verified Concord `IDkmModuleSymbolsLoadedNotification` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.7)
+- [x] Record results in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7. Update [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [DECISIONS.md](DECISIONS.md) (D-12, D-13, D-15) where the results change the design.
 
 **Accept when:** every spike has a documented outcome, and there is a confirmed mechanism for (a) limiting automatic loads, (b) loading on demand, and (c) detecting breakpoints.
 
@@ -44,16 +44,16 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 **Accept when:** the reverse map and forward map round-trip for every module in a real engine build.
 
-## Phase 3 — Debugger integration core
+## Phase 3 — Debugger integration core (Concord + Manual-Load Settings)
 
-- [ ] `SymbolSettingsController`: backup, apply, restore, crash recovery, preserving the user's include entries.
+- [ ] `SymbolSettingsController`: backup, apply (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`), restore, crash recovery, leaving the user's `IncludeList` and `ExcludeList` untouched (D-15).
 - [ ] Solution event handling: Unreal detection (SPEC §7.2), apply/restore on open/close.
-- [ ] `DebugEventSink`, `SessionTracker`, `LoadedModuleRegistry`.
-- [ ] `SymbolLoader` with de-duplicating queue and logging.
-- [ ] Before-launch hook (per S5): prune the MRU, compute the wanted set, write the include list.
+- [ ] Concord component (`VSOnDemandSymbols.vsdconfigxml` → `.vsdconfig` asset in `.vsixmanifest`): `ConcordSymbolMonitor`, `ConcordSymbolBridge`, `SessionTracker`, `LoadedModuleRegistry` (`DkmModuleInstance`).
+- [ ] `SymbolLoader` (`DkmModuleInstance.TryLoadSymbols()`) with de-duplicating queue and logging.
+- [ ] Before-launch hook (per S5): prune the MRU, compute the wanted set, publish immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
 - [ ] Output pane logger.
 
-**Accept when:** launching the UE editor with an MRU containing `MyGame` loads symbols only for the include list. Session start and end are logged. Settings are restored when the solution closes, and after killing devenv.exe and restarting.
+**Accept when:** launching the UE editor with an MRU containing `MyGame` loads symbols only for the wanted set via `ConcordSymbolMonitor.OnModuleInstanceLoad`. Session start and end are logged. Settings are restored when the solution closes, and after killing devenv.exe and restarting.
 
 ## Phase 4 — Triggers
 

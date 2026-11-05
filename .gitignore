@@ -1,0 +1,26 @@
+## Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.vsix
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+## Test results
+TestResults/
+*.trx
+coverage*/
+
+## Spikes (throwaway)
+spikes/**/bin/
+spikes/**/obj/
+
+## OS
+Thumbs.db
+.DS_Store
+

@@ -55,6 +55,7 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
 
     public IReadOnlyList<ModuleKey> Resolve(string sourceFilePath)
     {
+        sourceFilePath = Policy.WildcardPattern.SanitizePathString(sourceFilePath);
         if (string.IsNullOrWhiteSpace(sourceFilePath))
         {
             return Array.Empty<ModuleKey>();
@@ -186,7 +187,11 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
         }
 
         // Fallback: check manifests in known binaries directories
-        string fileName = Path.GetFileName(modulePath);
+        string fileName = Policy.WildcardPattern.ExtractFileNameSafe(modulePath);
+        if (fileName.Length == 0)
+        {
+            return null;
+        }
         foreach (var dir in GetKnownBinariesDirectories())
         {
             string? mod = _manifestReader.TryResolveModuleFromLoadedDll(dir, fileName);

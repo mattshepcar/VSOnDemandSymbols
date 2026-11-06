@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using Microsoft.VisualStudio.Debugger;
 using VSOnDemandSymbols.Core.Modules;
+using VSOnDemandSymbols.Core.Policy;
 
 namespace VSOnDemandSymbols.Debugger;
 
@@ -27,15 +28,22 @@ public sealed class LoadedModuleRegistry
     public int SymbolsLoadedOnDemandCount => Volatile.Read(ref _symbolsLoadedOnDemandCount);
     public int TotalSymbolsLoadedCount => SymbolsLoadedAtLoadCount + SymbolsLoadedOnDemandCount;
 
-    public LoadedModuleInfo RegisterModuleLoad(DkmModuleInstance moduleInstance, ModuleKey? key)
+    public LoadedModuleInfo RegisterModuleLoad(DkmModuleInstance moduleInstance, ModuleKey? key, string? resolvedFileName = null)
     {
         if (moduleInstance == null)
         {
             throw new ArgumentNullException(nameof(moduleInstance));
         }
 
-        string fileName = moduleInstance.Name ?? string.Empty;
-        string fullPath = moduleInstance.FullName ?? fileName;
+        string fileName = !string.IsNullOrEmpty(resolvedFileName)
+            ? resolvedFileName!
+            : WildcardPattern.ExtractFileNameSafe(moduleInstance.Name);
+        string fullPath = WildcardPattern.SanitizePathString(moduleInstance.FullName);
+        if (string.IsNullOrEmpty(fullPath))
+        {
+            fullPath = fileName;
+        }
+
         var info = new LoadedModuleInfo(moduleInstance, fileName, fullPath, key);
 
         if (_byUniqueId.TryAdd(moduleInstance.UniqueId, info))
@@ -105,9 +113,10 @@ public sealed class LoadedModuleRegistry
             candidateSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (string fn in candidateFileNames)
             {
-                if (!string.IsNullOrWhiteSpace(fn))
+                string cleanFn = WildcardPattern.ExtractFileNameSafe(fn);
+                if (!string.IsNullOrWhiteSpace(cleanFn))
                 {
-                    candidateSet.Add(Path.GetFileName(fn));
+                    candidateSet.Add(cleanFn);
                 }
             }
         }
@@ -139,7 +148,7 @@ public sealed class LoadedModuleRegistry
 
     public IReadOnlyList<LoadedModuleInfo> GetLoadedModulesByFileName(string fileName)
     {
-        string shortName = Path.GetFileName(fileName ?? string.Empty);
+        string shortName = WildcardPattern.ExtractFileNameSafe(fileName);
         var matches = new List<LoadedModuleInfo>();
         foreach (var entry in _byUniqueId.Values)
         {

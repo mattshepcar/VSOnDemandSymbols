@@ -32,7 +32,7 @@ An IDE-side Concord component (`ConcordSymbolMonitor`, `ComponentLevel = 210000`
 - Implements `IDkmModuleInstanceLoadNotification` (filtered to `<RuntimeId RequiredValue="DkmRuntimeId.Native" />`):
   - Per `vsdconfig.xsd`: *"When this notification fires, the target process will be suspended and can be examined."*
   - Checks whether `moduleInstance.Name` (or its parsed `ModuleKey`) is in the precomputed `WantedSet`.
-  - If wanted and `moduleInstance.SymbolFileId == null`, calls **`moduleInstance.TryLoadSymbols()`** synchronously while the target process is paused at the OS loader event—guaranteeing that symbols are loaded and breakpoints in `DllMain` or `StartupModule()` bind before any module code executes.
+  - If wanted and `moduleInstance.Module == null` (note: `DkmModuleInstance.Module` is the loaded `DkmModule` symbol representation, whereas `DkmModuleInstance.SymbolFileId` is the PE header CodeView PDB identifier and is non-null even when symbols are not loaded), calls **`moduleInstance.TryLoadSymbols()`** synchronously while the target process is paused at the OS loader event—guaranteeing that symbols are loaded and breakpoints in `DllMain` or `StartupModule()` bind before any module code executes.
 
 ---
 
@@ -43,7 +43,7 @@ An IDE-side Concord component (`ConcordSymbolMonitor`, `ComponentLevel = 210000`
 - `ConcordSymbolMonitor` maintains a thread-safe `LoadedModuleRegistry` (`ConcurrentDictionary`) mapping loaded native modules to their live `DkmModuleInstance` (added in `IDkmModuleInstanceLoadNotification.OnModuleInstanceLoad`, removed in `IDkmModuleInstanceUnloadNotification.OnModuleInstanceUnload`, and cleared in `IDkmProcessExitNotification.OnProcessExit`).
 - When any trigger fires during a session (breakpoint added, call stack on break, frame activation, or "Load Symbols Now" command):
   - `SymbolLoader` looks up the `DkmModuleInstance` in `LoadedModuleRegistry`.
-  - If `moduleInstance.SymbolFileId == null`, `SymbolLoader` records the module's `UniqueId` as an extension-initiated load and calls `moduleInstance.TryLoadSymbols()`.
+  - If `moduleInstance.Module == null`, `SymbolLoader` records the module's `UniqueId` as an extension-initiated load and calls `moduleInstance.TryLoadSymbols()`.
   - `DkmModuleInstance.TryLoadSymbols()` is thread-safe and runs off the UI thread.
   - When symbols load, Concord's `BMFileLineBreakpointCollection.OnModuleSymbolsLoaded` automatically binds all pending file/line and function breakpoints in that module.
   - Symbol status/search diagnostics are read via `moduleInstance.GetSymbolStatusMessage(excludeCommonErrors: false)` and `moduleInstance.GetSymbolLoadInformation()`.
@@ -80,7 +80,7 @@ We combine two clean, documented mechanisms (Strategy B + Concord Strategy A):
 
 - On break mode (`DTE.Events.DebuggerEvents.OnEnterBreakMode`) and frame activation (`DTE.Events.DebuggerEvents.OnContextChanged`):
   - Inspect stack frames according to `CallStackMode` (up to `CallStackMaxFrames`, default 128) via AD7 `IDebugThread2.EnumFrameInfo(FIF_DEBUG_MODULEP | FIF_FUNCNAME | FIF_FLAGS, ...)` or Concord stack walk.
-  - For each frame whose module has no symbols loaded (`SymbolFileId == null`), queue `SymbolLoader` to call `DkmModuleInstance.TryLoadSymbols()` asynchronously off the UI thread (CS-6).
+  - For each frame whose module has no symbols loaded (`moduleInstance.Module == null`), queue `SymbolLoader` to call `DkmModuleInstance.TryLoadSymbols()` asynchronously off the UI thread (CS-6).
 - **Call Stack window refresh (CS-5):** When `DkmModuleInstance.TryLoadSymbols()` loads a PDB, Concord emits `OnModuleSymbolsLoaded`, causing VS to invalidate cached stack frames and refresh the Call Stack window automatically.
 
 ---

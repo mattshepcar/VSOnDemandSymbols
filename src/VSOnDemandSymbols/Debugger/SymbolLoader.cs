@@ -69,6 +69,12 @@ public sealed class SymbolLoader
         string? detail = null,
         IReadOnlyList<string>? candidateFileNames = null)
     {
+        var snapshot = _bridge.CurrentSnapshot;
+        if (snapshot.Policy.ShouldLoadOnDemand(key, reason, candidateFileNames))
+        {
+            _bridge.AddWantedKeyLive(key, FormatReason(reason, detail), candidateFileNames);
+        }
+
         if (reason != TriggerReason.Manual && !_queuedKeys.TryAdd(key, 1))
         {
             return;
@@ -146,33 +152,48 @@ public sealed class SymbolLoader
 
         try
         {
-            if (moduleInstance.SymbolFileId != null)
+            if (moduleInstance.Module != null)
             {
                 return true;
             }
 
-            if (reason != TriggerReason.Manual && !_attemptedModuleInstanceIds.TryAdd(moduleInstance.UniqueId, 1))
+            if (reason != TriggerReason.Manual &&
+                (!_attemptedModuleInstanceIds.TryAdd(moduleInstance.UniqueId, 1) ||
+                 !_bridge.TryMarkLoadAttempted(moduleInstance.UniqueId)))
             {
                 return false;
             }
 
             _attemptedModuleInstanceIds[moduleInstance.UniqueId] = 1;
+            _bridge.TryMarkLoadAttempted(moduleInstance.UniqueId);
             _bridge.MarkExtensionInitiatedLoad(moduleInstance.UniqueId);
 
-            string fileName = moduleInstance.Name ?? string.Empty;
+            string fileName = WildcardPattern.ExtractFileNameSafe(moduleInstance.Name);
+            if (string.IsNullOrEmpty(fileName))
+            {
+                fileName = WildcardPattern.ExtractFileNameSafe(moduleInstance.FullName);
+            }
+
             _logger.Info($"Loading symbols: {fileName} — {reasonDescription}");
 
             bool logDiag = _logger.IsEnabled(LogLevel.Diagnostic);
             Stopwatch? sw = logDiag ? Stopwatch.StartNew() : null;
 
-            moduleInstance.TryLoadSymbols();
+            try
+            {
+                moduleInstance.TryLoadSymbols();
+            }
+            catch (DkmException dkmEx)
+            {
+                _logger.Verbose($"TryLoadSymbols returned {dkmEx.Code} for {fileName}: {dkmEx.Message}");
+            }
 
             if (sw != null)
             {
                 sw.Stop();
             }
 
-            if (moduleInstance.SymbolFileId != null)
+            if (moduleInstance.Module != null)
             {
                 _bridge.ModuleRegistry.RecordOnDemandSymbolLoad(moduleInstance.UniqueId);
                 if (sw != null)

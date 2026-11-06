@@ -25,4 +25,4 @@
    - Re-open `Lyra.slnx` so on-demand mode is active (`symbol-settings-backup.json` exists).
    - Kill the Experimental `devenv.exe` process from Task Manager.
    - Restart the Experimental instance and open `Lyra.slnx`:
-     - Confirm the **On-Demand Symbols** Output pane logs `[Warning] Restored symbol settings after a previous unexpected exit (...)`.
+     - Confirm the **On-Demand Symbols** Output pane logs `[Warning] Restored symbol settings after a previous unexpected exit (...)`.

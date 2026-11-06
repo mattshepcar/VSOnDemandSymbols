@@ -100,6 +100,8 @@ public class UnrealSolutionDetectorTests
     [InlineData(@"D:\Games\MyGame\Binaries\Win64\MyGameEditor.exe", "MyGame", true)]
     [InlineData(@"D:\Games\MyGame\Binaries\Win64\MyGame-Win64-DebugGame.exe", "MyGame", true)]
     [InlineData(@"C:\Tools\ShaderCompileWorker.exe", "MyGame", false)]
+    [InlineData("D\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", "Lyra", false)]
+    [InlineData("D:\\UnrealEngine\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-DebugGame.exe\0\0\0", "Lyra", true)]
     public void IsQualifyingUnrealProcess_MatchesExpectedPatterns(
         string processPath,
         string? projectName,

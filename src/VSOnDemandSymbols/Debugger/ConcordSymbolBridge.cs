@@ -18,6 +18,7 @@ public sealed class ConcordSymbolBridge
 
     private readonly object _snapshotLock = new();
     private readonly ConcurrentDictionary<Guid, byte> _extensionInitiatedLoads = new();
+    private readonly ConcurrentDictionary<Guid, byte> _attemptedLoadModuleIds = new();
 
     private WantedSetSnapshot _currentSnapshot = WantedSetSnapshot.Empty;
 
@@ -68,15 +69,22 @@ public sealed class ConcordSymbolBridge
         _extensionInitiatedLoads.TryRemove(moduleUniqueId, out _);
     }
 
+    public bool TryMarkLoadAttempted(Guid moduleUniqueId)
+    {
+        return _attemptedLoadModuleIds.TryAdd(moduleUniqueId, 1);
+    }
+
     public void ResetForNewSession()
     {
         _extensionInitiatedLoads.Clear();
+        _attemptedLoadModuleIds.Clear();
         ModuleRegistry.ResetSessionCountersAndClear();
     }
 
     public void Clear()
     {
         _extensionInitiatedLoads.Clear();
+        _attemptedLoadModuleIds.Clear();
         ModuleRegistry.ResetSessionCountersAndClear();
         PublishSnapshot(WantedSetSnapshot.Empty);
     }

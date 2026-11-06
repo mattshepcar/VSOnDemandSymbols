@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.Debugger.ComponentInterfaces;
 using Microsoft.VisualStudio.Debugger.Symbols;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
+using VSOnDemandSymbols.Core.Policy;
 
 namespace VSOnDemandSymbols.Debugger;
 
@@ -44,7 +45,7 @@ public sealed class ConcordSymbolMonitor :
         try
         {
             var sessionTracker = _bridge.SessionTracker;
-            if (sessionTracker == null || !sessionTracker.IsQualifyingProcess(moduleInstance.Process))
+            if (sessionTracker == null || !sessionTracker.IsQualifyingProcess(moduleInstance.Process, moduleInstance))
             {
                 return;
             }
@@ -52,25 +53,46 @@ public sealed class ConcordSymbolMonitor :
             bool logDiag = _bridge.Logger.IsEnabled(LogLevel.Diagnostic);
             Stopwatch? sw = logDiag ? Stopwatch.StartNew() : null;
 
-            sessionTracker.EnsureProcessSessionStarted(moduleInstance.Process);
+            sessionTracker.EnsureProcessSessionStarted(moduleInstance.Process, moduleInstance);
 
             var snapshot = _bridge.CurrentSnapshot;
-            string fileName = moduleInstance.Name ?? string.Empty;
+            string fileName = WildcardPattern.ExtractFileNameSafe(moduleInstance.Name);
+            if (string.IsNullOrEmpty(fileName) || !fileName.Contains("."))
+            {
+                string fromFull = WildcardPattern.ExtractFileNameSafe(moduleInstance.FullName);
+                if (!string.IsNullOrEmpty(fromFull) && fromFull.Contains("."))
+                {
+                    fileName = fromFull;
+                }
+                else if (moduleInstance.LoadOrder == 0)
+                {
+                    fileName = sessionTracker.GetProcessExecutableName(moduleInstance.Process, moduleInstance);
+                }
+            }
+
             ModuleKey? key = snapshot.TryResolveLoadedModule(fileName);
 
-            _bridge.ModuleRegistry.RegisterModuleLoad(moduleInstance, key);
+            _bridge.ModuleRegistry.RegisterModuleLoad(moduleInstance, key, fileName);
 
             bool shouldLoad = snapshot.ShouldLoadAtModuleLoad(fileName, key, out string reasonDescription);
             if (shouldLoad)
             {
-                if (moduleInstance.SymbolFileId == null)
+                if (moduleInstance.Module == null)
                 {
+                    _bridge.TryMarkLoadAttempted(moduleInstance.UniqueId);
                     _bridge.MarkExtensionInitiatedLoad(moduleInstance.UniqueId);
                     _bridge.Logger.Info($"Loading symbols: {fileName} — {reasonDescription}");
 
-                    moduleInstance.TryLoadSymbols();
+                    try
+                    {
+                        moduleInstance.TryLoadSymbols();
+                    }
+                    catch (DkmException dkmEx)
+                    {
+                        _bridge.Logger.Verbose($"TryLoadSymbols returned {dkmEx.Code} for {fileName}: {dkmEx.Message}");
+                    }
 
-                    if (moduleInstance.SymbolFileId != null)
+                    if (moduleInstance.Module != null)
                     {
                         _bridge.ModuleRegistry.RecordStartupSymbolLoad(moduleInstance.UniqueId);
                     }
@@ -84,6 +106,7 @@ public sealed class ConcordSymbolMonitor :
                 else
                 {
                     _bridge.ModuleRegistry.RecordStartupSymbolLoad(moduleInstance.UniqueId);
+                    _bridge.Logger.Info($"Symbols already loaded: {fileName} — {reasonDescription}");
                 }
             }
 
@@ -92,7 +115,7 @@ public sealed class ConcordSymbolMonitor :
                 sw.Stop();
                 _bridge.Logger.Diagnostic(
                     $"OnModuleInstanceLoad: '{fileName}' (key={key?.ToString() ?? "none"}, wanted={shouldLoad}, " +
-                    $"hasSymbols={moduleInstance.SymbolFileId != null}, elapsed={sw.Elapsed.TotalMilliseconds:F3} ms)");
+                    $"hasSymbols={moduleInstance.Module != null}, elapsed={sw.Elapsed.TotalMilliseconds:F3} ms)");
             }
         }
         catch (Exception ex)
@@ -130,7 +153,7 @@ public sealed class ConcordSymbolMonitor :
         try
         {
             var sessionTracker = _bridge.SessionTracker;
-            if (sessionTracker == null || !sessionTracker.IsQualifyingProcess(moduleInstance.Process))
+            if (sessionTracker == null || !sessionTracker.IsQualifyingProcess(moduleInstance.Process, moduleInstance))
             {
                 return;
             }

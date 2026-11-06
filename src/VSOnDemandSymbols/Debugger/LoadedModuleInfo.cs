@@ -18,7 +18,7 @@ public sealed class LoadedModuleInfo
     public bool HadSymbolsAtModuleMap { get; set; }
     public bool LoadedAtStartup { get; set; }
     public bool LoadedOnDemand { get; set; }
-    public bool HasSymbols => ModuleInstance.SymbolFileId != null || LoadedAtStartup || LoadedOnDemand;
+    public bool HasSymbols => ModuleInstance.Module != null || LoadedAtStartup || LoadedOnDemand;
 
     public LoadedModuleInfo(
         DkmModuleInstance moduleInstance,
@@ -30,7 +30,7 @@ public sealed class LoadedModuleInfo
         FileName = fileName ?? string.Empty;
         FullPath = fullPath ?? string.Empty;
         Key = key;
-        HadSymbolsAtModuleMap = moduleInstance.SymbolFileId != null;
+        HadSymbolsAtModuleMap = moduleInstance.Module != null;
     }
 }
 

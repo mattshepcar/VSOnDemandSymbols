@@ -81,13 +81,13 @@ public sealed class ConcordSpikeMonitor :
             LoadedModules[fileName] = moduleInstance;
 
             bool isWanted = WantedModuleNames.ContainsKey(fileName);
-            bool hasSymbols = moduleInstance.SymbolFileId != null;
+            bool hasSymbols = moduleInstance.Module != null;
 
             if (isWanted && !hasSymbols)
             {
                 ExtensionInitiatedSymbolLoads[moduleInstance.UniqueId] = 1;
                 moduleInstance.TryLoadSymbols();
-                hasSymbols = moduleInstance.SymbolFileId != null;
+                hasSymbols = moduleInstance.Module != null;
             }
 
             sw.Stop();

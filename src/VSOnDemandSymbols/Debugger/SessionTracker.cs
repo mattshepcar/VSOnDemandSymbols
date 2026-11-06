@@ -54,6 +54,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private readonly object _sessionLock = new();
     private readonly List<CommandEvents> _commandEventSubscriptions = new();
     private readonly ConcurrentDictionary<Guid, bool> _processQualificationCache = new();
+    private readonly ConcurrentDictionary<Guid, string> _processExeNameCache = new();
     private readonly ConcurrentDictionary<Guid, string> _activeQualifyingProcesses = new();
     private readonly HashSet<string> _warnedUnresolvedBreakpointFiles = new(StringComparer.OrdinalIgnoreCase);
 
@@ -229,6 +230,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             lock (_sessionLock)
             {
                 _processQualificationCache.Clear();
+                _processExeNameCache.Clear();
                 _activeQualifyingProcesses.Clear();
                 _warnedUnresolvedBreakpointFiles.Clear();
                 _bridge.ResetForNewSession();
@@ -253,34 +255,135 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     /// Called on the Concord worker thread to check whether a debugged process qualifies (SPEC §7.3).
     /// Cached per <see cref="DkmProcess.UniqueId"/> so pattern matching runs only once per process.
     /// </summary>
-    public bool IsQualifyingProcess(DkmProcess? process)
+    public bool IsQualifyingProcess(DkmProcess? process, DkmModuleInstance? candidateModule = null)
     {
         if (process == null || !IsQualifyingSolutionOpen || !IsEnabled)
         {
             return false;
         }
 
-        return _processQualificationCache.GetOrAdd(process.UniqueId, _ =>
+        if (_processQualificationCache.TryGetValue(process.UniqueId, out bool cached))
         {
-            string processPath = process.Path ?? string.Empty;
-            string? projectName = _currentSolutionInfo.ProjectName;
-            return UnrealSolutionDetector.IsQualifyingUnrealProcess(processPath, null, projectName);
-        });
+            return cached;
+        }
+
+        string exeName = GetProcessExecutableName(process, candidateModule);
+        string? projectName = _currentSolutionInfo.ProjectName;
+        bool qualifies = UnrealSolutionDetector.IsQualifyingUnrealProcess(exeName, null, projectName);
+
+        if (qualifies || exeName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            _processQualificationCache[process.UniqueId] = qualifies;
+        }
+
+        return qualifies;
+    }
+
+    /// <summary>
+    /// Resolves the executable file name for a <see cref="DkmProcess"/>, falling back to the loaded <c>.exe</c>
+    /// <see cref="DkmModuleInstance"/> or the OS process table (<c>process.LivePart.Id</c>) when Concord's
+    /// <see cref="DkmProcess.Path"/> contains a truncated/NUL-padded Win32 <c>CREATE_PROCESS_DEBUG_INFO</c> buffer.
+    /// </summary>
+    public string GetProcessExecutableName(DkmProcess? process, DkmModuleInstance? candidateModule = null)
+    {
+        if (process == null)
+        {
+            return string.Empty;
+        }
+
+        if (_processExeNameCache.TryGetValue(process.UniqueId, out string? cached) &&
+            !string.IsNullOrEmpty(cached))
+        {
+            return cached!;
+        }
+
+        string resolved = ResolveProcessExecutableNameCore(process, candidateModule);
+        if (resolved.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            _processExeNameCache[process.UniqueId] = resolved;
+        }
+
+        return resolved;
+    }
+
+    private static string ResolveProcessExecutableNameCore(DkmProcess process, DkmModuleInstance? candidateModule)
+    {
+        string fromProcessPath = WildcardPattern.ExtractFileNameSafe(process.Path);
+        if (fromProcessPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return fromProcessPath;
+        }
+
+        if (candidateModule != null)
+        {
+            string fromModName = WildcardPattern.ExtractFileNameSafe(candidateModule.Name);
+            if (fromModName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                return fromModName;
+            }
+
+            string fromModFull = WildcardPattern.ExtractFileNameSafe(candidateModule.FullName);
+            if (fromModFull.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            {
+                return fromModFull;
+            }
+        }
+
+        try
+        {
+            foreach (var runtime in process.GetRuntimeInstances())
+            {
+                foreach (var mod in runtime.GetModuleInstances())
+                {
+                    string modName = WildcardPattern.ExtractFileNameSafe(mod.Name);
+                    if (modName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return modName;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Ignore runtime enumeration errors
+        }
+
+        try
+        {
+            int pid = process.LivePart?.Id ?? 0;
+            if (pid > 0)
+            {
+                using var osProc = System.Diagnostics.Process.GetProcessById(pid);
+                string procName = WildcardPattern.SanitizePathString(osProc.ProcessName);
+                if (!string.IsNullOrEmpty(procName))
+                {
+                    return procName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                        ? procName
+                        : procName + ".exe";
+                }
+            }
+        }
+        catch
+        {
+            // Ignore OS process lookup errors
+        }
+
+        return fromProcessPath;
     }
 
     /// <summary>
     /// Called on the Concord worker thread when the first module of a qualifying process loads.
     /// Logs the session start summary (SPEC §8.2).
     /// </summary>
-    public void EnsureProcessSessionStarted(DkmProcess process)
+    public void EnsureProcessSessionStarted(DkmProcess process, DkmModuleInstance? candidateModule = null)
     {
         if (process == null)
         {
             return;
         }
 
-        string exeName = Path.GetFileName(process.Path ?? string.Empty);
-        if (string.IsNullOrWhiteSpace(exeName))
+        string exeName = GetProcessExecutableName(process, candidateModule);
+        if (string.IsNullOrWhiteSpace(exeName) || !exeName!.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             exeName = "UnrealEditor.exe";
         }
@@ -297,7 +400,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 // If launch bypassed CommandEvents.BeforeExecute, prune MRU and build snapshot from in-memory state.
                 _bridge.ResetForNewSession();
                 _symbolLoader.ResetForNewSession();
-                BuildAndPublishSnapshotCore(pruneMru: true, breakpointKeys: Array.Empty<ModuleKey>());
+                IReadOnlyList<ModuleKey> pruned = _mruStore.StartSessionAndPrune();
+                BuildAndPublishSnapshotCore(pruned, breakpointKeys: Array.Empty<ModuleKey>(), breakpointReasons: null);
                 _sessionPreparedForLaunch = true;
             }
 
@@ -313,6 +417,22 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                     $"(pinned {snapshot.PinnedCount}, MRU {snapshot.MruCount}, " +
                     $"breakpoints {snapshot.BreakpointCount}, always {snapshot.AlwaysCount}); " +
                     $"pruned {snapshot.PrunedCount} from MRU.");
+
+                if (snapshot.WantedKeys.Count > 0)
+                {
+                    var wantedDescriptions = new List<string>();
+                    foreach (var wantedKey in snapshot.WantedKeys)
+                    {
+                        string reason = snapshot.KeyReasons.TryGetValue(wantedKey, out string? r) ? r : "WantedSet";
+                        var candidates = _unrealResolver.GetCandidateFileNames(wantedKey);
+                        string binariesDesc = candidates.Count > 0
+                            ? $" [{string.Join(", ", candidates.Take(3))}]"
+                            : string.Empty;
+                        wantedDescriptions.Add($"{wantedKey.Name}{binariesDesc} ({reason})");
+                    }
+
+                    _logger.Info($"Wanted modules: {string.Join("; ", wantedDescriptions)}");
+                }
             }
         }
     }
@@ -323,6 +443,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     public void OnProcessExited(Guid processUniqueId)
     {
         _processQualificationCache.TryRemove(processUniqueId, out _);
+        _processExeNameCache.TryRemove(processUniqueId, out _);
         if (_activeQualifyingProcesses.TryRemove(processUniqueId, out _) &&
             _activeQualifyingProcesses.IsEmpty)
         {
@@ -340,7 +461,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             return;
         }
 
-        string fileName = moduleInstance.Name ?? string.Empty;
+        string fileName = WildcardPattern.ExtractFileNameSafe(moduleInstance.Name);
         ModuleKey key = resolvedKey
             ?? _bridge.CurrentSnapshot.TryResolveLoadedModule(fileName)
             ?? new ModuleKey(ModuleKind.External, fileName);
@@ -363,15 +484,15 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         if (pendingBreakpoint is DkmPendingFileLineBreakpoint fileLineBp)
         {
             DkmSourcePosition? pos = fileLineBp.GetCurrentSourcePosition();
-            string? docName = pos?.DocumentName;
+            string docName = WildcardPattern.SanitizePathString(pos?.DocumentName);
             if (!string.IsNullOrWhiteSpace(docName))
             {
                 int line = pos!.TextSpan.StartLine;
-                string detail = $"{Path.GetFileName(docName)}({line})";
-                var keys = _unrealResolver.Resolve(docName!);
+                string detail = $"{WildcardPattern.ExtractFileNameSafe(docName)}({line})";
+                var keys = _unrealResolver.Resolve(docName);
                 if (keys.Count == 0)
                 {
-                    WarnUnresolvedBreakpointOnce(docName!);
+                    WarnUnresolvedBreakpointOnce(docName);
                     return;
                 }
 
@@ -496,6 +617,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         _currentStateFilePath = null;
         _currentSolutionInfo = UnrealSolutionInfo.NotUnreal;
         _processQualificationCache.Clear();
+        _processExeNameCache.Clear();
         _activeQualifyingProcesses.Clear();
 
         _bridge.Clear();
@@ -516,6 +638,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             _sessionPreparedForLaunch = false;
             _activeQualifyingProcesses.Clear();
             _processQualificationCache.Clear();
+            _processExeNameCache.Clear();
 
             int totalModules = _bridge.ModuleRegistry.TotalModulesLoadedCount;
             int atLoad = _bridge.ModuleRegistry.SymbolsLoadedAtLoadCount;
@@ -539,16 +662,21 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        var breakpointKeys = ResolveDteBreakpointsAndRecordHits();
-        BuildAndPublishSnapshotCore(pruneMru, breakpointKeys);
-    }
-
-    private void BuildAndPublishSnapshotCore(bool pruneMru, IReadOnlyList<ModuleKey> breakpointKeys)
-    {
         IReadOnlyList<ModuleKey> pruned = pruneMru
             ? _mruStore.StartSessionAndPrune()
             : Array.Empty<ModuleKey>();
 
+        var breakpointReasons = new Dictionary<ModuleKey, string>();
+        var breakpointKeys = ResolveDteBreakpoints(recordMruHits: pruneMru, breakpointReasons);
+        BuildAndPublishSnapshotCore(pruned, breakpointKeys, breakpointReasons);
+    }
+
+    private void BuildAndPublishSnapshotCore(
+        IReadOnlyList<ModuleKey> pruned,
+        IReadOnlyList<ModuleKey> breakpointKeys,
+        IReadOnlyDictionary<ModuleKey, string>? breakpointReasons)
+    {
+        var bpKeySet = new HashSet<ModuleKey>(breakpointKeys);
         var entries = _mruStore.GetEntries();
         var pinnedKeys = new List<ModuleKey>();
         var mruKeys = new List<ModuleKey>();
@@ -564,7 +692,12 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             }
             else if (_mruStore.Options.MruEnabled)
             {
-                mruKeys.Add(entry.Key);
+                // Only count as an MRU carry-over if it had prior triggers or wasn't solely added by this session's breakpoint scan
+                if (!bpKeySet.Contains(entry.Key) || entry.TriggerCount > 1)
+                {
+                    mruKeys.Add(entry.Key);
+                }
+
                 string detailSuffix = !string.IsNullOrWhiteSpace(entry.LastReasonDetail)
                     ? $": {entry.LastReasonDetail}"
                     : string.Empty;
@@ -574,14 +707,21 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
         foreach (var bpKey in breakpointKeys)
         {
-            var entry = _mruStore.TryGetEntry(bpKey);
-            if (entry != null && entry.LastReason == TriggerReason.Breakpoint)
+            if (breakpointReasons != null && breakpointReasons.TryGetValue(bpKey, out string? bpReason))
             {
-                keyReasons[bpKey] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, entry.LastReasonDetail);
+                keyReasons[bpKey] = bpReason;
             }
             else
             {
-                keyReasons[bpKey] = "Breakpoint";
+                var entry = _mruStore.TryGetEntry(bpKey);
+                if (entry != null && entry.LastReason == TriggerReason.Breakpoint)
+                {
+                    keyReasons[bpKey] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, entry.LastReasonDetail);
+                }
+                else
+                {
+                    keyReasons[bpKey] = "Breakpoint";
+                }
             }
         }
 
@@ -609,7 +749,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         {
             foreach (string candidate in _unrealResolver.GetCandidateFileNames(wantedKey))
             {
-                wantedFileNames.Add(Path.GetFileName(candidate));
+                wantedFileNames.Add(WildcardPattern.ExtractFileNameSafe(candidate));
             }
 
             var entry = _mruStore.TryGetEntry(wantedKey);
@@ -617,7 +757,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             {
                 foreach (string bin in entry.Binaries)
                 {
-                    wantedFileNames.Add(Path.GetFileName(bin));
+                    wantedFileNames.Add(WildcardPattern.ExtractFileNameSafe(bin));
                 }
             }
         }
@@ -641,7 +781,9 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         _bridge.PublishSnapshot(snapshot);
     }
 
-    private IReadOnlyList<ModuleKey> ResolveDteBreakpointsAndRecordHits()
+    private IReadOnlyList<ModuleKey> ResolveDteBreakpoints(
+        bool recordMruHits,
+        Dictionary<ModuleKey, string> breakpointReasons)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -676,13 +818,18 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                         continue;
                     }
 
-                    string detail = $"{Path.GetFileName(file)}({bp.FileLine})";
+                    string detail = $"{WildcardPattern.ExtractFileNameSafe(file)}({bp.FileLine})";
                     foreach (var key in resolved)
                     {
                         var candidates = _unrealResolver.GetCandidateFileNames(key);
                         if (!_loadPolicy.IsNeverLoad(key, candidates))
                         {
-                            _mruStore.RecordHit(key, TriggerReason.Breakpoint, detail, candidates);
+                            if (recordMruHits)
+                            {
+                                _mruStore.RecordHit(key, TriggerReason.Breakpoint, detail, candidates);
+                            }
+
+                            breakpointReasons[key] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, detail);
                             breakpointKeys.Add(key);
                         }
                     }
@@ -704,7 +851,12 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                             var candidates = _unrealResolver.GetCandidateFileNames(key.Value);
                             if (!_loadPolicy.IsNeverLoad(key.Value, candidates))
                             {
-                                _mruStore.RecordHit(key.Value, TriggerReason.Breakpoint, func, candidates);
+                                if (recordMruHits)
+                                {
+                                    _mruStore.RecordHit(key.Value, TriggerReason.Breakpoint, func, candidates);
+                                }
+
+                                breakpointReasons[key.Value] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, func);
                                 breakpointKeys.Add(key.Value);
                             }
                         }

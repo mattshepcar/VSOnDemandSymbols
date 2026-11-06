@@ -149,13 +149,14 @@ public sealed class UnrealSolutionDetector
         string? configuredPatterns = null,
         string? projectName = null)
     {
-        if (string.IsNullOrWhiteSpace(processNameOrPath))
+        string cleanFileName = WildcardPattern.ExtractFileNameSafe(processNameOrPath);
+        if (string.IsNullOrWhiteSpace(cleanFileName))
         {
             return false;
         }
 
         var patterns = GetProcessPatterns(configuredPatterns, projectName);
-        return WildcardPattern.MatchesAnyFileName(patterns, processNameOrPath);
+        return WildcardPattern.MatchesAnyFileName(patterns, cleanFileName);
     }
 
     private void InspectAncestorsOfIntermediateProject(

@@ -91,7 +91,8 @@ public sealed class UnrealDllNameParser
         info = null!;
         if (string.IsNullOrEmpty(modulePath)) return false;
 
-        string fileName = Path.GetFileName(modulePath);
+        string fileName = Policy.WildcardPattern.ExtractFileNameSafe(modulePath);
+        if (fileName.Length == 0) return false;
 
         // Fast-path prefix check: must contain a hyphen and match known prefix before hyphen
         int hyphenIndex = fileName.IndexOf('-');

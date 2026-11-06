@@ -78,12 +78,11 @@ public sealed class WantedSetSnapshot
     /// </summary>
     public ModuleKey? TryResolveLoadedModule(string fileNameOrPath)
     {
-        if (string.IsNullOrEmpty(fileNameOrPath))
+        string fileName = WildcardPattern.ExtractFileNameSafe(fileNameOrPath);
+        if (string.IsNullOrEmpty(fileName))
         {
             return null;
         }
-
-        string fileName = Path.GetFileName(fileNameOrPath);
 
         ModuleKey? parsed = DllParser.TryParseLoadedModule(fileName);
         if (parsed.HasValue)
@@ -155,9 +154,10 @@ public sealed class WantedSetSnapshot
         {
             foreach (string fn in candidateFileNames)
             {
-                if (!string.IsNullOrWhiteSpace(fn))
+                string cleanFn = WildcardPattern.ExtractFileNameSafe(fn);
+                if (!string.IsNullOrWhiteSpace(cleanFn))
                 {
-                    newWantedFiles.Add(Path.GetFileName(fn));
+                    newWantedFiles.Add(cleanFn);
                 }
             }
         }

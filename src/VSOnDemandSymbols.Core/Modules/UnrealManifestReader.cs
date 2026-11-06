@@ -62,7 +62,11 @@ public sealed class UnrealManifestReader
             return null;
         }
 
-        string fileName = Path.GetFileName(loadedDllFileName);
+        string fileName = Policy.WildcardPattern.ExtractFileNameSafe(loadedDllFileName);
+        if (fileName.Length == 0)
+        {
+            return null;
+        }
         var manifestFiles = _fileSystem.EnumerateFiles(binariesDirectory, "*.modules", SearchOption.TopDirectoryOnly);
         foreach (var manifestPath in manifestFiles)
         {

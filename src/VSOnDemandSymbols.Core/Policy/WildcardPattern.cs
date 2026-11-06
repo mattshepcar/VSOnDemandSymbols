@@ -9,6 +9,7 @@ namespace VSOnDemandSymbols.Core.Policy;
 
 public sealed class WildcardPattern
 {
+    private static readonly char[] PathSeparators = { '\\', '/' };
     private readonly Regex _regex;
 
     public string RawPattern { get; }
@@ -42,8 +43,45 @@ public sealed class WildcardPattern
         if (string.IsNullOrEmpty(fileNameOrPath)) return false;
         if (IsUnrealModulePattern) return false;
 
-        string fileName = Path.GetFileName(fileNameOrPath);
+        string fileName = ExtractFileNameSafe(fileNameOrPath);
+        if (fileName.Length == 0) return false;
         return _regex.IsMatch(fileName);
+    }
+
+    /// <summary>
+    /// Strips any embedded NUL characters (e.g. from Concord <c>DkmProcess.Path</c> buffers) and trims whitespace.
+    /// Never throws on invalid path characters.
+    /// </summary>
+    public static string SanitizePathString(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        int nullIndex = value!.IndexOf('\0');
+        if (nullIndex >= 0)
+        {
+            value = value.Substring(0, nullIndex);
+        }
+
+        return value.Trim();
+    }
+
+    /// <summary>
+    /// Extracts the file name segment from a path or file name without calling <see cref="Path.GetFileName(string)"/>
+    /// (which throws <see cref="ArgumentException"/> in .NET Framework when the string contains <c>\0</c> or other invalid characters).
+    /// </summary>
+    public static string ExtractFileNameSafe(string? fileNameOrPath)
+    {
+        string clean = SanitizePathString(fileNameOrPath);
+        if (clean.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        int lastSep = clean.LastIndexOfAny(PathSeparators);
+        return lastSep >= 0 ? clean.Substring(lastSep + 1) : clean;
     }
 
     public bool IsMatchModule(ModuleKey key, IEnumerable<string>? candidateFileNames = null)

@@ -338,36 +338,56 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         {
             var currentThread = debugger.CurrentThread;
             var missingModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            const int maxNonCurrentThreadFrames = 10;
 
             foreach (EnvDTE.Thread th in threads)
             {
-                if (th?.StackFrames == null)
-                {
-                    continue;
-                }
-
                 try
                 {
+                    var frames = th.StackFrames;
+                    if (frames == null)
+                    {
+                        continue;
+                    }
+
                     int frameIndex = 0;
-                    foreach (StackFrame frame in th.StackFrames)
+                    foreach (StackFrame frame in frames)
                     {
                         frameIndex++;
-                        string? norm = WildcardPattern.NormalizeFrameModuleName(frame.Module);
-                        if (!string.IsNullOrWhiteSpace(norm) && !_loadedModulesThisSession.Contains(norm!))
-                        {
-                            missingModules.Add(norm!);
-                        }
-
-                        // For non-current threads, inspect top 2 frames to resolve Threads window Location column
-                        if (th != currentThread && frameIndex >= 2)
+                        if (th != currentThread && frameIndex > maxNonCurrentThreadFrames)
                         {
                             break;
+                        }
+
+                        string? rawMod = null;
+                        try
+                        {
+                            rawMod = frame.Module;
+                        }
+                        catch
+                        {
+                        }
+
+                        string? norm = WildcardPattern.NormalizeFrameModuleName(rawMod);
+                        if (!string.IsNullOrWhiteSpace(norm))
+                        {
+                            if (!_loadedModulesThisSession.Contains(norm!))
+                            {
+                                missingModules.Add(norm!);
+                            }
+
+                            // For non-current threads, stop once the first user-code module is encountered
+                            // so that the thread's location is resolved without walking deeper OS/runtime frames.
+                            if (th != currentThread && WildcardPattern.IsUserCodeModule(rawMod ?? norm))
+                            {
+                                break;
+                            }
                         }
                     }
                 }
                 catch
                 {
-                    // Thread may have terminated or frames may be temporarily unreadable
+                    // Ignore errors reading individual thread stack frames
                 }
             }
 
@@ -416,12 +436,22 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                     {
                         _logger.Info($"Loading symbols on demand (local-only): {modFileName} — {reason}");
                         mod.LoadSymbols(string.Empty);
-                        _loadedModulesThisSession.Add(modFileName);
                     }
                     catch (Exception ex)
                     {
                         // Expected when symbols are not available locally (e.g. OS DLLs not in local cache)
-                        _logger.Warning($"Could not load local symbols for {modFileName}: {ex.Message}");
+                        if (WildcardPattern.IsUserCodeModule(modFileName))
+                        {
+                            _logger.Warning($"Could not load local symbols for {modFileName}: {ex.Message}");
+                        }
+                        else
+                        {
+                            _logger.Diagnostic($"Local symbols not available for system module {modFileName}: {ex.Message}");
+                        }
+                    }
+                    finally
+                    {
+                        _loadedModulesThisSession.Add(modFileName);
                     }
                 }
             });

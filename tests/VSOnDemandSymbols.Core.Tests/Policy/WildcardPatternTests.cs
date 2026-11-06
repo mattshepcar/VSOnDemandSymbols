@@ -81,5 +81,48 @@ public class WildcardPatternTests
     {
         Assert.Equal(expected, WildcardPattern.NormalizeFrameModuleName(input));
     }
+
+    [Theory]
+    [InlineData(@"C:\Windows\System32\ntdll.dll", true)]
+    [InlineData(@"C:\Windows\System32\KernelBase.dll", true)]
+    [InlineData("ntdll.dll", true)]
+    [InlineData("kernel32.dll", true)]
+    [InlineData("user32.dll", true)]
+    [InlineData("win32u.dll", true)]
+    [InlineData("mswsock.dll", true)]
+    [InlineData("dxgi.dll", true)]
+    [InlineData("ntdll.dll!NtWaitForSingleObject", true)]
+    [InlineData("KernelBase!WaitForSingleObjectEx", true)]
+    [InlineData("UnrealEditor-Core.dll", false)]
+    [InlineData(@"D:\UnrealEngine\Engine\Binaries\Win64\UnrealEditor-Core.dll", false)]
+    [InlineData("EOSSDK-Win64-Shipping.dll", false)]
+    [InlineData("[External Code]", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void IsSystemModule_IdentifiesOsAndRuntimeLibraries(string? input, bool expected)
+    {
+        Assert.Equal(expected, WildcardPattern.IsSystemModule(input));
+    }
+
+    [Theory]
+    [InlineData("UnrealEditor-Core.dll", true)]
+    [InlineData(@"D:\UnrealEngine\Engine\Binaries\Win64\UnrealEditor-Core.dll", true)]
+    [InlineData("UnrealEditor-WebSockets.dll!00007ffa1d386250", true)]
+    [InlineData("EOSSDK-Win64-Shipping.dll", true)]
+    [InlineData("LyraEditor.dll", true)]
+    [InlineData(@"C:\Windows\System32\ntdll.dll", false)]
+    [InlineData("ntdll.dll", false)]
+    [InlineData("kernel32.dll", false)]
+    [InlineData("user32.dll", false)]
+    [InlineData("win32u.dll", false)]
+    [InlineData("dxgi.dll", false)]
+    [InlineData("[External Code]", false)]
+    [InlineData("<Unknown>", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void IsUserCodeModule_DistinguishesUserCodeFromSystemLibraries(string? input, bool expected)
+    {
+        Assert.Equal(expected, WildcardPattern.IsUserCodeModule(input));
+    }
 }
 

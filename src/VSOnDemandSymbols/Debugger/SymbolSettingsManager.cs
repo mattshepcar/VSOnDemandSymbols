@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -12,13 +13,13 @@ using VSOnDemandSymbols.Core.State;
 namespace VSOnDemandSymbols.Debugger;
 
 /// <summary>
-/// Single owner of all writes to Visual Studio's symbol settings (Golden Rule #1, SPEC §7.4, §9.2).
-/// Backs up the user's original settings (flags and IncludeList) first.
-/// While active, puts VS into manual-load mode (<c>IsManualLoad=true, IsLoadAdjacent=false, AutomaticSymbolLoad=false</c>)
-/// and populates <c>IncludeList</c> with the wanted binaries so Visual Studio natively loads their symbols on map.
-/// Restores the user's exact original flags and IncludeList on close, disable, exit, or crash recovery.
+/// Single owner of all writes to Visual Studio's symbol settings (SPEC_V2.md §4.1).
+/// Backs up the user's original settings first to disk.
+/// Manages manual-load mode (<c>IsManualLoad=true, IsLoadAdjacent=false, AutomaticSymbolLoad=false</c>)
+/// and populates <c>IncludeList</c> with wanted binary patterns.
+/// Restores the user's exact original settings on close, disable, exit, or crash recovery.
 /// </summary>
-public sealed class SymbolSettingsController
+public sealed class SymbolSettingsManager
 {
     private readonly IVsDebuggerSymbolSettingsManager120A _settingsManager;
     private readonly SymbolSettingsBackupStore _backupStore;
@@ -30,25 +31,9 @@ public sealed class SymbolSettingsController
     private bool _isApplied;
 
     public bool IsApplied => _isApplied;
-    public string BackupFilePath => _backupFilePath;
-    public SymbolSettingsBackupDto? ActiveBackup => _activeBackup;
-
-    public SymbolSettingsController(
-        IVsDebuggerSymbolSettingsManager120A settingsManager,
-        SymbolSettingsBackupStore backupStore,
-        ILogger logger,
-        string backupFilePath,
-        int? currentProcessId = null)
-    {
-        _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
-        _backupStore = backupStore ?? throw new ArgumentNullException(nameof(backupStore));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _backupFilePath = backupFilePath ?? throw new ArgumentNullException(nameof(backupFilePath));
-        _currentProcessId = currentProcessId ?? GetCurrentProcessIdSafe();
-    }
 
     /// <summary>
-    /// Resolves the per-VS-instance backup file path (SPEC §9.2):
+    /// Resolves the per-VS-instance backup file path:
     /// <c>%LOCALAPPDATA%/OnDemandSymbols/&lt;VS instance id&gt;[_&lt;root suffix&gt;]/symbol-settings-backup.json</c>.
     /// </summary>
     public static string ResolveDefaultBackupFilePath(IVsShell? vsShell = null)
@@ -92,8 +77,44 @@ public sealed class SymbolSettingsController
         return SymbolSettingsBackupStore.GetBackupFilePath(localAppData, instanceId);
     }
 
+    private static string? TryGetCommandLineRootSuffix()
+    {
+        try
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (string.Equals(args[i], "/rootsuffix", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(args[i], "-rootsuffix", StringComparison.OrdinalIgnoreCase))
+                {
+                    return args[i + 1];
+                }
+            }
+        }
+        catch
+        {
+            // Ignore command line access error
+        }
+
+        return null;
+    }
+
+    public SymbolSettingsManager(
+        IVsDebuggerSymbolSettingsManager120A settingsManager,
+        SymbolSettingsBackupStore backupStore,
+        ILogger logger,
+        string backupFilePath,
+        int? currentProcessId = null)
+    {
+        _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+        _backupStore = backupStore ?? throw new ArgumentNullException(nameof(backupStore));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _backupFilePath = backupFilePath ?? throw new ArgumentNullException(nameof(backupFilePath));
+        _currentProcessId = currentProcessId ?? GetCurrentProcessIdSafe();
+    }
+
     /// <summary>
-    /// Checks at startup whether a backup file exists from a previous crashed session and restores it (SPEC §7.4, §9.2).
+    /// Checks at startup whether a backup file exists from a previous crashed session and restores it.
     /// </summary>
     public bool RecoverFromCrashIfNeeded()
     {
@@ -108,7 +129,6 @@ public sealed class SymbolSettingsController
             }
 
             RestoreSettingsToVs(crashBackup);
-
             _backupStore.DeleteBackup(_backupFilePath);
             _activeBackup = null;
             _isApplied = false;
@@ -127,59 +147,9 @@ public sealed class SymbolSettingsController
     }
 
     /// <summary>
-    /// Backs up the user's current symbol settings flags and IncludeList to disk and applies on-demand manual-load mode:
-    /// <c>IsManualLoad = true</c>, <c>IsLoadAdjacent = false</c>, <c>AutomaticSymbolLoad = false</c> (SPEC §7.4, D-13, D-15).
-    /// Idempotent.
+    /// Puts Visual Studio into manual symbol load mode and merges wanted binaries into <c>IncludeList</c>.
     /// </summary>
-    public void ApplyManualLoadMode()
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-
-        if (_isApplied)
-        {
-            return;
-        }
-
-        try
-        {
-            var current = _settingsManager.GetCurrentSymbolSettings();
-            bool origManual = current.IsManualLoad;
-            bool origAdjacent = current.IsLoadAdjacent;
-            bool origAutoLoad = (current as IVsDebuggerSymbolSettings170)?.get_AutomaticSymbolLoad() ?? true;
-            var origIncludeList = ReadOptionList(current.IncludeList);
-
-            // Golden Rule #1: Back up to disk FIRST before modifying VS settings.
-            _activeBackup = _backupStore.SaveBackup(
-                _backupFilePath,
-                origManual,
-                origAdjacent,
-                origAutoLoad,
-                _currentProcessId,
-                origIncludeList);
-
-            ApplyFlagsToVs(
-                isManualLoad: true,
-                isLoadAdjacent: false,
-                automaticSymbolLoad: false);
-
-            _isApplied = true;
-
-            _logger.Info(
-                "On-demand symbol mode active (VS Symbol Settings set to manual-load mode: " +
-                "IsManualLoad=true, IsLoadAdjacent=false, AutomaticSymbolLoad=false).");
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("Failed to apply manual-load symbol settings; attempting fallback restore.", ex);
-            RestoreOriginalSettings();
-        }
-    }
-
-    /// <summary>
-    /// Merges the wanted module binaries into VS's <c>IncludeList</c> alongside the user's original entries,
-    /// enabling Visual Studio's native debugger to load symbols for them at module map time.
-    /// </summary>
-    public void ApplyWantedSetToIncludeList(IEnumerable<string> wantedBinaries, string reason, bool loadSymbolsNow = false)
+    public void ApplyManualMode(IEnumerable<string> wantedBinaries, string reason = "session prepare")
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -212,7 +182,6 @@ public sealed class SymbolSettingsController
                 }
             }
 
-            // Union with the wanted set binaries
             int userCount = existingNames.Count;
             if (wantedBinaries != null)
             {
@@ -226,72 +195,21 @@ public sealed class SymbolSettingsController
                 }
             }
 
-            _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow);
+            _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow: false);
             _isApplied = true;
+
             _logger.Info(
                 $"IncludeList updated ({reason}): {existingNames.Count - userCount} wanted binaries + " +
-                $"{userCount} user entries, loadSymbolsNow={loadSymbolsNow}.");
+                $"{userCount} user entries.");
         }
         catch (Exception ex)
         {
-            _logger.Error("Failed to update symbol settings IncludeList for wanted set.", ex);
+            _logger.Error("Failed to apply manual mode to symbol settings.", ex);
         }
     }
 
     /// <summary>
-    /// Adds one or more module candidate names to <c>IncludeList</c> and optionally triggers an immediate symbol load.
-    /// </summary>
-    public void AddModuleToIncludeList(IEnumerable<string> candidateNames, bool loadSymbolsNow = true)
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-
-        if (candidateNames == null)
-        {
-            return;
-        }
-
-        try
-        {
-            EnsureBackupExists();
-
-            var current = _settingsManager.GetCurrentSymbolSettings();
-            var updated = current.Clone();
-
-            var existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < updated.IncludeList.Count; i++)
-            {
-                var item = updated.IncludeList[i];
-                if (!string.IsNullOrWhiteSpace(item.Name))
-                {
-                    existingNames.Add(item.Name);
-                }
-            }
-
-            bool addedAny = false;
-            foreach (string name in candidateNames)
-            {
-                string clean = WildcardPattern.ExtractFileNameSafe(name);
-                if (!string.IsNullOrWhiteSpace(clean) && existingNames.Add(clean))
-                {
-                    updated.IncludeList.Add(clean, true);
-                    addedAny = true;
-                }
-            }
-
-            if (addedAny || loadSymbolsNow)
-            {
-                _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.Error("Failed to add module to IncludeList.", ex);
-        }
-    }
-
-    /// <summary>
-    /// Restores the user's original symbol settings boolean flags and IncludeList from backup and deletes the backup file (SPEC §7.4).
-    /// Idempotent.
+    /// Restores the user's original symbol settings boolean flags and IncludeList from backup and deletes the backup file.
     /// </summary>
     public void RestoreOriginalSettings()
     {
@@ -308,7 +226,6 @@ public sealed class SymbolSettingsController
             if (backup != null)
             {
                 RestoreSettingsToVs(backup);
-
                 _logger.Info(
                     $"Restored user symbol settings (IsManualLoad={backup.IsManualLoad}, " +
                     $"IsLoadAdjacent={backup.IsLoadAdjacent}, AutomaticSymbolLoad={backup.AutomaticSymbolLoad}, " +
@@ -345,23 +262,6 @@ public sealed class SymbolSettingsController
                 _currentProcessId,
                 origIncludeList);
         }
-    }
-
-    private void ApplyFlagsToVs(bool isManualLoad, bool isLoadAdjacent, bool automaticSymbolLoad)
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-
-        var current = _settingsManager.GetCurrentSymbolSettings();
-        var updated = current.Clone();
-
-        updated.IsManualLoad = isManualLoad;
-        updated.IsLoadAdjacent = isLoadAdjacent;
-        if (updated is IVsDebuggerSymbolSettings170 updated170)
-        {
-            updated170.set_AutomaticSymbolLoad(automaticSymbolLoad);
-        }
-
-        _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow: false);
     }
 
     private void RestoreSettingsToVs(SymbolSettingsBackupDto backup)
@@ -425,28 +325,6 @@ public sealed class SymbolSettingsController
         return result;
     }
 
-    private static string? TryGetCommandLineRootSuffix()
-    {
-        try
-        {
-            string[] args = Environment.GetCommandLineArgs();
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                if (string.Equals(args[i], "/rootsuffix", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(args[i], "-rootsuffix", StringComparison.OrdinalIgnoreCase))
-                {
-                    return args[i + 1];
-                }
-            }
-        }
-        catch
-        {
-            // Ignore command line access error
-        }
-
-        return null;
-    }
-
     private static int GetCurrentProcessIdSafe()
     {
         try
@@ -460,4 +338,3 @@ public sealed class SymbolSettingsController
         }
     }
 }
-

@@ -84,12 +84,11 @@ public sealed class WildcardPattern
         return lastSep >= 0 ? clean.Substring(lastSep + 1) : clean;
     }
 
-    public bool IsMatchModule(ModuleKey key, IEnumerable<string>? candidateFileNames = null)
+    public bool IsMatchModule(string moduleName, IEnumerable<string>? candidateFileNames = null)
     {
         if (IsUnrealModulePattern)
         {
-            if (key.Kind != ModuleKind.Unreal) return false;
-            return _regex.IsMatch(key.Name);
+            return _regex.IsMatch(moduleName);
         }
 
         if (candidateFileNames != null)
@@ -100,13 +99,7 @@ public sealed class WildcardPattern
             }
         }
 
-        // If no candidate filenames provided or it's MsBuild/External, also try the key name as a filename
-        if ((key.Kind == ModuleKind.MsBuild || key.Kind == ModuleKind.External) && IsMatchFileName(key.Name))
-        {
-            return true;
-        }
-
-        return false;
+        return IsMatchFileName(moduleName);
     }
 
     public static IReadOnlyList<WildcardPattern> ParseMultiple(string? semicolonSeparatedPatterns)
@@ -139,11 +132,11 @@ public sealed class WildcardPattern
         return false;
     }
 
-    public static bool MatchesAnyModule(IEnumerable<WildcardPattern> patterns, ModuleKey key, IEnumerable<string>? candidateFileNames = null)
+    public static bool MatchesAnyModule(IEnumerable<WildcardPattern> patterns, string moduleName, IEnumerable<string>? candidateFileNames = null)
     {
         foreach (var p in patterns)
         {
-            if (p.IsMatchModule(key, candidateFileNames)) return true;
+            if (p.IsMatchModule(moduleName, candidateFileNames)) return true;
         }
         return false;
     }

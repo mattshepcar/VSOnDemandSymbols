@@ -23,14 +23,6 @@
     <Content Include="Resources\Icon.png">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <VsdConfigXmlFiles Include="VSOnDemandSymbols.vsdconfigxml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Microsoft.VisualStudio.Debugger.Engine">
-      <HintPath>$(VsInstallRoot)\Common7\IDE\Microsoft.VisualStudio.Debugger.Engine.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -47,18 +39,5 @@
   </ItemGroup>
 
   <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
-
-  <Import Project="$(VsInstallRoot)\VSSDK\VisualStudioIntegration\Tools\Bin\Microsoft.VSSDK.Debugger.VSDConfigTool.targets"
-          Condition="Exists('$(VsInstallRoot)\VSSDK\VisualStudioIntegration\Tools\Bin\Microsoft.VSSDK.Debugger.VSDConfigTool.targets')" />
-
-  <Target Name="IncludeVsdConfigInVsix"
-          AfterTargets="CreateVsdbgConfigFile"
-          BeforeTargets="GetVsixSourceItems"
-          DependsOnTargets="CreateVsdbgConfigFile"
-          Condition="'$(VsdConfigFile)' != '' and Exists('$(VsdConfigFile)')">
-    <ItemGroup>
-      <VSIXSourceItem Include="$(VsdConfigFile)" />
-    </ItemGroup>
-  </Target>
 
 </Project>

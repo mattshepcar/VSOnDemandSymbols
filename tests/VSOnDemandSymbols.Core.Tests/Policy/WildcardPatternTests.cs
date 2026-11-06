@@ -24,13 +24,9 @@ public class WildcardPatternTests
         Assert.True(pattern.IsUnrealModulePattern);
         Assert.Equal("Engine*", pattern.Pattern);
 
-        var keyUnreal = new ModuleKey(ModuleKind.Unreal, "Engine");
-        var keyUnrealSettings = new ModuleKey(ModuleKind.Unreal, "EngineSettings");
-        var keyMsBuild = new ModuleKey(ModuleKind.MsBuild, "Engine");
-
-        Assert.True(pattern.IsMatchModule(keyUnreal));
-        Assert.True(pattern.IsMatchModule(keyUnrealSettings));
-        Assert.False(pattern.IsMatchModule(keyMsBuild));
+        Assert.True(pattern.IsMatchModule("Engine"));
+        Assert.True(pattern.IsMatchModule("EngineSettings"));
+        Assert.False(pattern.IsMatchModule("Core"));
         Assert.False(pattern.IsMatchFileName("Engine.dll"));
     }
 

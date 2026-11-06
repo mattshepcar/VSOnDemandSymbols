@@ -1,0 +1,165 @@
+# VS On-Demand Symbols — V2 Specification (Clean-Slate Minimal Architecture)
+
+| | |
+|---|---|
+| **Product** | Visual Studio Extension (VSIX) "On-Demand Symbols" (V2) |
+| **Status** | Approved Specification for Clean-Slate Implementation |
+| **Targets** | Visual Studio 2022 17.14+ and Visual Studio 2026 (x64), native C++ debugging |
+| **Primary Use Case** | Debugging Unreal Engine 5.x editor builds (`UnrealEditor.exe` with ~800 `UnrealEditor-*.dll` modules) |
+| **Supersedes** | [SPEC.md](SPEC.md) (V1) |
+
+---
+
+## 1. Problem & Goal
+
+### 1.1 The Problem
+The Unreal Editor loads ~800 DLLs at startup. Loading debug symbols (PDBs) for all of them doubles editor boot time under the debugger. Usually only a handful of modules need symbols:
+- Modules containing active breakpoints (needed so breakpoints bind at launch)
+- Modules on the call stack when execution breaks (needed to diagnose exceptions and inspect code)
+
+Visual Studio provides a "Load only specified modules" mode, but managing that include list by hand across 800 DLLs is impractical.
+
+### 1.2 The Goal
+Provide an **invisible, transparent, zero-maintenance** extension that:
+1. **Accelerates boot time:** Puts VS into manual-load mode and loads symbols at startup *only* for modules with active breakpoints (plus `UnrealEditor.exe`). Startup speed is within 10% of booting with symbol loading completely disabled.
+2. **Guarantees breakpoint binding:** Breakpoints bind immediately at launch without user intervention.
+3. **Resolves call stacks on break:** When execution stops (breakpoint hit, crash, assertion, step), missing symbols for the breaking thread's stack frames are loaded on demand via DTE.
+4. **Never damages user settings:** The user's original symbol settings flags and original `IncludeList` are backed up to disk and restored on solution close, extension disable, VS exit, or after a crash (**Golden Rule #1**).
+
+### 1.3 Scope & Non-Goals
+- **In Scope:** Unreal Engine 5.x solutions (`.sln` / `.slnx`) debugging native C++.
+- **Out of Scope (Explicit Non-Goals):**
+  - Non-Unreal MSBuild solutions (standard C++ solutions have only a few DLLs and do not suffer from the 800-DLL startup problem).
+  - Monolithic builds (single executable; no modular DLLs).
+  - Managed (.NET) code, Linux/Android/consoles, and remote debugging.
+  - Complex diagnostic tool windows (the extension should be invisible; status is reported to the Output window).
+
+---
+
+## 2. Hard-Won Insights & Architecture Decisions
+
+This V2 specification incorporates all empirical lessons learned from Phases 0–4:
+
+1. **Native VS IncludeList handles startup loading (D-17):**
+   When `IsManualLoad = true` and `IsLoadAdjacent = false`, Visual Studio's native debug engine (`CppDebug.dll`) automatically inspects `IVsDebuggerSymbolSettings120A.IncludeList` during module mapping. If a module's file name matches an entry, VS natively loads its PDB synchronously before `StartupModule()` executes.
+2. **Concord is completely eliminated (D-15/D-17/D-19 reversal):**
+   `DkmModuleInstance.TryLoadSymbols()` throws `NotImplementedException` (`0x80004001`) in Visual Studio for native C++ modules. Furthermore, Concord's `IDkmBreakpointManagerNotification` breaks editor breakpoint glyphs. Concord provides no functional symbol-loading capability for native C++. V2 strips Concord entirely, eliminating `.vsdconfig`, `vsdconfigtool.exe`, and unmanaged IDE DLL references.
+3. **Mid-session on-demand loading uses standard DTE (D-17):**
+   When execution stops in break mode, invoking `EnvDTE90.Module.LoadSymbols("")` on the breaking thread's un-symbolized modules immediately commands VS to load their PDBs.
+4. **No MRU, pinning, or state tracking across runs (D-20):**
+   On-demand loading during breaks is fast (~100 ms). Carrying forward module history across sessions via MRU lists or `.vs/state.json` is unnecessary and degrades startup time.
+
+---
+
+## 3. High-Level Flow
+
+```mermaid
+flowchart TD
+    subgraph 1. Solution Opened (Unreal Detected)
+        SO["Unreal Solution Opened"] --> BK["Backup user symbol settings & IncludeList to disk"]
+        BK --> SET["Apply IsManualLoad=true, IsLoadAdjacent=false, AutomaticSymbolLoad=false"]
+    end
+
+    subgraph 2. Launch (F5) / Breakpoint Change
+        F5["F5 / Launch Command"] --> BPS["Query DTE.Debugger.Breakpoints"]
+        BPS --> RES["UnrealModuleResolver: walk up to *.Build.cs"]
+        RES --> INC["Write UnrealEditor-{Module}*.dll + UnrealEditor.exe to IncludeList"]
+        INC --> RUN["Launch UnrealEditor.exe"]
+        RUN --> VSN["VS native engine loads symbols ONLY for IncludeList DLLs"]
+    end
+
+    subgraph 3. Break Mode / Call Stack
+        BRK["Execution breaks (Exception / Breakpoint / Step)"] --> DTE_BRK["DebuggerEvents.OnEnterBreakMode"]
+        DTE_BRK --> FRAMES["Inspect CurrentThread.StackFrames"]
+        FRAMES --> LOAD["Invoke Module.LoadSymbols('') for un-symbolized frames"]
+        LOAD --> SHOW["Call Stack window resolves instantly"]
+    end
+
+    subgraph 4. Solution Closed / VS Exit
+        SC["Solution Closed / VS Exit / Crash"] --> RST["Restore user original symbol settings & IncludeList from disk backup"]
+    end
+```
+
+---
+
+## 4. Component Architecture
+
+The V2 architecture consists of two projects and only **6 core source files**:
+
+```
+VSOnDemandSymbols/
+├── src/
+│   ├── VSOnDemandSymbols.Core/             # netstandard2.0 (Pure .NET, zero VS dependencies)
+│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock
+│   │   ├── Modules/
+│   │   │   └── UnrealModuleResolver.cs     # *.Build.cs directory walk-up & candidate DLL generator
+│   │   ├── Policy/
+│   │   │   └── WildcardPattern.cs          # Wildcard pattern matcher (*, ?)
+│   │   └── State/
+│   │       └── SymbolSettingsBackupStore.cs# JSON backup read/write & PID crash recovery
+│   │
+│   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, pure NuGet references)
+│       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context rule, lifecycle
+│       ├── Debugger/
+│       │   ├── SymbolSettingsManager.cs    # Reads/writes IVsDebuggerSymbolSettings120A & backup
+│       │   └── DebuggerSessionMonitor.cs   # BeforeExecute (F5) hook, Breakpoints, OnEnterBreakMode
+│       └── Logging/
+│           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
+│
+└── tests/
+    └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with FakeUnrealProject
+```
+
+### 4.1 Component Details
+
+#### 1. `UnrealModuleResolver` (Core)
+* Given a source file path (e.g. `D:\MyProject\Source\MyGame\Private\MyActor.cpp`):
+  * Special case: Intermediate UHT files (`Intermediate/Build/.../Inc/{Module}/...`) or unity files (`Module.{Module}.*.cpp`) extract the module name directly from the path.
+  * Standard case: Walks up parent directories looking for `{Module}.Build.cs`. Stops at root boundaries (`*.uproject`, `Engine/Source`, drive root). Caches directory $\to$ module mappings in a `ConcurrentDictionary`.
+* Given a module name (`MyGame`):
+  * Returns candidate binary names:
+    * `UnrealEditor-MyGame.dll`
+    * `UnrealEditor-MyGame-Win64-DebugGame.dll`
+    * `UnrealEditor-MyGame-Win64-Development.dll`
+    * `UnrealEditor-MyGame*.dll`
+
+#### 2. `SymbolSettingsBackupStore` (Core)
+* Manages `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`.
+* Stores: `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList` (names + enabled flags), timestamp, and `ProcessId`.
+* `CheckCrashRecovery(path, currentPid)`: If backup exists and the recorded PID is dead, returns the backup so settings can be restored before doing anything else.
+
+#### 3. `SymbolSettingsManager` (VSIX)
+* Single owner of Visual Studio symbol settings (`SVsShellDebugger` $\to$ `IVsDebuggerSymbolSettingsManager120A`).
+* `ApplyManualMode(wantedBinaries)`:
+  * Ensures disk backup is saved.
+  * Sets `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`.
+  * Merges the user's backed-up original `IncludeList` with the active `wantedBinaries`.
+  * Saves settings with `loadSymbolsNow: false`.
+* `RestoreOriginalSettings()`:
+  * Restores user's original flags and `IncludeList`.
+  * Deletes disk backup.
+
+#### 4. `DebuggerSessionMonitor` (VSIX)
+* Subscribes to `DTE.Events.CommandEvents` for `StandardCommandSet97:cmdidStart (295)` (F5 Launch).
+  * Resolves all enabled breakpoints from `DTE.Debugger.Breakpoints`.
+  * Adds `UnrealEditor.exe` + candidate DLL names to `IncludeList` via `SymbolSettingsManager`.
+* Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode`:
+  * Inspects `DTE.Debugger.CurrentThread.StackFrames`.
+  * For each frame without symbols, locates the matching `EnvDTE90.Module` from `DTE.Debugger.DebuggedProcesses` and calls `mod.LoadSymbols("")`.
+  * Logs every symbol load with reason `CallStack: Module!Function`.
+
+#### 5. `VSOnDemandSymbolsPackage` (VSIX)
+* Attributes: `[ProvideAutoLoad(CppSolutionUiContextGuidString, PackageAutoLoadFlags.BackgroundLoad)]`.
+* UI context rule: triggers on C++ solutions.
+* Detects Unreal solutions (contains `*.uproject` or `Engine/Build/Build.version`).
+* Handles crash recovery on startup.
+* Provides a simple Debug menu toggle: **Debug > On-Demand Symbols > Enabled**.
+
+---
+
+## 5. Non-Functional Requirements & Rules
+
+1. **Golden Rule #1 (Settings Safety):** User symbol settings are *always* backed up to disk before any modification and restored on solution close, disable, or crash recovery. Symbol search paths, cache directory, and symbol servers are *never* touched.
+2. **Never Break Debugging (Golden Rule #2):** All debugger event handlers are wrapped in `try / catch`. Failures log a warning and let Visual Studio proceed normally.
+3. **No Private IDE Assemblies:** Zero references to internal Visual Studio DLLs outside of official NuGet packages (`Microsoft.VisualStudio.SDK 17.14.40265`). Zero custom compiler targets (`.vsdconfig`).
+4. **Sandboxed Build Safe:** Respect `/p:UseSharedCompilation=false /nr:false` and run unit tests via in-process runner.

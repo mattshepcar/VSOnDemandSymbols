@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using VSOnDemandSymbols.Core.Abstractions;
+using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.State;
 using VSOnDemandSymbols.Debugger;
 using VSOnDemandSymbols.Logging;
@@ -15,7 +17,7 @@ using VSOnDemandSymbols.Logging;
 namespace VSOnDemandSymbols;
 
 /// <summary>
-/// Async VSIX package for On-Demand Symbols (SPEC §7.4, §10 NF-4, ARCHITECTURE.md §3).
+/// Async VSIX package for On-Demand Symbols V2 (SPEC_V2.md §4.1).
 /// Auto-loads in the background when a solution containing C++ projects is opened.
 /// </summary>
 [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
@@ -31,15 +33,20 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
 [Guid(PackageGuidString)]
-public sealed class VSOnDemandSymbolsPackage : AsyncPackage
+public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {
     public const string PackageGuidString = "3214abc4-2e97-4c16-8583-86beddfd1d3b";
     public const string CppSolutionUiContextGuidString = "4f8d2b19-6a34-4e52-9c71-83b4a1e0c512";
 
     private OutputLog? _logger;
-    private SymbolSettingsController? _symbolSettingsController;
-    private SessionTracker? _sessionTracker;
-    private Ad7BreakpointEventListener? _breakpointListener;
+    private SymbolSettingsManager? _symbolSettingsManager;
+    private UnrealModuleResolver? _resolver;
+    private DebuggerSessionMonitor? _sessionMonitor;
+
+    private IVsSolution? _vsSolution;
+    private DTE2? _dte;
+    private uint _solutionEventsCookie;
+    private bool _isUnrealSolutionOpen;
 
     protected override async Task InitializeAsync(
         CancellationToken cancellationToken,
@@ -55,74 +62,158 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
         {
             var vsShell = await GetServiceAsync(typeof(SVsShell)) as IVsShell;
             var debuggerObj = await GetServiceAsync(typeof(SVsShellDebugger));
-            var vsSolution = await GetServiceAsync(typeof(SVsSolution)) as IVsSolution;
-            var dte = await GetServiceAsync(typeof(SDTE)) as DTE2;
+            _vsSolution = await GetServiceAsync(typeof(SVsSolution)) as IVsSolution;
+            _dte = await GetServiceAsync(typeof(SDTE)) as DTE2;
 
             if (debuggerObj is not IVsDebuggerSymbolSettingsManager120A settingsManager ||
-                vsSolution == null ||
-                dte == null)
+                _vsSolution == null ||
+                _dte == null)
             {
                 _logger.Warning("Required Visual Studio debugger or solution services were unavailable during initialization.");
                 return;
             }
 
-            string backupFilePath = SymbolSettingsController.ResolveDefaultBackupFilePath(vsShell);
+            string backupFilePath = SymbolSettingsManager.ResolveDefaultBackupFilePath(vsShell);
             var backupStore = new SymbolSettingsBackupStore(
                 PhysicalFileSystem.Instance,
                 SystemClock.Instance,
                 _logger);
 
-            _symbolSettingsController = new SymbolSettingsController(
+            _symbolSettingsManager = new SymbolSettingsManager(
                 settingsManager,
                 backupStore,
                 _logger,
                 backupFilePath);
 
-            // SPEC §7.4: If a backup file exists from a previous crash, restore it before doing anything else.
-            _symbolSettingsController.RecoverFromCrashIfNeeded();
+            // SPEC_V2.md §1.2: If a backup file exists from a previous crash, restore it immediately.
+            _symbolSettingsManager.RecoverFromCrashIfNeeded();
 
-            var bridge = ConcordSymbolBridge.Instance;
-            bridge.Logger = _logger;
+            _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
+            _sessionMonitor = new DebuggerSessionMonitor(_dte, _symbolSettingsManager, _resolver, _logger);
 
-            var symbolLoader = new SymbolLoader(bridge, JoinableTaskFactory, _logger)
-            {
-                Dte = dte,
-                SymbolSettingsController = _symbolSettingsController
-            };
-            bridge.SymbolLoader = symbolLoader;
+            _vsSolution.AdviseSolutionEvents(this, out _solutionEventsCookie);
 
-            _sessionTracker = new SessionTracker(
-                this,
-                dte,
-                vsSolution,
-                _symbolSettingsController,
-                bridge,
-                symbolLoader,
-                PhysicalFileSystem.Instance,
-                SystemClock.Instance,
-                _logger);
-
-            bridge.SessionTracker = _sessionTracker;
-            _sessionTracker.Initialize();
-
-            if (debuggerObj is IVsDebugger vsDebugger)
-            {
-                var tracker = _sessionTracker;
-                _breakpointListener = new Ad7BreakpointEventListener(
-                    vsDebugger,
-                    JoinableTaskFactory,
-                    () => tracker.OnBreakpointBindErrorReported(),
-                    _logger,
-                    (program, thread, isException, isHardBreak) =>
-                        tracker.OnAd7BreakEvent(program, thread, isException, isHardBreak));
-                _breakpointListener.Advise();
-            }
+            // Check currently open solution
+            EvaluateOpenSolution();
         }
         catch (Exception ex)
         {
             _logger.Error("Failed to initialize On-Demand Symbols package.", ex);
         }
     }
+
+    private void EvaluateOpenSolution()
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            string? solutionPath = _dte?.Solution?.FullName;
+            if (string.IsNullOrWhiteSpace(solutionPath))
+            {
+                HandleSolutionClosed();
+                return;
+            }
+
+            string? solutionDir = Path.GetDirectoryName(solutionPath);
+            bool isUnreal = !string.IsNullOrEmpty(solutionDir) && IsUnrealSolution(solutionDir!);
+
+            if (isUnreal)
+            {
+                _isUnrealSolutionOpen = true;
+                _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}'. On-Demand Symbols active.");
+                _sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened");
+            }
+            else
+            {
+                HandleSolutionClosed();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.Error("Failed to evaluate solution for Unreal Engine compatibility.", ex);
+        }
+    }
+
+    private static bool IsUnrealSolution(string solutionDir)
+    {
+        try
+        {
+            if (Directory.GetFiles(solutionDir, "*.uproject", SearchOption.TopDirectoryOnly).Length > 0)
+            {
+                return true;
+            }
+
+            if (File.Exists(Path.Combine(solutionDir, "Engine", "Build", "Build.version")))
+            {
+                return true;
+            }
+
+            // Check parent directories in case solution is nested under Intermediate/ProjectFiles
+            string? current = solutionDir;
+            while (!string.IsNullOrEmpty(current))
+            {
+                if (Directory.GetFiles(current, "*.uproject", SearchOption.TopDirectoryOnly).Length > 0 ||
+                    File.Exists(Path.Combine(current, "Engine", "Build", "Build.version")))
+                {
+                    return true;
+                }
+
+                current = Path.GetDirectoryName(current);
+            }
+        }
+        catch
+        {
+            // Ignore file lookup errors
+        }
+
+        return false;
+    }
+
+    private void HandleSolutionClosed()
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        if (_isUnrealSolutionOpen)
+        {
+            _isUnrealSolutionOpen = false;
+            _symbolSettingsManager?.RestoreOriginalSettings();
+            _logger?.Info("Solution closed; restored original symbol settings.");
+        }
+    }
+
+    #region IVsSolutionEvents
+
+    public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        EvaluateOpenSolution();
+        return VSConstants.S_OK;
+    }
+
+    public int OnBeforeCloseSolution(object pUnkReserved)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        HandleSolutionClosed();
+        return VSConstants.S_OK;
+    }
+
+    public int OnAfterCloseSolution(object pUnkReserved)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        HandleSolutionClosed();
+        return VSConstants.S_OK;
+    }
+
+    public int OnAfterOpenProject(IVsHierarchy pHierarchy, int fAdded) => VSConstants.S_OK;
+    public int OnQueryCloseProject(IVsHierarchy pHierarchy, int fRemoving, ref int pfCancel) => VSConstants.S_OK;
+    public int OnBeforeCloseProject(IVsHierarchy pHierarchy, int fRemoved) => VSConstants.S_OK;
+    public int OnAfterLoadProject(IVsHierarchy pStubHierarchy, IVsHierarchy pRealHierarchy) => VSConstants.S_OK;
+    public int OnQueryUnloadProject(IVsHierarchy pRealHierarchy, ref int pfCancel) => VSConstants.S_OK;
+    public int OnBeforeUnloadProject(IVsHierarchy pRealHierarchy, IVsHierarchy pStubHierarchy) => VSConstants.S_OK;
+    public int OnQueryCloseSolution(object pUnkReserved, ref int pfCancel) => VSConstants.S_OK;
+
+    #endregion
 
     protected override void Dispose(bool disposing)
     {
@@ -132,13 +223,18 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
         {
             try
             {
-                _breakpointListener?.Dispose();
-                _sessionTracker?.Dispose();
-                _symbolSettingsController?.RestoreOriginalSettings();
+                if (_solutionEventsCookie != 0 && _vsSolution != null)
+                {
+                    _vsSolution.UnadviseSolutionEvents(_solutionEventsCookie);
+                    _solutionEventsCookie = 0;
+                }
+
+                _sessionMonitor?.Dispose();
+                _symbolSettingsManager?.RestoreOriginalSettings();
             }
             catch
             {
-                // Never throw during package disposal (NF-5)
+                // Never throw during package disposal
             }
         }
 

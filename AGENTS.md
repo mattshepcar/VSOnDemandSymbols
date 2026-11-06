@@ -6,24 +6,24 @@
 - modules with breakpoints (populated into the debugger's `IncludeList` before launch so breakpoints bind immediately)
 - modules on the call stack when execution breaks (loaded on demand)
 
-**Read [docs/SPEC.md](docs/SPEC.md) before writing any code.** It's the source of truth for behaviour. Requirement IDs (BP-1, CS-2, NF-1, …) are referenced throughout. Cite them in code comments, commits and tests where relevant.
+**Read [docs/SPEC_V2.md](docs/SPEC_V2.md) and [docs/IMPLEMENTATION_PLAN_V2.md](docs/IMPLEMENTATION_PLAN_V2.md) before writing any code.** They are the source of truth for the V2 clean-slate architecture.
 
 ## Documentation map
 
 | Doc | Use it for |
 |---|---|
-| [docs/SPEC.md](docs/SPEC.md) | What the extension does: triggers, IncludeList setup, UI, settings, persistence, non-functional requirements |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Project layout, components, threading, sequences |
-| [docs/MODULE_RESOLUTION.md](docs/MODULE_RESOLUTION.md) | Source file → module → DLL mapping (Unreal and vcxproj). The Unreal naming rules are **provisional** until Phase 2 |
-| [docs/VS_DEBUGGER_INTEGRATION.md](docs/VS_DEBUGGER_INTEGRATION.md) | VS debugger APIs (AD7, DTE, symbol settings, Concord), open risks, Phase 0 spikes |
-| [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Phased plan with checkboxes, the **progress tracker** |
-| [docs/TESTING.md](docs/TESTING.md) | Unit, integration and manual test scenarios (M1–M22) |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log. Append-only |
+| [docs/SPEC_V2.md](docs/SPEC_V2.md) | **Primary specification** for the V2 clean-slate architecture |
+| [docs/IMPLEMENTATION_PLAN_V2.md](docs/IMPLEMENTATION_PLAN_V2.md) | **Primary progress tracker** with phased checkboxes for V2 |
+| [docs/MINIMAL_IMPLEMENTATION.md](docs/MINIMAL_IMPLEMENTATION.md) | Technical reference and code patterns for the minimal 4-component architecture |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | Decision log (D-1 to D-20). Append-only |
+| [docs/BENCHMARKS.md](docs/BENCHMARKS.md) | Startup measurement protocol and benchmarks |
+| [docs/SPEC.md](docs/SPEC.md) | Legacy V1 specification (superseded by V2) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Legacy V1 architecture overview |
 
 ## Current status
 
-- Phases 0–4 are complete (`VSOnDemandSymbols.Core`, `VSOnDemandSymbols` VSIX + Concord `.vsdconfig` component, `SymbolSettingsController`, `SessionTracker`, `SymbolLoader`, `Ad7BreakpointEventListener`, `CallStackEvaluator`, `MsBuildResolver`, `CompositeResolver`, `ProjectModelProvider`, `NativeSample`, and unit tests).
-- Next step: **Phase 5 — UI** (see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)).
+- The project has transitioned to the **V2 Clean-Slate Architecture** on branch `v2-minimal`.
+- See [docs/IMPLEMENTATION_PLAN_V2.md](docs/IMPLEMENTATION_PLAN_V2.md) for the active phases.
 - The Unreal Engine source is at `D:\UnrealEngine`. It's outside the workspace, so reading it may need the user's permission.
 
 ## Golden rules

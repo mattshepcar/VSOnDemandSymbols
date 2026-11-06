@@ -67,6 +67,46 @@ public class SymbolSettingsBackupStoreTests
     }
 
     [Fact]
+    public void SaveLoad_PreservesSymbolServerFlagsAndPaths()
+    {
+        var store = new SymbolSettingsBackupStore(_fs, _clock, NullLogger.Instance);
+        string backupPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\LocalAppData", "18.0_Exp");
+
+        var symbolPaths = new[]
+        {
+            new SymbolOptionBackupDto { Name = "https://msdl.microsoft.com/download/symbols", IsEnabled = true },
+            new SymbolOptionBackupDto { Name = @"D:\Symbols", IsEnabled = false }
+        };
+
+        var saved = store.SaveBackup(
+            backupPath,
+            isManualLoad: true,
+            isLoadAdjacent: false,
+            automaticSymbolLoad: false,
+            processId: 9999,
+            includeList: null,
+            useMsSymbolServers: true,
+            useNugetSymbolServers: true,
+            symbolPaths: symbolPaths);
+
+        Assert.True(saved.UseMsSymbolServers);
+        Assert.True(saved.UseNugetSymbolServers);
+        Assert.Equal(2, saved.SymbolPaths.Count);
+        Assert.Equal("https://msdl.microsoft.com/download/symbols", saved.SymbolPaths[0].Name);
+        Assert.True(saved.SymbolPaths[0].IsEnabled);
+
+        var loaded = store.TryLoadBackup(backupPath);
+        Assert.NotNull(loaded);
+        Assert.True(loaded!.UseMsSymbolServers);
+        Assert.True(loaded.UseNugetSymbolServers);
+        Assert.Equal(2, loaded.SymbolPaths.Count);
+        Assert.Equal("https://msdl.microsoft.com/download/symbols", loaded.SymbolPaths[0].Name);
+        Assert.True(loaded.SymbolPaths[0].IsEnabled);
+        Assert.Equal(@"D:\Symbols", loaded.SymbolPaths[1].Name);
+        Assert.False(loaded.SymbolPaths[1].IsEnabled);
+    }
+
+    [Fact]
     public void CheckCrashRecovery_DeadProcess_ReturnsBackupForRecovery()
     {
         var store = new SymbolSettingsBackupStore(

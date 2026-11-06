@@ -30,6 +30,15 @@ public sealed class SymbolSettingsBackupDto
     [JsonProperty("automaticSymbolLoad")]
     public bool AutomaticSymbolLoad { get; set; } = true;
 
+    [JsonProperty("useMsSymbolServers")]
+    public bool UseMsSymbolServers { get; set; }
+
+    [JsonProperty("useNugetSymbolServers")]
+    public bool UseNugetSymbolServers { get; set; }
+
+    [JsonProperty("symbolPaths")]
+    public List<SymbolOptionBackupDto> SymbolPaths { get; set; } = new();
+
     [JsonProperty("includeList")]
     public List<SymbolOptionBackupDto> IncludeList { get; set; } = new();
 

@@ -84,6 +84,44 @@ public sealed class WildcardPattern
         return lastSep >= 0 ? clean.Substring(lastSep + 1) : clean;
     }
 
+    /// <summary>
+    /// Normalizes a raw stack frame module string (which may contain address offsets, bang suffixes,
+    /// or lack the .dll extension) into a candidate binary file name.
+    /// Returns null for external code, unknown symbols, or invalid input.
+    /// </summary>
+    public static string? NormalizeFrameModuleName(string? rawModuleName)
+    {
+        if (string.IsNullOrWhiteSpace(rawModuleName))
+        {
+            return null;
+        }
+
+        string trimmed = rawModuleName!.Trim();
+        if (trimmed.StartsWith("[", StringComparison.Ordinal) || trimmed.StartsWith("<", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        int bangIdx = trimmed.IndexOf('!');
+        if (bangIdx >= 0)
+        {
+            trimmed = trimmed.Substring(0, bangIdx).Trim();
+        }
+
+        string fileName = ExtractFileNameSafe(trimmed);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return null;
+        }
+
+        if (fileName.IndexOf('.') < 0)
+        {
+            return fileName + ".dll";
+        }
+
+        return fileName;
+    }
+
     public bool IsMatchModule(string moduleName, IEnumerable<string>? candidateFileNames = null)
     {
         if (IsUnrealModulePattern)

@@ -21,9 +21,7 @@ namespace VSOnDemandSymbols.Debugger;
 /// </summary>
 public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 {
-    private static readonly Guid Std97CmdSetGuid = new("5efc7975-14bc-11cf-9b2b-00aa00573819");
     private static readonly Guid BreakpointErrorEventGuid = typeof(IDebugBreakpointErrorEvent2).GUID;
-    private const int CmdIdStart = 295; // F5 Launch
 
     private readonly DTE2 _dte;
     private readonly IVsDebugger _vsDebugger;
@@ -63,12 +61,17 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        _launchCommandEvents = _dte.Events.get_CommandEvents(Std97CmdSetGuid.ToString("B"), CmdIdStart);
+        // Intercept F5 / Debug.Start to populate IncludeList before launch.
+        // Uses Standard Command Set 97 (guidVSStd97 from stdidcmd.h) and cmdidStart (295).
+        _launchCommandEvents = _dte.Events.get_CommandEvents(
+            VSConstants.CMDSETID.StandardCommandSet97_string,
+            (int)VSConstants.VSStd97CmdID.Start);
         _launchCommandEvents.BeforeExecute += OnBeforeLaunch;
 
         _debuggerEvents = _dte.Events.DebuggerEvents;
         _debuggerEvents.OnEnterBreakMode += OnEnterBreakMode;
         _debuggerEvents.OnEnterDesignMode += OnEnterDesignMode;
+        _debuggerEvents.OnContextChanged += OnContextChanged;
 
         _advised = ErrorHandler.Succeeded(_vsDebugger.AdviseDebugEventCallback(this));
         if (!_advised)
@@ -268,59 +271,166 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
-            var currentThread = _dte.Debugger?.CurrentThread;
-            if (currentThread?.StackFrames == null)
+            var debugger = _dte.Debugger;
+            if (debugger == null)
             {
                 return;
             }
 
-            var missingModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (StackFrame frame in currentThread.StackFrames)
+            var threadsToInspect = new List<EnvDTE.Thread>();
+            var currentThread = debugger.CurrentThread;
+            if (currentThread != null)
             {
-                string modName = frame.Module;
-                if (!string.IsNullOrWhiteSpace(modName) && modName.IndexOf(".dll", StringComparison.OrdinalIgnoreCase) >= 0)
+                threadsToInspect.Add(currentThread);
+            }
+
+            if (debugger.CurrentProgram?.Threads != null)
+            {
+                foreach (EnvDTE.Thread th in debugger.CurrentProgram.Threads)
                 {
-                    string clean = WildcardPattern.ExtractFileNameSafe(modName);
-                    if (!string.IsNullOrWhiteSpace(clean) && !_loadedModulesThisSession.Contains(clean))
+                    if (th != currentThread)
                     {
-                        missingModules.Add(clean);
+                        threadsToInspect.Add(th);
                     }
                 }
             }
 
-            if (missingModules.Count == 0 || _dte.Debugger?.DebuggedProcesses == null)
+            LoadSymbolsForThreads(threadsToInspect, "BreakMode");
+        }
+        catch (Exception ex)
+        {
+            // Never disrupt the debug session (Golden Rule #2)
+            _logger.Error("Error handling break mode symbol loads.", ex);
+        }
+    }
+
+    private void OnContextChanged(Process newProcess, Program newProgram, EnvDTE.Thread newThread, StackFrame newStackFrame)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        var debugger = _dte.Debugger;
+        if (!IsEnabled || debugger?.CurrentMode != dbgDebugMode.dbgBreakMode)
+        {
+            return;
+        }
+
+        try
+        {
+            var targetThread = newThread ?? debugger.CurrentThread;
+            if (targetThread != null)
+            {
+                LoadSymbolsForThreads(new[] { targetThread }, "ContextChanged");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error handling context changed symbol loads.", ex);
+        }
+    }
+
+    private void LoadSymbolsForThreads(IEnumerable<EnvDTE.Thread> threads, string reason)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        var debugger = _dte.Debugger;
+        if (!IsEnabled || debugger?.DebuggedProcesses == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var currentThread = debugger.CurrentThread;
+            var missingModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (EnvDTE.Thread th in threads)
+            {
+                if (th?.StackFrames == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    int frameIndex = 0;
+                    foreach (StackFrame frame in th.StackFrames)
+                    {
+                        frameIndex++;
+                        string? norm = WildcardPattern.NormalizeFrameModuleName(frame.Module);
+                        if (!string.IsNullOrWhiteSpace(norm) && !_loadedModulesThisSession.Contains(norm!))
+                        {
+                            missingModules.Add(norm!);
+                        }
+
+                        // For non-current threads, inspect top 2 frames to resolve Threads window Location column
+                        if (th != currentThread && frameIndex >= 2)
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch
+                {
+                    // Thread may have terminated or frames may be temporarily unreadable
+                }
+            }
+
+            if (missingModules.Count == 0)
             {
                 return;
             }
 
-            foreach (Process proc in _dte.Debugger.DebuggedProcesses)
+            var targetModules = new List<EnvDTE90.Module>();
+            var candidateBinaries = new List<string>();
+
+            foreach (Process proc in debugger.DebuggedProcesses)
             {
                 if (proc is EnvDTE90.Process3 proc3 && proc3.Modules != null)
                 {
                     foreach (EnvDTE90.Module mod in proc3.Modules)
                     {
                         string modFileName = WildcardPattern.ExtractFileNameSafe(mod.Name);
-                        if (missingModules.Contains(modFileName))
+                        if (missingModules.Contains(modFileName) && !_loadedModulesThisSession.Contains(modFileName))
                         {
-                            try
-                            {
-                                _logger.Info($"Loading symbols on demand: {modFileName} — CallStack");
-                                mod.LoadSymbols(string.Empty);
-                                _loadedModulesThisSession.Add(modFileName);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.Error($"Failed to load call stack symbols for {modFileName}.", ex);
-                            }
+                            targetModules.Add(mod);
+                            candidateBinaries.Add(modFileName);
                         }
                     }
                 }
             }
+
+            if (targetModules.Count == 0)
+            {
+                return;
+            }
+
+            // Load symbols using scoped masking so internet symbol servers are never queried
+            _settings.ExecuteWithMaskedSymbolServers(candidateBinaries, () =>
+            {
+                ThreadHelper.ThrowIfNotOnUIThread();
+                foreach (var mod in targetModules)
+                {
+                    string modFileName = WildcardPattern.ExtractFileNameSafe(mod.Name);
+                    if (_loadedModulesThisSession.Contains(modFileName))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        _logger.Info($"Loading symbols on demand (local-only): {modFileName} — {reason}");
+                        mod.LoadSymbols(string.Empty);
+                        _loadedModulesThisSession.Add(modFileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Expected when symbols are not available locally (e.g. OS DLLs not in local cache)
+                        _logger.Warning($"Could not load local symbols for {modFileName}: {ex.Message}");
+                    }
+                }
+            });
         }
         catch (Exception ex)
         {
-            // Never disrupt the debug session (Golden Rule #2)
-            _logger.Error("Error handling break mode symbol loads.", ex);
+            _logger.Error($"Error loading symbols for threads ({reason}).", ex);
         }
     }
 
@@ -346,6 +456,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             _launchCommandEvents.BeforeExecute -= OnBeforeLaunch;
             _debuggerEvents.OnEnterBreakMode -= OnEnterBreakMode;
             _debuggerEvents.OnEnterDesignMode -= OnEnterDesignMode;
+            _debuggerEvents.OnContextChanged -= OnContextChanged;
 
             if (_advised && _vsDebugger != null)
             {

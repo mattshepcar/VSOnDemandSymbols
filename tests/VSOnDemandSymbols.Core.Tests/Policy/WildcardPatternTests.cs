@@ -64,5 +64,22 @@ public class WildcardPatternTests
         Assert.True(WildcardPattern.MatchesAnyFileName(patterns, "UnrealEditor-MyGame.dll"));
         Assert.False(WildcardPattern.MatchesAnyFileName(patterns, "UnrealEditor-Engine.dll"));
     }
+
+    [Theory]
+    [InlineData("UnrealEditor-Engine.dll", "UnrealEditor-Engine.dll")]
+    [InlineData("UnrealEditor-Engine", "UnrealEditor-Engine.dll")]
+    [InlineData("UnrealEditor.exe", "UnrealEditor.exe")]
+    [InlineData("UnrealEditor-Engine.dll!00007ffc12345678", "UnrealEditor-Engine.dll")]
+    [InlineData("UnrealEditor-Core!UE::Log()", "UnrealEditor-Core.dll")]
+    [InlineData(@"D:\Engine\Binaries\Win64\UnrealEditor-Engine.dll", "UnrealEditor-Engine.dll")]
+    [InlineData("ntdll.dll!NtWaitForSingleObject", "ntdll.dll")]
+    [InlineData("[External Code]", null)]
+    [InlineData("<Unknown>", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void NormalizeFrameModuleName_HandlesVariousStackFrameFormats(string? input, string? expected)
+    {
+        Assert.Equal(expected, WildcardPattern.NormalizeFrameModuleName(input));
+    }
 }
 

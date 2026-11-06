@@ -244,6 +244,88 @@ public sealed class SymbolSettingsManager
         }
     }
 
+    /// <summary>
+    /// Executes an action with remote symbol servers temporarily masked (disabled)
+    /// and candidate module names merged into IncludeList, ensuring that only local and cached
+    /// symbols are resolved by Visual Studio's native debug engine without querying internet servers.
+    /// Original symbol server flags and remote SymbolPath states are guaranteed to be restored in finally.
+    /// </summary>
+    public void ExecuteWithMaskedSymbolServers(IEnumerable<string>? candidateModules, Action loadAction)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        if (loadAction == null) throw new ArgumentNullException(nameof(loadAction));
+
+        EnsureBackupExists();
+
+        var current = _settingsManager.GetCurrentSymbolSettings();
+        bool origUseMs = current.UseMSSymbolServers;
+        bool origUseNuget = (current as IVsDebuggerSymbolSettings161)?.get_UseNugetSymbolServers() ?? false;
+        var origSymbolPaths = ReadOptionList(current.SymbolPaths);
+
+        var masked = current.Clone();
+        masked.UseMSSymbolServers = false;
+        if (masked is IVsDebuggerSymbolSettings161 masked161)
+        {
+            masked161.set_UseNugetSymbolServers(false);
+        }
+
+        masked.SymbolPaths.Clear();
+        foreach (var opt in origSymbolPaths)
+        {
+            bool isRemote = IsRemoteSymbolUrl(opt.Name);
+            masked.SymbolPaths.Add(opt.Name, opt.IsEnabled && !isRemote);
+        }
+
+        if (candidateModules != null)
+        {
+            foreach (string candidate in candidateModules)
+            {
+                string clean = WildcardPattern.ExtractFileNameSafe(candidate);
+                if (!string.IsNullOrWhiteSpace(clean))
+                {
+                    masked.IncludeList.Add(clean, true);
+                }
+            }
+        }
+
+        try
+        {
+            _settingsManager.SaveSymbolSettings(masked, loadSymbolsNow: false);
+            loadAction();
+        }
+        finally
+        {
+            try
+            {
+                var unmasked = _settingsManager.GetCurrentSymbolSettings().Clone();
+                unmasked.UseMSSymbolServers = origUseMs;
+                if (unmasked is IVsDebuggerSymbolSettings161 unmasked161)
+                {
+                    unmasked161.set_UseNugetSymbolServers(origUseNuget);
+                }
+
+                unmasked.SymbolPaths.Clear();
+                foreach (var opt in origSymbolPaths)
+                {
+                    unmasked.SymbolPaths.Add(opt.Name, opt.IsEnabled);
+                }
+
+                _settingsManager.SaveSymbolSettings(unmasked, loadSymbolsNow: false);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to unmask symbol servers after local load pass.", ex);
+            }
+        }
+    }
+
+    private static bool IsRemoteSymbolUrl(string? pathOrUrl)
+    {
+        if (string.IsNullOrWhiteSpace(pathOrUrl)) return false;
+        return pathOrUrl!.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+               pathOrUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+    }
+
     private void EnsureBackupExists()
     {
         if (_activeBackup == null)
@@ -252,7 +334,10 @@ public sealed class SymbolSettingsManager
             bool origManual = current.IsManualLoad;
             bool origAdjacent = current.IsLoadAdjacent;
             bool origAutoLoad = (current as IVsDebuggerSymbolSettings170)?.get_AutomaticSymbolLoad() ?? true;
+            bool origUseMs = current.UseMSSymbolServers;
+            bool origUseNuget = (current as IVsDebuggerSymbolSettings161)?.get_UseNugetSymbolServers() ?? false;
             var origIncludeList = ReadOptionList(current.IncludeList);
+            var origSymbolPaths = ReadOptionList(current.SymbolPaths);
 
             _activeBackup = _backupStore.SaveBackup(
                 _backupFilePath,
@@ -260,7 +345,10 @@ public sealed class SymbolSettingsManager
                 origAdjacent,
                 origAutoLoad,
                 _currentProcessId,
-                origIncludeList);
+                origIncludeList,
+                origUseMs,
+                origUseNuget,
+                origSymbolPaths);
         }
     }
 
@@ -276,6 +364,24 @@ public sealed class SymbolSettingsManager
         if (updated is IVsDebuggerSymbolSettings170 updated170)
         {
             updated170.set_AutomaticSymbolLoad(backup.AutomaticSymbolLoad);
+        }
+
+        updated.UseMSSymbolServers = backup.UseMsSymbolServers;
+        if (updated is IVsDebuggerSymbolSettings161 updated161)
+        {
+            updated161.set_UseNugetSymbolServers(backup.UseNugetSymbolServers);
+        }
+
+        if (backup.SymbolPaths != null && backup.SymbolPaths.Count > 0)
+        {
+            updated.SymbolPaths.Clear();
+            foreach (var opt in backup.SymbolPaths)
+            {
+                if (!string.IsNullOrWhiteSpace(opt.Name))
+                {
+                    updated.SymbolPaths.Add(opt.Name, opt.IsEnabled);
+                }
+            }
         }
 
         updated.IncludeList.Clear();

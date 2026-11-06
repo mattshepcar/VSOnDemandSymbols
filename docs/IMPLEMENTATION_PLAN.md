@@ -27,6 +27,26 @@ This document is the actionable, phased implementation plan for the clean-slate 
   - [x] 5.1 Run Core test suite.
   - [x] 5.2 Validate against `NativeSample` and write verification instructions for Unreal Editor.
   - [x] 5.3 Commit clean implementation to git with descriptive commit message.
+- [ ] **Phase 6: Configurable Break-Mode Symbol Loading (Call Stack & Threads)**
+  - [x] **Step 6.1: Local Symbol Resolution without Config (Hardcoded Server Masking)**
+    - [x] 6.1.1 Update `SymbolSettingsBackupDto` and `SymbolSettingsBackupStore` to record `UseMSSymbolServers`, `UseNugetSymbolServers`, and remote `SymbolPaths` states.
+    - [x] 6.1.2 Implement scoped symbol server masking in `SymbolSettingsManager`: `ExecuteWithMaskedSymbolServers()`.
+    - [x] 6.1.3 Extend `DebuggerSessionMonitor.OnEnterBreakMode` to gather un-symbolized modules from `CurrentThread.StackFrames` and top frames of `proc.Threads`.
+    - [x] 6.1.4 Hook `DebuggerEvents.OnContextChanged` to handle thread switching in the Threads window and frame activation in the Call Stack window.
+    - [x] 6.1.5 Ensure candidate modules are added to `IncludeList` during the masked pass so `IsManualLoad = true` permits native loading.
+    - [x] 6.1.6 Verify that all locally available symbols (adjacent, local paths, cache) load without network traffic, and right-click "Load Symbols" still queries internet servers.
+  - [ ] **Step 6.2: Introduce Simple Configuration Variable**
+    - [ ] 6.2.1 Define `BreakSymbolLoadMode` enum in `VSOnDemandSymbols.Core` (`Off = 0`, `LocalOnly = 1` [Default], `All = 2`).
+    - [ ] 6.2.2 Wire `BreakSymbolLoadMode` into `DebuggerSessionMonitor` to branch between:
+      - `Off`: Keep current behavior (no break symbol loading).
+      - `LocalOnly`: Load local/cached symbols with server masking.
+      - `All`: Load symbols with no server masking (allows remote servers).
+    - [ ] 6.2.3 Add environment variable override (`ODS_BREAK_SYMBOL_LOAD_MODE`) for immediate testing and verification without UI.
+    - [ ] 6.2.4 Add unit tests for configuration parsing and enum validation in `VSOnDemandSymbols.Core.Tests`.
+  - [ ] **Step 6.3: Expose Configuration in Visual Studio Extension Settings**
+    - [ ] 6.3.1 Implement `OnDemandSymbolsOptionPage : DialogPage` in `VSOnDemandSymbols/Options/` exposing `BreakSymbolLoadMode` in `Tools -> Options -> On-Demand Symbols -> General`.
+    - [ ] 6.3.2 Register `[ProvideOptionPage]` on `VSOnDemandSymbolsPackage`.
+    - [ ] 6.3.3 Connect settings synchronization from `OnDemandSymbolsOptionPage` to `DebuggerSessionMonitor`.
 
 ---
 
@@ -132,3 +152,67 @@ This document is the actionable, phased implementation plan for the clean-slate 
 1. **Build:** Run MSBuild from repo root. Must produce `VSOnDemandSymbols.vsix` with 0 warnings and 0 errors.
 2. **Unit Tests:** Run `dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build`. Must pass 100%.
 3. **Safety Guarantee:** Confirm that closing a solution or crashing cleanly restores the user's symbol settings.
+
+---
+
+### Phase 6: Configurable Break-Mode Symbol Loading
+
+**Goal:** Provide reliable call stack and thread view symbol resolution on debugger break without unrequested internet symbol server downloads, backed by a 3-way configuration (`Off`, `LocalOnly`, `All`).
+
+#### Step 6.1: Local Symbol Resolution without Config (Hardcoded Server Masking)
+1. **Settings Backup Extension:**
+   - Update `SymbolSettingsBackupDto` and `SymbolSettingsBackupStore` to persist:
+     - `UseMSSymbolServers` (`bool`)
+     - `UseNugetSymbolServers` (`bool`)
+     - `RemoteSymbolPaths` (`List<SymbolOptionBackupDto>` capturing remote URLs in `SymbolPaths`).
+   - Ensure crash recovery restores these settings if VS terminates unexpectedly mid-session.
+2. **Scoped Server Masking:**
+   - In `SymbolSettingsManager`, implement a scoped masking helper:
+     - Saves current remote server states.
+     - Sets `UseMSSymbolServers = false`, `UseNugetSymbolServers = false`, and remote `SymbolPaths` to `IsEnabled = false`.
+     - Merges wanted callstack/thread candidate module patterns into `IncludeList`.
+     - Calls `SaveSymbolSettings(masked, loadSymbolsNow: false)`.
+     - Executes the load action via `try / finally`.
+     - In `finally`, restores the original symbol server states and calls `SaveSymbolSettings(original, loadSymbolsNow: false)`.
+3. **Thread and Call Stack Enumeration:**
+   - In `DebuggerSessionMonitor`:
+     - Inspect `CurrentThread.StackFrames` (all frames).
+     - Inspect top frames from all threads in `_dte.Debugger.CurrentProcess.Threads`.
+     - Fix module extraction: strip `.dll`/`.exe`, remove address suffixes (`!0x...`), and match against `proc.Modules`.
+     - Invoke `mod.LoadSymbols("")` inside the scoped masked pass.
+4. **Context Switching:**
+   - Subscribe to `_dte.Events.DebuggerEvents.OnContextChanged`.
+   - When the user selects another thread in the Threads window or a frame in the Call Stack window, run the masked load pass for the newly activated thread's stack.
+5. **Verification:**
+   - Breaking into the process resolves local and cached symbols across threads and call stack.
+   - Zero HTTP requests to internet symbol servers occur.
+   - Right-clicking an unresolved module and selecting "Load Symbols" successfully downloads from internet symbol servers.
+
+#### Step 6.2: Introduce Simple Configuration Variable
+1. **Core Enum:**
+   - Define `BreakSymbolLoadMode` in `VSOnDemandSymbols.Core`:
+     - `Off = 0`: Disables break-mode symbol loading (current behavior).
+     - `LocalOnly = 1` (Default): Loads local and cached symbols using temporary symbol server masking.
+     - `All = 2`: Loads symbols without masking (queries configured internet symbol servers).
+2. **Session Monitor Plumbing:**
+   - Expose `BreakSymbolLoadMode` property on `DebuggerSessionMonitor`.
+   - Branch in `OnEnterBreakMode` and `OnContextChanged`:
+     - If `Off`: Return early.
+     - If `LocalOnly`: Execute masked local load pass.
+     - If `All`: Execute load pass without masking servers.
+3. **Immediate Testability:**
+   - Read `Environment.GetEnvironmentVariable("ODS_BREAK_SYMBOL_LOAD_MODE")` as fallback to allow instant manual testing and automated unit testing before UI settings are implemented.
+4. **Unit Tests:**
+   - Add unit tests verifying enum parsing, defaults, and backup store serialization in `VSOnDemandSymbols.Core.Tests`.
+
+#### Step 6.3: Expose Configuration in Visual Studio Extension Settings
+1. **Tools -> Options Integration:**
+   - Implement `OnDemandSymbolsOptionPage : DialogPage` under `VSOnDemandSymbols/Options/`.
+   - Expose `[Category("Break Mode")]`, `[DisplayName("Break Symbol Loading")]`, `[Description(...)]` with `BreakSymbolLoadMode`.
+   - Visual Studio automatically renders a native combo box and persists values to the user profile registry without custom UI code.
+2. **Package Registration:**
+   - Decorate `VSOnDemandSymbolsPackage` with:
+     `[ProvideOptionPage(typeof(OnDemandSymbolsOptionPage), "On-Demand Symbols", "General", 0, 0, true)]`.
+3. **Option Synchronization:**
+   - On package initialization, pass the option page instance to `DebuggerSessionMonitor`.
+   - Handle property updates so changing the option in `Tools -> Options` applies immediately to active debug sessions.

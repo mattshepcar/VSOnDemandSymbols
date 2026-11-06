@@ -49,7 +49,10 @@ public sealed class SymbolSettingsBackupStore
         bool isLoadAdjacent,
         bool automaticSymbolLoad,
         int processId,
-        IEnumerable<SymbolOptionBackupDto>? includeList = null)
+        IEnumerable<SymbolOptionBackupDto>? includeList = null,
+        bool useMsSymbolServers = false,
+        bool useNugetSymbolServers = false,
+        IEnumerable<SymbolOptionBackupDto>? symbolPaths = null)
     {
         if (string.IsNullOrWhiteSpace(backupFilePath))
         {
@@ -61,6 +64,9 @@ public sealed class SymbolSettingsBackupStore
             IsManualLoad = isManualLoad,
             IsLoadAdjacent = isLoadAdjacent,
             AutomaticSymbolLoad = automaticSymbolLoad,
+            UseMsSymbolServers = useMsSymbolServers,
+            UseNugetSymbolServers = useNugetSymbolServers,
+            SymbolPaths = symbolPaths != null ? new List<SymbolOptionBackupDto>(symbolPaths) : new List<SymbolOptionBackupDto>(),
             IncludeList = includeList != null ? new List<SymbolOptionBackupDto>(includeList) : new List<SymbolOptionBackupDto>(),
             TimestampUtc = _clock.UtcNow,
             ProcessId = processId

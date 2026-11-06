@@ -100,8 +100,7 @@ VSOnDemandSymbols/
 │   │       └── SymbolSettingsBackupStore.cs# JSON backup read/write & PID crash recovery
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, pure NuGet references)
-│       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context rule, lifecycle, Debug menu toggle
-│       ├── VSCommandTable.vsct             # Debug > On-Demand Symbols > Enabled command
+│       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context rule, lifecycle
 │       ├── Debugger/
 │       │   ├── SymbolSettingsManager.cs    # Reads/writes IVsDebuggerSymbolSettings120A & backup
 │       │   └── DebuggerSessionMonitor.cs   # BeforeExecute (F5) hook, Breakpoints, OnEnterBreakMode
@@ -157,7 +156,7 @@ VSOnDemandSymbols/
 * UI context rule: triggers on C++ solutions.
 * Detects Unreal solutions (contains `*.uproject` or `Engine/Build/Build.version`).
 * Handles crash recovery on startup.
-* Provides a simple Debug menu toggle: **Debug > On-Demand Symbols > Enabled**.
+* Operates transparently in the background with zero custom UI commands; diagnostics and status are logged to the "On-Demand Symbols" Output pane.
 
 ---
 

@@ -27,7 +27,11 @@ public sealed class DebuggerSessionMonitor : IDisposable
     private readonly DebuggerEvents _debuggerEvents;
     private bool _disposed;
 
-    public bool IsEnabled { get; set; } = true;
+    /// <summary>
+    /// Gets or sets whether session monitoring and symbol management are currently active.
+    /// Automatically activated when an Unreal solution is open and deactivated when closed.
+    /// </summary>
+    public bool IsEnabled { get; set; }
 
     public DebuggerSessionMonitor(
         DTE2 dte,

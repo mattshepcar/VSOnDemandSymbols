@@ -59,26 +59,11 @@ This document provides step-by-step verification instructions for the V2 clean-s
 
 ---
 
-### Test Case 4: Debug Menu Toggle (Debug > On-Demand Symbols > Enabled)
-1. Open the Visual Studio **Debug** menu.
-2. Locate the **On-Demand Symbols** sub-menu and inspect the **Enabled** item:
-   - **Verify:** The **Enabled** item is visible and checked.
-3. Click **Enabled** to toggle it off:
-   - **Verify:**
-     - The Output pane logs:
-       ```
-       [Info] On-Demand Symbols disabled by user; restored original symbol settings.
-       ```
-     - In **Tools > Options > Debugging > Symbols**, all symbol settings and IncludeList are restored to the user's original values before opening the Unreal project.
-     - The backup file on disk is deleted.
-     - The **Enabled** menu item is now unchecked.
-4. Click **Enabled** again to toggle it back on:
-   - **Verify:**
-     - The Output pane logs:
-       ```
-       [Info] On-Demand Symbols enabled by user; applying settings for Unreal solution.
-       ```
-     - Manual mode is re-applied, and the **Enabled** menu item is checked again.
+### Test Case 4: Clean IDE UI (Transparent Background Operation)
+1. Inspect the Visual Studio menus (**Debug**, **Tools**, etc.).
+2. **Verify:**
+   - No unnecessary menu items, toolbars, or sub-menus are added (clean IDE experience per D-23).
+   - All extension status messages and diagnostic logs appear exclusively in the dedicated **Output** window under the "On-Demand Symbols" pane.
 
 ---
 

@@ -45,7 +45,7 @@
   - No `.Result`, `.Wait()` or `Task.Run(...).GetAwaiter().GetResult()` on the UI thread.
   - Use `JoinableTaskFactory.RunAsync` for fire-and-forget work. Always observe exceptions.
 - JSON: Newtonsoft.Json (ships with VS; reference it without bundling it in the VSIX).
-- UI: Minimal Debug menu command via `VSCommandTable.vsct` (**Debug > On-Demand Symbols > Enabled**).
+- UI: Zero UI clutter. Transparent background operation with status and diagnostics reported to the "On-Demand Symbols" Output pane.
 - Logging: use the `ILogger` abstraction → "On-Demand Symbols" output pane.
 - Style: see `.editorconfig`. File-scoped namespaces, `var` when the type is obvious, `_camelCase` private fields, and `Async` suffix on async methods.
 

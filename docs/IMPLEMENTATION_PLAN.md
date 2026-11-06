@@ -21,7 +21,7 @@ This document is the actionable, phased implementation plan for the clean-slate 
   - [x] 3.3 Connect `OutputLog` for clean diagnostic logging to the "On-Demand Symbols" pane.
 - [x] **Phase 4: Package Lifecycle & Commands**
   - [x] 4.1 Update `VSOnDemandSymbolsPackage`: background load, C++ solution UI context rule, solution open/close listeners, crash recovery check on startup.
-  - [x] 4.2 Add menu/toolbar toggle command: **Debug > On-Demand Symbols > Enabled**.
+  - [x] 4.2 Streamline UI: transparent background execution; remove redundant menu toggle (D-23).
   - [x] 4.3 Verify full solution build (`/p:UseSharedCompilation=false /nr:false`).
 - [x] **Phase 5: Verification & Documentation**
   - [x] 5.1 Run Core test suite.
@@ -111,7 +111,7 @@ This document is the actionable, phased implementation plan for the clean-slate 
 
 ### Phase 4: Package Lifecycle & Commands
 
-**Goal:** Package initialization, auto-load rules, and the user-facing enable/disable toggle.
+**Goal:** Package initialization, auto-load rules, and transparent lifecycle management.
 
 1. **`VSOnDemandSymbolsPackage.cs`:**
    - Register package with background loading and C++ solution UI context rule (`ProvideUIContextRule`).
@@ -119,12 +119,11 @@ This document is the actionable, phased implementation plan for the clean-slate 
      - Query debugger services (`IVsDebuggerSymbolSettingsManager120A`, `DTE2`, `IVsSolution`).
      - Check and run `SymbolSettingsManager.RecoverFromCrashIfNeeded()`.
      - Instantiate `UnrealModuleResolver`, `SymbolSettingsManager`, `DebuggerSessionMonitor`.
-     - Register `OleMenuCommand` for `Debug > On-Demand Symbols > Enabled`.
      - Subscribe to `IVsSolutionEvents` (`OnAfterOpenSolution`, `OnBeforeCloseSolution`).
-   - Solution open: check if solution contains `*.uproject` or `Engine/Build/Build.version`. If so, prepare session.
+   - Solution open: check if solution contains `*.uproject` or `Engine/Build/Build.version`. If so, activate session monitor and configure `IncludeList`.
    - Solution close / Package dispose: call `SymbolSettingsManager.RestoreOriginalSettings()`.
-2. **Menu Toggle (`VSCommandTable.vsct`):**
-   - Provide toggle command: **Debug > On-Demand Symbols > Enabled**. When disabled, restore original symbol settings immediately.
+2. **Transparent UI (D-23):**
+   - Zero UI clutter: the redundant menu toggle (`VSCommandTable.vsct`) is removed. The extension automatically activates for Unreal solutions and restores original settings when the solution is closed. Diagnostics are reported to the "On-Demand Symbols" Output pane.
 
 ---
 

@@ -52,7 +52,6 @@ VSOnDemandSymbols/
 flowchart TD
     subgraph VS_IDE["Visual Studio IDE / VSIX Package"]
         PKG["VSOnDemandSymbolsPackage<br/>(AsyncPackage & Solution Events)"]
-        VSCT["VSCommandTable.vsct<br/>(Debug > On-Demand Symbols > Enabled)"]
         SSM["SymbolSettingsManager<br/>(IVsDebuggerSymbolSettings120A)"]
         DSM["DebuggerSessionMonitor<br/>(DTE CommandEvents & DebuggerEvents)"]
         OUT["OutputLog<br/>(On-Demand Symbols Pane)"]
@@ -66,7 +65,6 @@ flowchart TD
     PKG --> SSM
     PKG --> DSM
     PKG --> OUT
-    VSCT --> PKG
 
     DSM --> UMR
     DSM --> SSM
@@ -80,7 +78,7 @@ flowchart TD
 
 | Component | Project | Responsibility | Primary APIs Used |
 |---|---|---|---|
-| **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener, enable/disable toggle. | `AsyncPackage`, `IVsSolutionEvents`, `OleMenuCommand` |
+| **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. | `AsyncPackage`, `IVsSolutionEvents` |
 | **`SymbolSettingsManager`** | VSIX | Single point of contact for symbol settings. Backs up original settings before any modification; applies manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`); merges active breakpoint binaries into `IncludeList`; cleanly restores original settings on close, disable, or crash recovery. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
 | **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints and update `IncludeList`. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `EnvDTE90.Module` |
 | **`UnrealModuleResolver`** | Core | Resolves source files to module names by walking up the directory tree to find `{Module}.Build.cs` (handling intermediate UHT and unity paths). Generates candidate DLL names (`UnrealEditor-{Module}*.dll`). Detects Unreal solutions (`*.uproject` or `Engine/Build/Build.version`). | `IFileSystem`, `ConcurrentDictionary` cache |
@@ -168,23 +166,23 @@ sequenceDiagram
     VS->>User: Call Stack window resolves with function names and line numbers
 ```
 
-### 4.3 Extension Toggle (Debug > On-Demand Symbols > Enabled)
+### 4.3 Solution Close (Clean Settings Restore)
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Menu as OleMenuCommand
+    participant VS as Visual Studio
     participant Pkg as VSOnDemandSymbolsPackage
     participant SSM as SymbolSettingsManager
     participant Log as OutputLog
 
-    User->>Menu: Click "Enabled" (Toggle Off)
-    Menu->>Pkg: ExecuteToggleCommand()
+    User->>VS: Close Solution
+    VS->>Pkg: IVsSolutionEvents.OnBeforeCloseSolution()
     Pkg->>SSM: RestoreOriginalSettings()
     SSM->>SSM: Restore user flags & IncludeList from disk backup
     SSM->>SSM: Delete symbol-settings-backup.json
-    Pkg->>Log: Log "On-Demand Symbols disabled by user; restored original settings."
-    Menu-->>User: Menu item unchecked; VS returned to original state
+    Pkg->>Log: Log "Solution closed; restored original symbol settings."
+    VS-->>User: Visual Studio returned to user's original symbol settings
 ```
 
 ---

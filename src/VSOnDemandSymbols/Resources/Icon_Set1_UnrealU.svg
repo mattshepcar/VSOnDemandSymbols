@@ -1,0 +1,40 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <filter id="shadow-u" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="u-shadow" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+    <linearGradient id="greenGrad-u" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#3CD070"/>
+      <stop offset="45%" stop-color="#22B14C"/>
+      <stop offset="100%" stop-color="#148038"/>
+    </linearGradient>
+    <linearGradient id="goldGrad-u" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#FFFBE0"/>
+      <stop offset="30%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#FF9500"/>
+    </linearGradient>
+    <linearGradient id="glossGrad-u" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Green Play Arrow -->
+  <path d="M 112,76 L 412,240 A 20,20 0 0 1 412,272 L 112,436 A 20,20 0 0 1 80,418 L 80,94 A 20,20 0 0 1 112,76 Z"
+        fill="url(#greenGrad-u)"
+        stroke="#0F5E28"
+        stroke-width="5"
+        filter="url(#shadow-u)" />
+
+  <path d="M 86,98 L 390,250 L 86,250 Z"
+        fill="url(#glossGrad-u)" />
+
+  <!-- Authentic Golden Unreal Engine U -->
+  <g transform="translate(215, 256) scale(1.68) translate(-127, -128)" filter="url(#u-shadow)">
+    <path fill="url(#goldGrad-u)" stroke="#1E1E1E" stroke-width="4" stroke-linejoin="round" fill-rule="evenodd"
+          d="M201.2 145.8a75 75 0 01-41.7 50.7l-12-13.6-20.5 20.5A75.4 75.4 0 0167.4 173c2.2.6 4.4 1 6.7 1.2 3.3 0 7-1.1 7-6.8V112a9.1 9.1 0 00-11.5-9.1c-9.5 2.2-17 25.8-17 25.8a75 75 0 0164.2-75.2c-10.3 6-16 15.5-16 23.5 0 13 7.7 11.4 10 9.5v74.8a11.9 11.9 0 005.5 6 11 11 0 005 1.2c7.9 0 18-9 18-9V99a21 21 0 00-9.3-16.2s8.6-1.5 15.3 3.6a75 75 0 0146.2-26s-22.1 17.3-22.1 40.6c0 17.3.4 59.6.4 59.6 8.2 7.9 20.4-3.6 31.4-14.8z" />
+  </g>
+</svg>

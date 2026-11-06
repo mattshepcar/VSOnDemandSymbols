@@ -79,7 +79,10 @@ $env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet run --project tests/VSOnDemandSymbo
 - Behaviour matches SPEC.md (or the spec has been updated, with a decision entry).
 - No UI-thread blocking, no unguarded event handlers, no change to symbol settings outside `SymbolSettingsManager`.
 - Docs and the progress tracker are updated.
-- Changes are committed to git with a clear, descriptive message.
+- **Git commits**:
+  - Always commit at the completion of a logical step (e.g. Step 6.1), bug fix, or milestone. Committing on every single turn is not required for intermediate tweaks, but logical units of work must be committed before marking them complete.
+  - If unsure whether a change is ready to commit, prompt the user: *"Should I commit that now?"* Never leave completed work uncommitted without asking.
+  - Commit messages should be clear and descriptive (e.g., `feat(...)`, `fix(...)`, `refactor(...)`).
 
 ## Don'ts
 

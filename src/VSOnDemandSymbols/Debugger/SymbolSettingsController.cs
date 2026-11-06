@@ -179,7 +179,7 @@ public sealed class SymbolSettingsController
     /// Merges the wanted module binaries into VS's <c>IncludeList</c> alongside the user's original entries,
     /// enabling Visual Studio's native debugger to load symbols for them at module map time.
     /// </summary>
-    public void ApplyWantedSetToIncludeList(IEnumerable<string> wantedBinaries, bool loadSymbolsNow = false)
+    public void ApplyWantedSetToIncludeList(IEnumerable<string> wantedBinaries, string reason, bool loadSymbolsNow = false)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -213,6 +213,7 @@ public sealed class SymbolSettingsController
             }
 
             // Union with the wanted set binaries
+            int userCount = existingNames.Count;
             if (wantedBinaries != null)
             {
                 foreach (string binary in wantedBinaries)
@@ -227,6 +228,9 @@ public sealed class SymbolSettingsController
 
             _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow);
             _isApplied = true;
+            _logger.Info(
+                $"IncludeList updated ({reason}): {existingNames.Count - userCount} wanted binaries + " +
+                $"{userCount} user entries, loadSymbolsNow={loadSymbolsNow}.");
         }
         catch (Exception ex)
         {

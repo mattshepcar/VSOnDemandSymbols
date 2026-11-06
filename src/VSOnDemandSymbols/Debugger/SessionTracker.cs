@@ -194,7 +194,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                         $"MRU entries={_mruStore.GetEntries().Count}).");
 
                     PublishWantedSetSnapshot(pruneMru: false);
-                    _symbolSettingsController.ApplyWantedSetToIncludeList(_bridge.CurrentSnapshot.WantedFileNames, loadSymbolsNow: false);
+                    _symbolSettingsController.ApplyWantedSetToIncludeList(_bridge.CurrentSnapshot.WantedFileNames, "solution opened");
                 }
             }
             else if (_isQualifyingSolutionOpen)
@@ -248,7 +248,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             }
 
             var snapshot = _bridge.CurrentSnapshot;
-            _symbolSettingsController.ApplyWantedSetToIncludeList(snapshot.WantedFileNames, loadSymbolsNow: false);
+            _symbolSettingsController.ApplyWantedSetToIncludeList(snapshot.WantedFileNames, "before launch");
 
             sw.Stop();
             _logger.Diagnostic($"Pre-launch wanted-set preparation completed in {sw.Elapsed.TotalMilliseconds:F2} ms.");
@@ -411,6 +411,11 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 IReadOnlyList<ModuleKey> pruned = _mruStore.StartSessionAndPrune();
                 BuildAndPublishSnapshotCore(pruned, breakpointKeys: Array.Empty<ModuleKey>(), breakpointReasons: null);
                 _sessionPreparedForLaunch = true;
+
+                _logger.Warning(
+                    "Before-launch hook did not run for this session; IncludeList is being applied late " +
+                    "(modules already mapped will be loaded on demand).");
+                _ = _joinableTaskFactory.RunAsync(ApplyIncludeListLateAsync);
             }
 
             if (!_sessionStartedLogged)
@@ -665,14 +670,59 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             _symbolLoader.ResetForNewSession();
         }
 
-        // Reset IncludeList to the user's original entries off the session lock
-        _ = _joinableTaskFactory.RunAsync(ResetIncludeListAsync);
+        // D-18: Do NOT clear IncludeList at session end. Re-populate it with the next session's wanted set
+        // (now including this session's MRU hits) so it is already in place before the next launch,
+        // independent of whether the before-launch hook fires. The user's original IncludeList is only
+        // restored on solution close, disable, VS exit, or crash recovery.
+        _ = _joinableTaskFactory.RunAsync(RefreshIncludeListForNextSessionAsync);
     }
 
-    private async Task ResetIncludeListAsync()
+    private async Task RefreshIncludeListForNextSessionAsync()
     {
         await _joinableTaskFactory.SwitchToMainThreadAsync();
-        _symbolSettingsController.ApplyWantedSetToIncludeList(Array.Empty<string>(), loadSymbolsNow: false);
+
+        try
+        {
+            if (!IsQualifyingSolutionOpen || !IsEnabled)
+            {
+                return;
+            }
+
+            lock (_sessionLock)
+            {
+                // A new launch was already prepared (e.g. Restart); its fresher wanted set must not be overwritten.
+                if (_sessionPreparedForLaunch || _sessionStartedLogged)
+                {
+                    return;
+                }
+            }
+
+            PublishWantedSetSnapshot(pruneMru: false);
+            _symbolSettingsController.ApplyWantedSetToIncludeList(
+                _bridge.CurrentSnapshot.WantedFileNames,
+                "session ended; pre-populating for next launch");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to refresh IncludeList after session end.", ex);
+        }
+    }
+
+    private async Task ApplyIncludeListLateAsync()
+    {
+        await _joinableTaskFactory.SwitchToMainThreadAsync();
+
+        try
+        {
+            _symbolSettingsController.ApplyWantedSetToIncludeList(
+                _bridge.CurrentSnapshot.WantedFileNames,
+                "late apply: before-launch hook was missed",
+                loadSymbolsNow: true);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to apply IncludeList after missed before-launch hook.", ex);
+        }
     }
 
     private void PublishWantedSetSnapshot(bool pruneMru)

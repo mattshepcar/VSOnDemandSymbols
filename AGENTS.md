@@ -23,9 +23,9 @@
 
 ## Current status
 
-- The repo contains only the blank VSIX template (`VSOnDemandSymbolsPackage.cs`, `VSOnDemandSymbols.csproj`, `source.extension.vsixmanifest`, `VSOnDemandSymbols.slnx`) at the repo root.
-- Next step: **Phase 0 spikes** (see IMPLEMENTATION_PLAN.md). Several VS API details in the docs are unverified. Verify before you build on them.
-- The Unreal Engine source is at `D:\UnrealEngine`. It was still downloading when the spec was written. It's outside the workspace, so reading it may need the user's permission. Phase 2 (UBT analysis) depends on it.
+- Phases 0–3 are complete (`VSOnDemandSymbols.Core`, `VSOnDemandSymbols` VSIX + Concord `.vsdconfig` component, `SymbolSettingsController`, `SessionTracker`, `SymbolLoader`, and unit tests).
+- Next step: **Phase 4 — Triggers** (see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)).
+- The Unreal Engine source is at `D:\UnrealEngine`. It's outside the workspace, so reading it may need the user's permission.
 
 ## Golden rules
 
@@ -60,21 +60,21 @@ Run from the repo root in PowerShell.
 # Locate MSBuild (VSIX projects need VS's MSBuild, not just the dotnet CLI)
 $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -prerelease -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
 
-# Restore + build everything
-& $msbuild VSOnDemandSymbols.slnx /restore /p:Configuration=Debug /m /v:minimal
+# Build everything (sandbox-safe: no VBCSCompiler named pipes, no MSBuild node reuse)
+& $msbuild VSOnDemandSymbols.slnx /p:Configuration=Debug /p:UseSharedCompilation=false /nr:false /v:minimal
 
-# Unit tests (Core only — no VS needed)
-dotnet run --project tests/VSOnDemandSymbols.Core.Tests
-# Or via dotnet test outside sandbox:
-# dotnet test tests/VSOnDemandSymbols.Core.Tests -c Debug
+# Unit tests (Core only — no VS needed; --no-build reuses the MSBuild output above)
+dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build
 
-# Opt-in Unreal integration tests
-$env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet test tests/VSOnDemandSymbols.Core.Tests --filter Category=Unreal
+# Opt-in Unreal integration tests (requires access to D:\UnrealEngine)
+$env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build
 ```
 
+- **Preventing sandbox build hangs (important for agents):**
+  - Always pass `/p:UseSharedCompilation=false /nr:false` (and avoid `/m`) when running MSBuild in the sandbox. Roslyn's `VBCSCompiler.exe` compiler server and MSBuild worker node reuse (`/nr:true`) rely on named pipes that hang indefinitely inside the Windows sandbox. (`<UseSharedCompilation>false</UseSharedCompilation>` is also set in the `.csproj` files as a safeguard.)
+  - Omit `/restore` on normal builds once packages are restored; only pass `/restore` when adding or changing NuGet packages (which requires network access).
+  - Run unit tests via `dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build` rather than `dotnet test`, because the VSTest host uses local sockets/named pipes that can be blocked by the sandbox.
 - Interactive debugging: F5 in VS launches the **Experimental instance** (`devenv.exe /rootsuffix Exp`). Agents can't drive that UI. For anything that needs a running VS or Unreal Editor, write precise manual test steps (see TESTING.md §3) and ask the user to run them.
-- Until Phase 1 moves the project, the csproj is at the repo root. Update these commands once the layout changes.
-- Package restore needs network access. If restore fails in a sandbox, ask to run it with network access rather than working around it.
 
 ## Working process for agents
 

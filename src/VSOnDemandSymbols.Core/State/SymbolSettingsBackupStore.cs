@@ -9,7 +9,7 @@ namespace VSOnDemandSymbols.Core.State;
 
 /// <summary>
 /// Manages reading, atomic writing, and crash-recovery detection for the global
-/// symbol settings backup file (<c>symbol-settings-backup.json</c>, SPEC §7.4, §9.2).
+/// symbol settings backup file (<c>symbol-settings-backup.json</c>, SPEC §4.1, §5).
 /// </summary>
 public sealed class SymbolSettingsBackupStore
 {
@@ -147,7 +147,7 @@ public sealed class SymbolSettingsBackupStore
     }
 
     /// <summary>
-    /// Checks whether a backup file exists from a previous VS process that is no longer running (SPEC §7.4, §9.2).
+    /// Checks whether a backup file exists from a previous VS process that is no longer running (SPEC §4.1, §5).
     /// Returns the backup to restore if crash recovery is needed; otherwise returns null.
     /// </summary>
     public SymbolSettingsBackupDto? CheckCrashRecovery(string backupFilePath, int currentProcessId)

@@ -114,7 +114,7 @@ public sealed class WildcardPattern
     }
 
     /// <summary>
-    /// Strips any embedded NUL characters (e.g. from Concord <c>DkmProcess.Path</c> buffers) and trims whitespace.
+    /// Strips any embedded NUL characters and trims whitespace.
     /// Never throws on invalid path characters.
     /// </summary>
     public static string SanitizePathString(string? value)

@@ -17,7 +17,7 @@ public sealed class SymbolOptionBackupDto
 }
 
 /// <summary>
-/// Persisted backup of the user's original Visual Studio symbol settings boolean flags and IncludeList (SPEC §7.4, §9.2).
+/// Persisted backup of the user's original Visual Studio symbol settings boolean flags and IncludeList (SPEC §4.1, §5).
 /// </summary>
 public sealed class SymbolSettingsBackupDto
 {

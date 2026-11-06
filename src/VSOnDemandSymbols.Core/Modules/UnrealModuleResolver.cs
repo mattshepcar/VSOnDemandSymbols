@@ -136,7 +136,7 @@ public sealed class UnrealModuleResolver
     /// <summary>
     /// Returns candidate binary names for an Unreal module name.
     /// Uses a wildcard pattern (<c>UnrealEditor-{moduleName}*.dll</c>) to match all build configurations
-    /// (undecorated Development, DebugGame, Debug, Shipping, hot reload, etc.) with a single clean entry (D-22).
+    /// (undecorated Development, DebugGame, Debug, Shipping, hot reload, etc.) with a single clean wildcard entry.
     /// </summary>
     public IReadOnlyList<string> GetCandidateBinaries(string moduleName)
     {

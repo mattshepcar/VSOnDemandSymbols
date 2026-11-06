@@ -11,8 +11,8 @@ using VSOnDemandSymbols.Core.Abstractions;
 namespace VSOnDemandSymbols.Logging;
 
 /// <summary>
-/// Writes extension log messages to the "On-Demand Symbols" Output window pane (SPEC §8.2).
-/// Non-blocking from any thread (NF-1, NF-3).
+/// Writes extension log messages to the "On-Demand Symbols" Output window pane (SPEC §4.1).
+/// Non-blocking from any thread.
 /// </summary>
 public sealed class OutputLog : ILogger
 {

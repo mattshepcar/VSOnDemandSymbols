@@ -144,7 +144,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     }
 
     /// <summary>
-    /// Handles AD7 debug events asynchronously to observe breakpoint binding errors mid-session (D-19, D-24).
+    /// Handles AD7 debug events asynchronously to observe breakpoint binding errors mid-session.
     /// </summary>
     public int Event(
         IDebugEngine2 pEngine,

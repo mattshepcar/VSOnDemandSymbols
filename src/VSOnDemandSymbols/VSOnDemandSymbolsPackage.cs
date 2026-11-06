@@ -39,6 +39,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
     private OutputLog? _logger;
     private SymbolSettingsController? _symbolSettingsController;
     private SessionTracker? _sessionTracker;
+    private Ad7BreakpointEventListener? _breakpointListener;
 
     protected override async Task InitializeAsync(
         CancellationToken cancellationToken,
@@ -103,6 +104,17 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
 
             bridge.SessionTracker = _sessionTracker;
             _sessionTracker.Initialize();
+
+            if (debuggerObj is IVsDebugger vsDebugger)
+            {
+                var tracker = _sessionTracker;
+                _breakpointListener = new Ad7BreakpointEventListener(
+                    vsDebugger,
+                    JoinableTaskFactory,
+                    () => tracker.OnBreakpointBindErrorReported(),
+                    _logger);
+                _breakpointListener.Advise();
+            }
         }
         catch (Exception ex)
         {
@@ -118,6 +130,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
         {
             try
             {
+                _breakpointListener?.Dispose();
                 _sessionTracker?.Dispose();
                 _symbolSettingsController?.RestoreOriginalSettings();
             }

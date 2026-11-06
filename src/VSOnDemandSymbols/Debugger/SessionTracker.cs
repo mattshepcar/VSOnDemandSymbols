@@ -485,58 +485,35 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     }
 
     /// <summary>
-    /// Called when Concord reports an unbound pending breakpoint during a live session (BP-2, S4-A).
+    /// Called (coalesced, on the UI thread) when the debugger reports a breakpoint that could not bind
+    /// during a live session (BP-2, D-19). Re-resolves the DTE breakpoints and queues on-demand loads
+    /// for their modules; modules whose symbols are already loaded are skipped cheaply by <see cref="SymbolLoader"/>.
     /// </summary>
-    public void OnConcordBreakpointUnbound(DkmPendingBreakpoint pendingBreakpoint)
+    public void OnBreakpointBindErrorReported()
     {
-        if (pendingBreakpoint == null || !IsQualifyingSolutionOpen || !IsEnabled)
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        if (!IsQualifyingSolutionOpen || !IsEnabled)
         {
             return;
         }
 
-        if (pendingBreakpoint is DkmPendingFileLineBreakpoint fileLineBp)
+        lock (_sessionLock)
         {
-            DkmSourcePosition? pos = fileLineBp.GetCurrentSourcePosition();
-            string docName = WildcardPattern.SanitizePathString(pos?.DocumentName);
-            if (!string.IsNullOrWhiteSpace(docName))
+            if (!_sessionStartedLogged)
             {
-                int line = pos!.TextSpan.StartLine;
-                string detail = $"{WildcardPattern.ExtractFileNameSafe(docName)}({line})";
-                var keys = _unrealResolver.Resolve(docName);
-                if (keys.Count == 0)
-                {
-                    WarnUnresolvedBreakpointOnce(docName);
-                    return;
-                }
-
-                foreach (var key in keys)
-                {
-                    var candidates = _unrealResolver.GetCandidateFileNames(key);
-                    if (!_loadPolicy.IsNeverLoad(key, candidates))
-                    {
-                        _mruStore.RecordHit(key, TriggerReason.Breakpoint, detail, candidates);
-                    }
-
-                    _symbolLoader.EnqueueLoad(key, TriggerReason.Breakpoint, detail, candidates);
-                }
+                return;
             }
         }
-        else if (pendingBreakpoint is DkmPendingFunctionBreakpoint funcBp &&
-                 !string.IsNullOrWhiteSpace(funcBp.ModuleName))
-        {
-            string modName = funcBp.ModuleName!;
-            ModuleKey? key = _unrealResolver.TryParseLoadedModule(modName);
-            if (key.HasValue)
-            {
-                string detail = $"{modName}!{funcBp.FunctionName}";
-                var candidates = _unrealResolver.GetCandidateFileNames(key.Value);
-                if (!_loadPolicy.IsNeverLoad(key.Value, candidates))
-                {
-                    _mruStore.RecordHit(key.Value, TriggerReason.Breakpoint, detail, candidates);
-                }
 
-                _symbolLoader.EnqueueLoad(key.Value, TriggerReason.Breakpoint, detail, candidates);
-            }
+        const string prefix = "Breakpoint: ";
+        var reasons = new Dictionary<ModuleKey, string>();
+        foreach (var key in ResolveDteBreakpoints(recordMruHits: true, reasons))
+        {
+            string? detail = reasons.TryGetValue(key, out string? r) && r.StartsWith(prefix, StringComparison.Ordinal)
+                ? r.Substring(prefix.Length)
+                : null;
+            _symbolLoader.EnqueueLoad(key, TriggerReason.Breakpoint, detail, _unrealResolver.GetCandidateFileNames(key));
         }
     }
 

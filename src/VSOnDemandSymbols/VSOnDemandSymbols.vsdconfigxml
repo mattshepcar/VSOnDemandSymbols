@@ -21,12 +21,17 @@
           <Interface Name="IDkmModuleSymbolsLoadedNotification" />
         </InterfaceGroup>
 
+        <!--
+          D-19: Do NOT implement IDkmBreakpointManagerNotification here. It is consumed by the AD7
+          abstraction layer to raise IDebugBreakpointBoundEvent2 to the IDE; implementing it in this
+          component stopped breakpoint glyphs from updating after a deferred bind. Breakpoint errors
+          are observed through IVsDebugger.AdviseDebugEventCallback instead (Ad7BreakpointEventListener).
+        -->
         <InterfaceGroup>
           <Filter>
             <EngineId RequiredValue="DkmEngineId.NativeEng" />
             <EngineId RequiredValue="DkmEngineId.COMPlusNativeEng" />
           </Filter>
-          <Interface Name="IDkmBreakpointManagerNotification" />
           <Interface Name="IDkmProcessExitNotification" />
         </InterfaceGroup>
       </Implements>

@@ -1,6 +1,18 @@
 # On-Demand Symbols for Visual Studio
 
-> A lightweight Visual Studio extension that accelerates native C++ debugging startup for **Unreal Engine 5** projects by loading symbols on demand.
+> A lightweight Visual Studio extension that accelerates native C++ debugging startup for **Unreal Engine 5** projects in **Visual Studio 2022 (17.14+)** and **Visual Studio 2026** by loading symbols on demand.
+
+---
+
+## Supported Visual Studio Versions
+
+* **Visual Studio 2022** — Version **17.14** or later (64-bit)
+* **Visual Studio 2026** — (64-bit)
+* **Editions:** Community, Professional, and Enterprise
+* **Target Architectures:** x64 (amd64)
+
+> [!NOTE]
+> Visual Studio 2022 releases prior to 17.14, Visual Studio 2019, and 32-bit IDE versions are not supported.
 
 ---
 

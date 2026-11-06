@@ -1,5 +1,6 @@
 using System.IO;
 using VSOnDemandSymbols.Core.Modules;
+using VSOnDemandSymbols.Core.Policy;
 using Xunit;
 
 namespace VSOnDemandSymbols.Core.Tests.Modules;
@@ -52,12 +53,39 @@ public sealed class UnrealModuleResolverTests
     }
 
     [Fact]
-    public void GetCandidateBinaries_ReturnsExpectedPatterns()
+    public void GetCandidateBinaries_ReturnsWildcardPattern()
     {
         var candidates = _resolver.GetCandidateBinaries("MyGame");
-        Assert.Contains("UnrealEditor-MyGame.dll", candidates);
-        Assert.Contains("UnrealEditor-MyGame-Win64-DebugGame.dll", candidates);
-        Assert.Contains("UnrealEditor-MyGame*.dll", candidates);
+        Assert.Single(candidates);
+        Assert.Equal("UnrealEditor-MyGame*.dll", candidates[0]);
+    }
+
+    [Theory]
+    [InlineData("UnrealEditor-MyGame.dll")]
+    [InlineData("UnrealEditor-MyGame-Win64-DebugGame.dll")]
+    [InlineData("UnrealEditor-MyGame-Win64-Development.dll")]
+    [InlineData("UnrealEditor-MyGame-Win64-Shipping.dll")]
+    [InlineData("UnrealEditor-MyGame-Win64-Debug.dll")]
+    [InlineData("UnrealEditor-MyGame-0001.dll")]
+    [InlineData("UnrealEditor-MyGame-0001-Win64-DebugGame.dll")]
+    public void GetCandidateBinaries_WildcardMatchesAllConfigurations(string binaryName)
+    {
+        var candidates = _resolver.GetCandidateBinaries("MyGame");
+        var pattern = new WildcardPattern(candidates[0]);
+        Assert.True(pattern.IsMatchFileName(binaryName));
+    }
+
+    [Theory]
+    [InlineData("UnrealEditor.exe")]
+    [InlineData("UnrealEditor-Win64-DebugGame.exe")]
+    [InlineData("UnrealEditor-Win64-Development.exe")]
+    [InlineData("UnrealEditor-Win64-Shipping.exe")]
+    [InlineData("UnrealEditor-Win64-Debug.exe")]
+    [InlineData("UnrealEditor-Cmd.exe")]
+    public void UnrealEditorExePattern_MatchesAllEditorExecutableVariants(string exeName)
+    {
+        var pattern = new WildcardPattern("UnrealEditor*.exe");
+        Assert.True(pattern.IsMatchFileName(exeName));
     }
 
     [Fact]

@@ -64,7 +64,7 @@ This document is the actionable, phased implementation plan for the **V2 clean-s
      - Check regex / path substrings for `Intermediate/Build/.../Inc/{Module}/...` and unity files (`Module.{Module}.*.cpp`).
      - Walk up parent directories to locate `{Module}.Build.cs`. Stop at boundaries (`*.uproject`, `Engine/Source`, drive root). Cache results.
    - Implement `GetCandidateBinaries(string moduleName)`:
-     - Returns `UnrealEditor-{moduleName}.dll`, `UnrealEditor-{moduleName}-Win64-DebugGame.dll`, `UnrealEditor-{moduleName}-Win64-Development.dll`, `UnrealEditor-{moduleName}*.dll`.
+     - Returns wildcard `UnrealEditor-{moduleName}*.dll` (D-22).
 2. **`SymbolSettingsBackupStore.cs` & `WildcardPattern.cs`:**
    - Verify existing implementations in `VSOnDemandSymbols.Core`. Retain JSON serialization and PID crash recovery logic.
 3. **Tests in `tests/VSOnDemandSymbols.Core.Tests/`:**
@@ -97,7 +97,7 @@ This document is the actionable, phased implementation plan for the **V2 clean-s
    - On before launch:
      - Queries `DTE.Debugger.Breakpoints`.
      - Resolves each enabled breakpoint's `.File` via `UnrealModuleResolver`.
-     - Collects `UnrealEditor.exe`, `UnrealEditor-Win64-*.exe`, and candidate DLLs.
+     - Collects `UnrealEditor*.exe` and candidate DLL wildcards (`UnrealEditor-{moduleName}*.dll`).
      - Calls `SymbolSettingsManager.ApplyManualMode(wantedBinaries)`.
    - On enter break mode:
      - Inspects `DTE.Debugger.CurrentThread.StackFrames`.

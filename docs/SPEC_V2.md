@@ -63,7 +63,7 @@ flowchart TD
     subgraph 2. Launch (F5) / Breakpoint Change
         F5["F5 / Launch Command"] --> BPS["Query DTE.Debugger.Breakpoints"]
         BPS --> RES["UnrealModuleResolver: walk up to *.Build.cs"]
-        RES --> INC["Write UnrealEditor-{Module}*.dll + UnrealEditor.exe to IncludeList"]
+        RES --> INC["Write UnrealEditor-{Module}*.dll + UnrealEditor*.exe to IncludeList"]
         INC --> RUN["Launch UnrealEditor.exe"]
         RUN --> VSN["VS native engine loads symbols ONLY for IncludeList DLLs"]
     end
@@ -117,11 +117,8 @@ VSOnDemandSymbols/
   * Special case: Intermediate UHT files (`Intermediate/Build/.../Inc/{Module}/...`) or unity files (`Module.{Module}.*.cpp`) extract the module name directly from the path.
   * Standard case: Walks up parent directories looking for `{Module}.Build.cs`. Stops at root boundaries (`*.uproject`, `Engine/Source`, drive root). Caches directory $\to$ module mappings in a `ConcurrentDictionary`.
 * Given a module name (`MyGame`):
-  * Returns candidate binary names:
-    * `UnrealEditor-MyGame.dll`
-    * `UnrealEditor-MyGame-Win64-DebugGame.dll`
-    * `UnrealEditor-MyGame-Win64-Development.dll`
-    * `UnrealEditor-MyGame*.dll`
+  * Returns candidate binary wildcard (D-22):
+    * `UnrealEditor-MyGame*.dll` (matches undecorated, DebugGame, Development, Shipping, hot reload, etc.)
 
 #### 2. `SymbolSettingsBackupStore` (Core)
 * Manages `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`.
@@ -142,7 +139,7 @@ VSOnDemandSymbols/
 #### 4. `DebuggerSessionMonitor` (VSIX)
 * Subscribes to `DTE.Events.CommandEvents` for `StandardCommandSet97:cmdidStart (295)` (F5 Launch).
   * Resolves all enabled breakpoints from `DTE.Debugger.Breakpoints`.
-  * Adds `UnrealEditor.exe` + candidate DLL names to `IncludeList` via `SymbolSettingsManager`.
+  * Adds `UnrealEditor*.exe` + candidate DLL wildcards (`UnrealEditor-{Module}*.dll`) to `IncludeList` via `SymbolSettingsManager`.
 * Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode`:
   * Inspects `DTE.Debugger.CurrentThread.StackFrames`.
   * For each frame without symbols, locates the matching `EnvDTE90.Module` from `DTE.Debugger.DebuggedProcesses` and calls `mod.LoadSymbols("")`.

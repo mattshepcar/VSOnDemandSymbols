@@ -21,13 +21,13 @@ This document provides step-by-step verification instructions for the V2 clean-s
    - The Output pane logs:
      ```
      [Info] Unreal solution detected: '<SolutionName>.slnx'. On-Demand Symbols active.
-     [Info] IncludeList updated (solution opened (active breakpoints: 0)): 2 wanted binaries + <N> user entries.
+     [Info] IncludeList updated (solution opened (active breakpoints: 0)): 1 wanted binaries + <N> user entries.
      ```
    - In **Tools > Options > Debugging > Symbols**:
      - "Load only specified modules" is selected (`IsManualLoad = true`).
      - "Always load symbols located next to modules" is unchecked (`IsLoadAdjacent = false`).
      - Visual Studio's backup file exists at `%LOCALAPPDATA%\OnDemandSymbols\<VS_INSTANCE_EXP>\symbol-settings-backup.json`.
-     - Your pre-existing include list entries are preserved, and `UnrealEditor.exe` + `UnrealEditor-Win64-*.exe` have been added.
+     - Your pre-existing include list entries are preserved, and `UnrealEditor*.exe` has been added.
 
 ---
 
@@ -38,9 +38,9 @@ This document provides step-by-step verification instructions for the V2 clean-s
 4. **Verify:**
    - In the Output pane:
      ```
-     [Info] IncludeList updated (before launch (active breakpoints: 1)): 6 wanted binaries + <N> user entries.
+     [Info] IncludeList updated (before launch (active breakpoints: 1)): 2 wanted binaries + <N> user entries.
      ```
-   - Candidate binaries for the module (`UnrealEditor-<Module>.dll`, `UnrealEditor-<Module>-Win64-DebugGame.dll`, `UnrealEditor-<Module>*.dll`) were merged into `IncludeList`.
+   - Candidate wildcard for the module (`UnrealEditor-<Module>*.dll`) was merged into `IncludeList` (no redundant configuration-specific entries).
    - The editor boots quickly because Visual Studio loads symbols **only** for the candidate binaries in `IncludeList`.
    - Once the module loads, the breakpoint glyph immediately turns solid red with a checkmark ("Breakpoint bound").
 

@@ -59,7 +59,7 @@ src/VSOnDemandSymbols/
 |---|---|---|---|
 | **`VSOnDemandSymbolsPackage`** | ~120 | Background package initialization, UI context auto-load for C++ solutions, solution open/close listener, menu toggle. | `AsyncPackage`, `IVsSolutionEvents`, `OleMenuCommand` |
 | **`SymbolSettingsManager`** | ~110 | Single point of contact for symbol settings. Backs up original flags + `IncludeList` to JSON file on solution open; applies manual mode; merges breakpoint DLLs; restores original settings on close or crash. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
-| **`UnrealModuleResolver`** | ~120 | Resolves source files to module names by walking up directory tree to find `*.Build.cs`. Maps module name to candidate DLLs (`UnrealEditor-{Module}*.dll`, `UnrealEditor-{Module}-Win64-DebugGame.dll`). | `System.IO` (cached dictionary) |
+| **`UnrealModuleResolver`** | ~120 | Resolves source files to module names by walking up directory tree to find `*.Build.cs`. Maps module name to candidate DLL wildcard (`UnrealEditor-{Module}*.dll`). | `System.IO` (cached dictionary) |
 | **`DebuggerSessionMonitor`** | ~200 | Hooks `DTE.CommandEvents` before launch (F5) to update `IncludeList`. Hooks `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call stack and load symbols on demand via `Module.LoadSymbols("")`. | `EnvDTE80.DTE2`, `EnvDTE.DebuggerEvents`, `EnvDTE90.Module` |
 
 ---
@@ -216,10 +216,7 @@ public sealed class UnrealModuleResolver
 
     public IEnumerable<string> GetCandidateBinaries(string moduleName)
     {
-        yield return $"UnrealEditor-{moduleName}.dll";
-        yield return $"UnrealEditor-{moduleName}-Win64-DebugGame.dll";
-        yield return $"UnrealEditor-{moduleName}-Win64-Development.dll";
-        yield return $"UnrealEditor-{moduleName}-*.dll";
+        yield return $"UnrealEditor-{moduleName}*.dll";
     }
 }
 ```
@@ -267,8 +264,7 @@ public sealed class DebuggerSessionMonitor : IDisposable
         ThreadHelper.ThrowIfNotOnUIThread();
         var wantedBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "UnrealEditor.exe",
-            "UnrealEditor-Win64-*.exe"
+            "UnrealEditor*.exe"
         };
 
         if (_dte.Debugger?.Breakpoints != null)

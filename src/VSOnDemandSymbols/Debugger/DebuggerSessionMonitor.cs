@@ -65,8 +65,7 @@ public sealed class DebuggerSessionMonitor : IDisposable
         {
             var wantedBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "UnrealEditor.exe",
-                "UnrealEditor-Win64-*.exe"
+                "UnrealEditor*.exe"
             };
 
             int breakpointCount = 0;

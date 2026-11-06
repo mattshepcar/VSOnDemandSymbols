@@ -32,7 +32,7 @@ Automatically keep symbol loading limited to the modules that are likely to be n
 
 - Managed (.NET) and mixed-mode symbol management. The extension only acts on native modules.
 - Monolithic Unreal targets (packaged games, Shipping/Test builds where all code is in one EXE). The extension detects these and does nothing beyond the always-load list.
-- CMake / Open Folder projects, and Unreal projects opened through `.uproject` workspace mode (no `.sln`). These are possible future work.
+- CMake / Open Folder projects, and Unreal projects opened through `.uproject` workspace mode (no `.sln` or `.slnx`). These are possible future work.
 - Remote debugging, and debugging non-Windows platforms (consoles, Android, Linux).
 - Managing symbol *servers* or symbol *paths*. The extension never modifies these.
 

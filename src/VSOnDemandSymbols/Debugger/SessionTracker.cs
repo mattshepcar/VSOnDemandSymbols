@@ -411,7 +411,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     public int OnAfterOpenProject(IVsHierarchy pHierarchy, int fAdded)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        if (!IsQualifyingSolutionOpen)
+        if (!IsQualifyingSolutionOpen || string.IsNullOrEmpty(_currentSolutionInfo.EngineRoot))
         {
             EvaluateOpenSolution();
         }

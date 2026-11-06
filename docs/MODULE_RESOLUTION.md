@@ -39,7 +39,7 @@ A `CompositeResolver` tries the `UnrealResolver` first, when the solution is Unr
 ### 2.1 Generated and intermediate files
 
 - **UHT Generated Code**: Resides under `<BaseDir>/Intermediate/[PlatformIntermediateFolderNoArch]/[AppName]/Inc/[BinariesSubFolder/][ModuleName]/UHT/` (e.g. `Intermediate/Build/Win64/UnrealEditor/Inc/Core/UHT/MyActor.gen.cpp` or `Intermediate/Build/Win64/UnrealEditor/Inc/SubFolder/Core/UHT/MyActor.gen.cpp`). The directory immediately preceding `UHT` (or following `Inc`) is the `<Module>` name.
-- **Unity Build Files**: Reside under `<BaseDir>/Intermediate/[Platform]/[Target]/[Config]/[ModuleName]/` and are named `Module.<ModuleName>.cpp` (single file), `Module.<ModuleName>.<N>.cpp` (partitioned unity, UE 5.6+), or historically `Module.<ModuleName>.<N>_of_<Total>.cpp` (pre-UE 5.6). Module name is extracted from the `Module.<ModuleName>...` file name.
+- **Unity Build & Module Intermediate Files**: Reside under `<BaseDir>/Intermediate/[Platform]/[Arch/][Target]/[Config]/[ModuleName]/` and are named `Module.<ModuleName>.cpp` (single file), `Module.<ModuleName>.<N>.cpp` (partitioned unity, UE 5.6+), `Module.<ModuleName>.<N>_of_<Total>.cpp` (pre-UE 5.6), `PerModuleInline.gen.cpp`, or `Definitions.<ModuleName>.h`. Module name is extracted from the file name or parent `<ModuleName>` directory.
 
 ### 2.2 Build.cs walk-up
 
@@ -91,7 +91,7 @@ JSON Schema:
 }
 ```
 
-- When resolving names for module `M` owned by root `R`: read every `*.modules` file in `R`'s binaries folder, collect every file name mapped to `M` (there can be one per configuration), and return them all as candidates.
+- When resolving names for module `M` owned by root `R`: read every `*.modules` file in known binaries folders (`<ProjectDir>/Binaries/Win64`, `<ProjectDir>/Plugins/**/Binaries/Win64`, `Engine/Binaries/Win64`), collect every file name mapped to `M` (there can be one per configuration), and union them with the standard UBT naming candidates (§4) so switching configurations (e.g. between `Development Editor` and `DebugGame Editor`) resolves `-Win64-DebugGame.dll` even before a new `.modules` file has been written.
 - Cache each manifest keyed by path and last-write time.
 - The runtime engine (`FModuleManager::FindModulePaths`) reads the main engine manifest via `FModuleManifest::TryRead` to establish the current session's `BuildId`, then scans all engine/game/plugin binary directories, rejecting manifests whose `BuildId` does not match (except Bridge plugin) before caching valid module DLL paths.
 - If no manifest exists (module never built), fall back to the naming rules in §4.

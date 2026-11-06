@@ -18,6 +18,10 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
         @"[/\\]Intermediate[/\\]Build[/\\][^/\\]+[/\\](?:[^/\\]+[/\\])*(?:Module\.(?<module>[A-Za-z0-9_]+)(?:\.\d+(?:_of_\d+)?)?\.cpp)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex IntermediateModuleFileRegex = new(
+        @"[/\\]Intermediate[/\\]Build[/\\][^/\\]+[/\\](?:[^/\\]+[/\\])+(?<module>[A-Za-z0-9_]+)[/\\](?:PerModuleInline\.gen\.cpp|Definitions\.[A-Za-z0-9_]+\.h)$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
     private readonly UnrealOwnerDetector _ownerDetector;
@@ -26,6 +30,7 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
 
     private readonly ConcurrentDictionary<string, string?> _dirToBuildCsCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, IReadOnlyList<ModuleKey>> _sourceResolutionCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, IReadOnlyList<string>> _projectPluginBinariesCache = new(StringComparer.OrdinalIgnoreCase);
 
     public string? EngineRoot { get; set; }
     public string? ProjectRoot { get; set; }
@@ -82,6 +87,13 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
             if (unityMatch.Success)
             {
                 string modName = unityMatch.Groups["module"].Value;
+                return new[] { new ModuleKey(ModuleKind.Unreal, modName) };
+            }
+
+            var modFileMatch = IntermediateModuleFileRegex.Match(sourceFilePath);
+            if (modFileMatch.Success)
+            {
+                string modName = modFileMatch.Groups["module"].Value;
                 return new[] { new ModuleKey(ModuleKind.Unreal, modName) };
             }
         }
@@ -154,19 +166,15 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
             }
         }
 
-        if (results.Count > 0)
-        {
-            return results.ToList();
-        }
+        // Always include standard UBT naming candidates (MODULE_RESOLUTION.md §4 & §8)
+        // so switching between Development Editor and DebugGame Editor works even before
+        // the new configuration's .modules manifest has been written.
+        results.Add($"UnrealEditor-{key.Name}.dll");
+        results.Add($"UnrealEditor-{key.Name}-Win64-DebugGame.dll");
+        results.Add($"UnrealEditor-{key.Name}-Win64-Debug.dll");
+        results.Add($"UnrealEditor-{key.Name}-Win64-Development.dll");
 
-        // Fallback: provisional naming rules §4
-        return new[]
-        {
-            $"UnrealEditor-{key.Name}.dll",
-            $"UnrealEditor-{key.Name}-Win64-DebugGame.dll",
-            $"UnrealEditor-{key.Name}-Win64-Debug.dll",
-            $"UnrealEditor-{key.Name}-Win64-Development.dll"
-        };
+        return results.ToList();
     }
 
     public ModuleKey? TryParseLoadedModule(string modulePath)
@@ -197,6 +205,10 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
         if (!string.IsNullOrEmpty(ProjectRoot))
         {
             dirs.Add(Path.Combine(ProjectRoot, "Binaries", "Win64"));
+            foreach (string pluginBinDir in GetProjectPluginBinariesDirectories(ProjectRoot!))
+            {
+                dirs.Add(pluginBinDir);
+            }
         }
         if (!string.IsNullOrEmpty(EngineRoot))
         {
@@ -204,6 +216,37 @@ public sealed class UnrealResolver : ISourceToModuleResolver, IModuleBinaryNamin
             dirs.Add(Path.Combine(EngineRoot, "Engine", "Binaries", "Win64"));
         }
         return dirs;
+    }
+
+    private IReadOnlyList<string> GetProjectPluginBinariesDirectories(string projectRoot)
+    {
+        return _projectPluginBinariesCache.GetOrAdd(projectRoot, root =>
+        {
+            var list = new List<string>();
+            string pluginsRoot = Path.Combine(root, "Plugins");
+            if (!_fileSystem.DirectoryExists(pluginsRoot))
+            {
+                return list;
+            }
+
+            try
+            {
+                foreach (string upluginPath in _fileSystem.EnumerateFiles(pluginsRoot, "*.uplugin", SearchOption.AllDirectories))
+                {
+                    string? pluginDir = Path.GetDirectoryName(upluginPath);
+                    if (!string.IsNullOrEmpty(pluginDir))
+                    {
+                        list.Add(Path.Combine(pluginDir!, "Binaries", "Win64"));
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore directory enumeration failures
+            }
+
+            return list;
+        });
     }
 
     private bool IsBoundaryDirectory(string dir)

@@ -85,8 +85,9 @@ public sealed class ConcordSymbolMonitor :
             }
             else if (shouldLoad)
             {
-                string searchDetails = ConcordSymbolBridge.GetSymbolSearchDetails(moduleInstance);
-                _bridge.Logger.Info($"Symbols not loaded for {fileName} ({reasonDescription}; searched: {searchDetails})");
+                // D-17/D-18: The native engine loads IncludeList symbols *after* this notification returns,
+                // so Module == null here is expected. The outcome is reported from OnModuleSymbolsLoaded.
+                _bridge.Logger.Verbose($"Module mapped, awaiting IncludeList symbol load: {fileName} ({reasonDescription})");
             }
 
             if (sw != null)
@@ -140,7 +141,24 @@ public sealed class ConcordSymbolMonitor :
             bool initiatedByExtension = _bridge.ConsumeExtensionInitiatedLoad(moduleInstance.UniqueId);
             if (_bridge.ModuleRegistry.TryGetByUniqueId(moduleInstance.UniqueId, out var info) && info != null)
             {
-                if (!initiatedByExtension && !info.HadSymbolsAtModuleMap && !info.LoadedAtStartup)
+                if (info.HadSymbolsAtModuleMap || info.LoadedAtStartup)
+                {
+                    return;
+                }
+
+                // D-18: Loads driven by the IncludeList (wanted set) are not manual loads (ML-1).
+                bool wanted = _bridge.CurrentSnapshot.ShouldLoadAtModuleLoad(info.FileName, info.Key, out string reason);
+                if (wanted)
+                {
+                    _bridge.ModuleRegistry.RecordStartupSymbolLoad(moduleInstance.UniqueId);
+                    _bridge.Logger.Info($"Symbols loaded: {info.FileName} — {reason}");
+                }
+                else if (initiatedByExtension)
+                {
+                    _bridge.ModuleRegistry.RecordOnDemandSymbolLoad(moduleInstance.UniqueId);
+                    _bridge.Logger.Info($"Symbols loaded on demand: {info.FileName}");
+                }
+                else
                 {
                     _bridge.ModuleRegistry.RecordOnDemandSymbolLoad(moduleInstance.UniqueId);
                     sessionTracker.OnManualSymbolLoadDetected(moduleInstance, info.Key);
@@ -155,6 +173,14 @@ public sealed class ConcordSymbolMonitor :
 
     public void OnBreakpointBound(DkmPendingBreakpoint pendingBreakpoint, DkmBoundBreakpoint[] boundBreakpoints)
     {
+        try
+        {
+            _bridge.Logger.Info($"Breakpoint bound: {DescribeBreakpoint(pendingBreakpoint)} ({boundBreakpoints?.Length ?? 0} location(s)).");
+        }
+        catch (Exception ex)
+        {
+            _bridge.Logger.Error("Unhandled error in ConcordSymbolMonitor.OnBreakpointBound.", ex);
+        }
     }
 
     public void OnBreakpointUnbound(
@@ -164,6 +190,7 @@ public sealed class ConcordSymbolMonitor :
     {
         try
         {
+            _bridge.Logger.Info($"Breakpoint unbound: {DescribeBreakpoint(pendingBreakpoint)} (reason={reason}).");
             _bridge.SessionTracker?.OnConcordBreakpointUnbound(pendingBreakpoint);
         }
         catch (Exception ex)
@@ -179,12 +206,36 @@ public sealed class ConcordSymbolMonitor :
     {
         try
         {
+            _bridge.Logger.Info($"Breakpoint message [{level}]: {DescribeBreakpoint(pendingBreakpoint)} — {message}");
             _bridge.SessionTracker?.OnConcordBreakpointUnbound(pendingBreakpoint);
         }
         catch (Exception ex)
         {
             _bridge.Logger.Error("Unhandled error in ConcordSymbolMonitor.OnBreakpointMessage.", ex);
         }
+    }
+
+    private static string DescribeBreakpoint(DkmPendingBreakpoint? bp)
+    {
+        try
+        {
+            if (bp is DkmPendingFileLineBreakpoint fileLine)
+            {
+                var pos = fileLine.GetCurrentSourcePosition();
+                return $"{WildcardPattern.ExtractFileNameSafe(pos.DocumentName)}({pos.TextSpan.StartLine})";
+            }
+
+            if (bp is DkmPendingFunctionBreakpoint func)
+            {
+                return func.FunctionName ?? "<function>";
+            }
+        }
+        catch
+        {
+            // Fall through
+        }
+
+        return bp?.GetType().Name ?? "<null>";
     }
 
     public void OnProcessExit(DkmProcess process, int exitCode, DkmEventDescriptor eventDescriptor)

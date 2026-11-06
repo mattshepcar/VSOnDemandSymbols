@@ -51,7 +51,7 @@ An IDE-side Concord component (`ConcordSymbolMonitor`, `ComponentLevel = 210000`
 ### 2.2 Detecting user-initiated symbol loads (ML-1)
 
 - `ConcordSymbolMonitor` implements `IDkmModuleSymbolsLoadedNotification` (`OnModuleSymbolsLoaded(DkmModuleInstance moduleInstance, DkmModule module, bool isReload, DkmWorkList workList, DkmEventDescriptor eventDescriptor)`), filtered to `DkmRuntimeId.Native`.
-- When `OnModuleSymbolsLoaded` fires for a `moduleInstance` that was **not** triggered by `ConcordSymbolMonitor.OnModuleInstanceLoad` or `SymbolLoader`, it was initiated externally by the user (e.g., clicking "Load Symbols" in the Modules window or on the "No Symbols Loaded" tab) → records an MRU hit with `TriggerReason.Manual` (ML-1).
+- When `OnModuleSymbolsLoaded` fires for a `moduleInstance` that was **not** triggered by `ConcordSymbolMonitor.OnModuleInstanceLoad` or `SymbolLoader`, it was initiated externally by the user (e.g., clicking "Load Symbols" in the Modules window or on the "No Symbols Loaded" tab) → logs the event with `TriggerReason.Manual` (ML-1).
 
 ---
 
@@ -68,11 +68,11 @@ We combine two clean, documented mechanisms (Strategy B + Concord Strategy A):
 
 ## 4. Before-launch hook
 
-1. **Always applied manual-load mode (D-9 / D-15):** The three manual-load boolean flags stay applied while a qualifying solution is open (SPEC §7.4), and the in-memory `WantedSet` snapshot is updated whenever design-time breakpoints, pins, or options change.
+1. **Always applied manual-load mode (D-9 / D-15 / D-18):** The manual-load boolean flags stay applied while a qualifying solution is open (SPEC §7.4), and `IncludeList` is kept updated with active breakpoint module binaries whenever design-time breakpoints or options change.
 2. **Pre-launch refresh (`CommandEvents.BeforeExecute`):** Subscribe to `CommandEvents.BeforeExecute` for:
    - `StandardCommandSet97`: `cmdidStart = 295` (F5), `cmdidRestart = 296`, `cmdidStepInto = 248` (F11), `cmdidStepOver = 249` (F10), `cmdidRunToCursor = 251` (Ctrl+F10), `cmdidDebugProcesses = 213` (Attach to Process).
    - `guidVSDebugCommand`: `cmdidReattach = 0xF010` (Reattach to Process), `cmdidSingleProcStepInto = 0x0156`, `cmdidSingleProcStepOver = 0x0157`.
-   When `DTE.Debugger.CurrentMode == dbgDebugMode.dbgDesignMode`, `BeforeExecute` runs synchronously before launch, pruning the MRU, diffing breakpoints, and publishing the immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
+   When `DTE.Debugger.CurrentMode == dbgDebugMode.dbgDesignMode`, `BeforeExecute` runs synchronously before launch, resolving breakpoints, updating `IncludeList`, and publishing the immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
 
 ---
 

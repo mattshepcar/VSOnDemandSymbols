@@ -25,9 +25,9 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 - [x] Create `src/VSOnDemandSymbols.Core` (netstandard2.0, nullable enabled) and `tests/VSOnDemandSymbols.Core.Tests` (xUnit).
 - [x] Abstractions: `IClock`, `IFileSystem`, `ILogger`, `IProjectModelProvider`.
 - [x] `ModuleKey`, `WildcardPattern` (including the `ue:` prefix), `TriggerReason`.
-- [x] `MruStore` with the exact pruning semantics of SPEC §5.6, with tests for MRU-3 to MRU-7, including the boundary cases (5th vs 6th run, exactly 24 h).
-- [x] `StateRepository` (JSON, atomic write, corrupt-file recovery, schema version).
-- [x] `LoadPolicy` (SPEC §5.7) with tests.
+- [x] ~~`MruStore`~~ *(removed per [DECISIONS.md](DECISIONS.md) D-20; MRU tracking eliminated)*
+- [x] ~~`StateRepository`~~ *(MRU state persistence removed per [DECISIONS.md](DECISIONS.md) D-20)*
+- [x] `LoadPolicy` (SPEC §5.7) updated for breakpoint modules + AlwaysLoad − NeverLoad (D-20).
 - [x] ~~`RecentlyBuiltScanner`~~ *(removed per [DECISIONS.md](DECISIONS.md) D-16)*
 - [x] Unreal resolver skeleton: Build.cs walk-up, Intermediate path special case, owner detection, manifest reader, DLL name parser, all using the *provisional* rules. Fixture trees under `tests/.../Fixtures/`.
 
@@ -46,14 +46,14 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 ## Phase 3 — Debugger integration core (Concord + Manual-Load Settings)
 
-- [x] `SymbolSettingsController`: backup, apply (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`), restore, crash recovery, leaving the user's `IncludeList` and `ExcludeList` untouched (D-15).
+- [x] `SymbolSettingsController`: backup, apply (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`), restore, crash recovery, managing `IncludeList` with user original backup preserved (D-15, D-17, D-18, D-20).
 - [x] Solution event handling: Unreal detection (SPEC §7.2), apply/restore on open/close.
 - [x] Concord component (`VSOnDemandSymbols.vsdconfigxml` → `.vsdconfig` asset in `.vsixmanifest`): `ConcordSymbolMonitor`, `ConcordSymbolBridge`, `SessionTracker`, `LoadedModuleRegistry` (`DkmModuleInstance`).
 - [x] `SymbolLoader` (`DkmModuleInstance.TryLoadSymbols()`) with de-duplicating queue and logging.
-- [x] Before-launch hook (per S5): prune the MRU, compute the wanted set, publish immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
+- [x] Before-launch hook (per S5 / D-18): resolve breakpoints to module DLL names, populate `IncludeList` with user backup preserved.
 - [x] Output pane logger.
 
-**Accept when:** launching the UE editor with an MRU containing `MyGame` loads symbols only for the wanted set via `ConcordSymbolMonitor.OnModuleInstanceLoad`. Session start and end are logged. Settings are restored when the solution closes, and after killing devenv.exe and restarting.
+**Accept when:** launching the UE editor with a breakpoint in `MyGame` loads symbols for `MyGame` via `IncludeList`. Session start and end are logged. Settings are restored when the solution closes, and after killing devenv.exe and restarting.
 
 ## Phase 4 — Triggers
 
@@ -61,19 +61,19 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 - [x] Call stack modes (CS-1 to CS-6): `CallStackMode` (`None`, `CurrentThread`, `CurrentThreadAllThreadsOnException`, `AllThreads`), `CallStackMaxFrames` (128), `CallStackIncludeExternalModules`, asynchronous AD7/DTE stack evaluation on `IDebugBreakEvent2` / `IDebugExceptionEvent2` / `IDebugBreakpointEvent2` / `IDebugStepCompleteEvent2` / `OnEnterBreakMode`.
 - [x] Frame activation (FA-1, FA-2): `DebuggerEvents.OnContextChanged` + break-mode selection listener loading symbols for activated frames and examining unexamined thread stacks.
 - [x] Manual-load detection (ML-1): `ConcordSymbolMonitor.OnModuleSymbolsLoaded` recording `TriggerReason.Manual`.
-- [x] MRU hit recording for all triggers; run bookkeeping at session end.
+- [x] ~~MRU hit recording for all triggers; run bookkeeping at session end~~ *(removed per [DECISIONS.md](DECISIONS.md) D-20)*
 - [x] MSBuild resolver (`MsBuildResolver`, `MsBuildProjectGraph`, `MsBuildProjectInfo`, `CompositeResolver`) through `ProjectModelProvider` (needed for `AllNative` scope), tested on `tests/Samples/NativeSample`.
 
 **Accept when:** every scenario in [TESTING.md](TESTING.md) §3 passes manually.
 
-## Phase 5 — UI
+## Phase 5 — UI (Simplified per D-20)
 
 - [ ] `.vsct`: Debug > On-Demand Symbols submenu, toolbar, toggle command with checked state.
-- [ ] Options `DialogPage` with every setting in SPEC §8.5, wired to live behaviour.
-- [ ] Context menu commands (SPEC §8.4) with dynamic text.
-- [ ] Tool window (SPEC §8.3): WPF, MVVM, VS theme colours (`EnvironmentColors`), works in design and debug mode.
+- [ ] Options `DialogPage` with settings in SPEC §8.5 (Scope, Breakpoint, CallStack, AlwaysLoad/NeverLoad patterns, Logging; MRU options removed per D-20).
+- [ ] Context menu command (SPEC §8.4): "Load Symbols for '{Module}' Now" while debugging. (Pinning command removed per D-20).
+- [ ] Optional diagnostics/status tool window (SPEC §8.3): lightweight display of active breakpoint modules in `IncludeList` and session load counters (MRU/pinned actions removed per D-20).
 
-**Accept when:** every UI surface works in both light and dark themes, and in VS 2022 17.14 and VS 2026.
+**Accept when:** toggle command, options page, and context menu work in both light and dark themes, and in VS 2022 17.14 and VS 2026.
 
 ## Phase 6 — Hardening and release
 

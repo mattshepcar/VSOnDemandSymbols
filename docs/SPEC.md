@@ -47,51 +47,55 @@ Automatically keep symbol loading limited to the modules that are likely to be n
 | **Module key** | The extension's stable identity for a module (see §6.1). For Unreal this is the UBT module name, for example `MyGame` or `Engine`. For non-Unreal projects it is the output file name, for example `MyLib.dll`. |
 | **Session / run** | One debug session (launch or attach) of a qualifying process, from start until the debugger returns to design mode. |
 | **Trigger** | An event that means a module's symbols are needed (§5). |
-| **Wanted set** | The set of module keys whose symbols should load as soon as their module loads. |
-| **MRU** | The most-recently-used list of module keys that triggered recently. It is persisted per solution. |
-| **Pinned** | A module key the user explicitly marked "Always load" for the solution. Pinned keys are never pruned. |
+| **Wanted set** | The set of module keys / binary file names containing active breakpoints (plus always-load patterns) that are populated into the debugger's `IncludeList` for launch. |
 | **Qualifying session** | A debug session the extension acts on, according to the Scope setting (§7.1). |
 
 ---
 
 ## 4. How it works (overview)
 
-1. While a qualifying solution is open (and the extension is enabled), the extension puts the Visual Studio symbol settings into **"Load only specified modules"** ("Automatically choose what module symbols to search for") mode (`IsManualLoad = true`). It also turns off **"Always load symbols located next to modules"** (`IsLoadAdjacent = false`, because Unreal PDBs live next to their DLLs) and **"Automatically include additional symbols when needed"** (`AutomaticSymbolLoad = false`, so call-stack symbol loading obeys the extension's `CallStackMode` and never-load rules; see D-13). The user's own include and exclude lists are never modified (see D-15).
-2. Before each launch or attach, the extension computes the **wanted set** and publishes it to its in-process **Concord debugger component** (`ConcordSymbolMonitor`). As each native DLL loads (`IDkmModuleInstanceLoadNotification`), the target process is paused inside the loader notification; if the DLL matches the wanted set, the Concord component calls `DkmModuleInstance.TryLoadSymbols()` synchronously right there. That happens off the VS UI thread (NF-1) and before `DllMain` or `StartupModule()` runs.
-3. While the session runs, the Concord component and IDE event hooks listen for triggers. When a trigger fires for a module that is already loaded without symbols, the extension calls `DkmModuleInstance.TryLoadSymbols()` right away. If the module is not loaded yet, its key is added to the live wanted set so `OnModuleInstanceLoad` loads its symbols the moment the DLL maps into the process.
-4. When the solution closes, the extension is disabled, or VS shuts down, the user's original symbol settings flags are restored.
+1. While a qualifying solution is open (and the extension is enabled), the extension puts the Visual Studio symbol settings into **"Load only specified modules"** ("Automatically choose what module symbols to search for") mode (`IsManualLoad = true`). It turns off **"Always load symbols located next to modules"** (`IsLoadAdjacent = false`, because Unreal PDBs live next to their DLLs) and **"Automatically include additional symbols when needed"** (`AutomaticSymbolLoad = false`, so call-stack symbol loading obeys the extension's `CallStackMode` and never-load rules; see D-13). The user's original `IncludeList` is backed up and preserved (D-17).
+2. The extension resolves all active breakpoints to module binary names. These breakpoint modules (plus any `AlwaysLoadPatterns` and preserving the user's original `IncludeList` entries) are written to Visual Studio's **`IncludeList`** (`IVsDebuggerSymbolSettings120A.IncludeList`) before launch and whenever breakpoints change.
+3. At launch, Visual Studio natively inspects `IncludeList` and loads symbols automatically for modules with breakpoints as they map into the process, allowing breakpoints to bind immediately.
+4. While the session runs, when execution breaks (breakpoint hit, exception, assertion, step, or pause) or the user inspects stack frames, symbols for un-symbolized frames are loaded **on demand** (via DTE `Module.LoadSymbols()`). Loading on demand when execution stops is fast enough that carrying forward previously loaded modules across sessions via an MRU or pinned list is unnecessary (D-20).
+5. When the solution closes, the extension is disabled, or VS shuts down, the user's original symbol settings flags and `IncludeList` are restored.
 
 ```mermaid
 flowchart LR
-    subgraph Inputs
-        BP["Breakpoints"]
-        CS["Call stacks on break"]
-        MRU["MRU and pinned list"]
+    subgraph Startup Inputs
+        BP["Active Breakpoints"]
         AL["Always-load patterns"]
+        UIN["User IncludeList"]
+    end
+    subgraph Run-time Inputs
+        CS["Call stacks on break"]
+        FA["Frame activation"]
+        MBP["Mid-session breakpoints"]
     end
     BP --> POL["Load policy"]
-    CS --> POL
-    MRU --> POL
     AL --> POL
+    UIN --> POL
     NL["Never-load patterns"] --> POL
-    POL -->|"at module load (Concord)"| OML["OnModuleInstanceLoad → TryLoadSymbols()"]
-    POL -->|"during session"| LS["TryLoadSymbols() now"]
+    POL -->|"at launch / BP change"| INC["VS Symbol Settings IncludeList"]
+    INC -->|"at module load (native VS)"| VSL["VS loads symbols at startup"]
+    CS -->|"on break / step / exception"| OND["On-demand loader (DTE / Concord)"]
+    FA -->|"frame selected"| OND
+    MBP -->|"BP added mid-session"| OND
     POL --> LOG["Output pane log"]
-    POL --> STATE["Per-solution state (.vs)"]
 ```
 
 ---
 
 ## 5. Triggers: when symbols are loaded
 
-Each trigger has a **reason code**. The reason is logged and stored in the MRU entry. A trigger always (a) loads the module's symbols if the module is loaded and has none, (b) adds the module key to the wanted set for the rest of the session, and (c) records an MRU hit (§5.6), unless the key matches a never-load pattern.
+Each trigger has a **reason code**. The reason is logged in the Output pane. A trigger loads the module's symbols (via the `IncludeList` at startup or via on-demand load during break mode), unless the key matches a never-load pattern.
 
 ### 5.1 Breakpoints — reason `Breakpoint`
 
 | ID | Requirement |
 |---|---|
-| BP-1 | At session start, every **enabled** file/line breakpoint (including tracepoints) in `DTE.Debugger.Breakpoints` is resolved to module key(s), and those keys join the wanted set. |
-| BP-2 | A breakpoint added or enabled **while the process is running or in break mode** triggers immediately. If the module is loaded without symbols, its symbols load right away and the breakpoint binds. If the module isn't loaded yet, it joins the wanted set so symbols load when the module loads. |
+| BP-1 | At session start (and whenever breakpoints change before launch), every **enabled** file/line breakpoint (including tracepoints) in `DTE.Debugger.Breakpoints` is resolved to module key(s) and binary file name(s), which are written to Visual Studio's `IncludeList`. |
+| BP-2 | A breakpoint added or enabled **while the process is running or in break mode** updates the `IncludeList` and triggers an immediate on-demand load (`Module.LoadSymbols()`) if the module is already loaded without symbols, so the breakpoint binds immediately. |
 | BP-3 | Disabled breakpoints are ignored by default (setting `IncludeDisabledBreakpoints`). |
 | BP-4 | Function breakpoints that are module-qualified (`UnrealEditor-MyGame.dll!AMyActor::Tick` or `{,,UnrealEditor-MyGame.dll}AMyActor::Tick`) trigger for that module. Unqualified function breakpoints can't be resolved in v1; they are logged at Verbose level. |
 | BP-5 | Breakpoints in header files resolve to the module that owns the header's folder (§6). Inlined copies in other modules are not covered; this is a documented limitation. |
@@ -102,7 +106,7 @@ Each trigger has a **reason code**. The reason is logged and stored in the MRU e
 
 | ID | Requirement |
 |---|---|
-| CS-1 | When the debugger enters break mode (breakpoint hit, step complete, user pause, exception, `__debugbreak`/`check`/`ensure`), the frames selected by `CallStackMode` are examined. Every frame whose module has no symbols triggers a load. |
+| CS-1 | When the debugger enters break mode (breakpoint hit, step complete, user pause, exception, `__debugbreak`/`check`/`ensure`), the frames selected by `CallStackMode` are examined. Every frame whose module has no symbols triggers an immediate on-demand load. |
 | CS-2 | `CallStackMode` values: `None`; `CurrentThread`; `CurrentThreadAllThreadsOnException` (**default**); `AllThreads`. With the default, all threads are examined only when the stop reason is an exception, an unhandled exception/crash, or a hard-coded break (`__debugbreak`, which is how UE's `check`/`ensure` failures stop). |
 | CS-3 | `CallStackMaxFrames` (default 128) limits how many frames per thread are examined. |
 | CS-4 | Frames in modules outside the solution (Windows, CRT, drivers, third-party) also load symbols by default. This can use the user's configured symbol servers. Setting: `CallStackIncludeExternalModules` (default `true`). The never-load list can exclude specific ones. |
@@ -113,46 +117,37 @@ Each trigger has a **reason code**. The reason is logged and stored in the MRU e
 
 | ID | Requirement |
 |---|---|
-| FA-1 | When the user activates a stack frame (double-clicks it in the Call Stack, Threads or Parallel Stacks window, or switches the current thread) and that frame's module has no symbols, the extension loads them. Setting: `LoadOnFrameActivation` (default `true`). |
+| FA-1 | When the user activates a stack frame (double-clicks it in the Call Stack, Threads or Parallel Stacks window, or switches the current thread) and that frame's module has no symbols, the extension loads them on demand. Setting: `LoadOnFrameActivation` (default `true`). |
 | FA-2 | When FA-1 fires for a thread whose stack hasn't been examined, the whole stack of that thread is examined, as in CS-1 with `CurrentThread` semantics. |
 
 ### 5.4 Recently built — *(removed per [DECISIONS.md](DECISIONS.md) D-16)*
 
-Binary modification timestamps (`RB-1`–`RB-5`) are not used as a trigger. Symbols are loaded at startup only for modules with breakpoints, modules in the MRU or pinned lists, and `AlwaysLoadPatterns`. Hot-reload (`UnrealEditor-X-1234.dll`) and Live Coding patch modules (`*.patch_N.exe`) map to their parent `ModuleKey` via the DLL name parser (§6.2), so if the module has a breakpoint or is in the MRU/pinned list, its patch symbols load automatically.
+Binary modification timestamps (`RB-1`–`RB-5`) are not used as a trigger. Symbols are loaded at startup only for modules with breakpoints and `AlwaysLoadPatterns`. Hot-reload (`UnrealEditor-X-1234.dll`) and Live Coding patch modules (`*.patch_N.exe`) map to their parent `ModuleKey` via the DLL name parser (§6.2), so if the module has a breakpoint, its patch symbols load automatically.
 
 ### 5.5 Manual loads — reason `Manual`
 
 | ID | Requirement |
 |---|---|
-| ML-1 | If symbols for a module are loaded by something other than the extension (for example the user clicks "Load Symbols" in the Modules window or on the "No symbols loaded" page), the extension records an MRU hit with reason `Manual`. |
-| ML-2 | The "Load Symbols for This Module Now" command (§8.4) also records `Manual`. |
+| ML-1 | If symbols for a module are loaded by something other than the extension (for example the user clicks "Load Symbols" in the Modules window or on the "No symbols loaded" page), the extension logs the event with reason `Manual`. |
+| ML-2 | The "Load Symbols for This Module Now" command (§8.4) also triggers an on-demand load and logs `Manual`. |
 
-### 5.6 MRU list
+### 5.6 MRU list and pinning — *(removed per [DECISIONS.md](DECISIONS.md) D-20)*
 
-| ID | Requirement |
-|---|---|
-| MRU-1 | Every trigger in §5.1–§5.5 records a hit for the module key. A hit sets `LastTriggerUtc = now`, `RunsSinceTrigger = 0`, and `LastReason` / `LastReasonDetail` (for example `Breakpoint: MyActor.cpp(42)`). It also increments `TriggerCount`. |
-| MRU-2 | Being loaded **because** the module is in the MRU list does not count as a hit. Neither do the pinned list and always-load patterns. |
-| MRU-3 | At the **end** of each qualifying session, every MRU entry that got no hit during that session has `RunsSinceTrigger` incremented. |
-| MRU-4 | At the **start** of each qualifying session, before computing the wanted set, unpinned entries are pruned if **either** `RunsSinceTrigger >= MruMaxRuns` (default 5) **or** `now - LastTriggerUtc >= MruMaxAge` (default 24 hours). Both thresholds are configurable. |
-| MRU-5 | So a module that triggered in run N is still loaded at the start of runs N+1 through N+5 (provided it's less than 24 hours since the trigger), and pruned at the start of run N+6. |
-| MRU-6 | A breakpoint that stays set keeps re-triggering (BP-1) every run, so its module is never pruned while the breakpoint exists. |
-| MRU-7 | `MruMaxEntries` (default 200) caps the list; the least recently triggered unpinned entries are evicted first. |
-| MRU-8 | The user can pin, unpin and forget entries (§8.3, §8.5). |
+The MRU feature and pruning rules (MRU-1 through MRU-8), as well as module pinning, are removed. On-demand symbol loading when execution stops is fast enough that carrying forward previously loaded modules across sessions is unnecessary. Startup symbol loading is restricted solely to modules that currently have breakpoints (plus `AlwaysLoadPatterns`), maximizing startup performance and eliminating state tracking across runs.
 
-### 5.7 Load policy (how the wanted set is computed)
+### 5.7 Load policy (how IncludeList and on-demand loads are computed)
 
 ```
-Wanted = AlwaysLoad patterns
-       ∪ Pinned keys
-       ∪ MRU keys (after pruning)
-       ∪ Breakpoint keys
-       ∪ keys triggered earlier in this session
-       − NeverLoad patterns
+IncludeList (before launch / on breakpoint change) = 
+       User Original IncludeList
+     ∪ AlwaysLoad patterns
+     ∪ Breakpoint module keys/binaries
+     − NeverLoad patterns
 ```
 
-- Never-load always wins over automatic triggers. It does **not** block explicit user actions (Modules window, "Load Symbols Now" command).
-- The wanted set is computed before launch, and recomputed incrementally when triggers fire during a session.
+- **Startup:** Only the modules in `IncludeList` have symbols loaded when the process starts. Visual Studio checks `IncludeList` natively at module load time.
+- **Mid-session on-demand loading:** When execution enters break mode (CS-1), a frame is selected (FA-1), or a breakpoint is added mid-session (BP-2), symbols for the relevant modules are loaded immediately via DTE `Module.LoadSymbols()`.
+- **Never-load rules:** `NeverLoadPatterns` always wins over automatic triggers. It does **not** block explicit user actions (Modules window, "Load Symbols Now" command).
 
 ---
 
@@ -207,21 +202,21 @@ The engine root is the folder containing `Engine/Build/Build.version` found this
 
 ### 7.3 Session qualification
 
-A debug session qualifies when the extension is enabled, the Scope allows the solution, and the session debugs native code. In `UnrealOnly` mode, a process whose image name doesn't match `UnrealProcessPatterns` (default `UnrealEditor*.exe;UE4Editor*.exe;<ProjectName>*.exe`) is still debugged with the manual-load setting (because VS symbol settings are global), so for non-matching processes the Concord component can either leave them in manual mode or load their symbols if desired; triggers and MRU bookkeeping are skipped for non-qualifying processes, and they don't count as a run.
+A debug session qualifies when the extension is enabled, the Scope allows the solution, and the session debugs native code. In `UnrealOnly` mode, a process whose image name doesn't match `UnrealProcessPatterns` (default `UnrealEditor*.exe;UE4Editor*.exe;<ProjectName>*.exe`) is still debugged with the manual-load setting (because VS symbol settings are global), so for non-matching processes the Concord component can either leave them in manual mode or load their symbols if desired; triggers are skipped for non-qualifying processes.
 
 ### 7.4 Lifecycle of the VS symbol settings
 
 | Event | Action |
 |---|---|
-| Qualifying solution opened, extension enabled | Back up the user's symbol settings flags to disk (§9.2). Apply manual-load mode: `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`. The user's `IncludeList` is left untouched (D-15). |
-| Before launch/attach (Debug.Start, Step Into to start, Attach to Process, Reattach) | Recompute the wanted set: prune the MRU and resolve breakpoints. Publish the wanted set snapshot to the Concord component (`ConcordSymbolMonitor`). |
-| Module loads during a session (`IDkmModuleInstanceLoadNotification`) | Concord component checks the wanted set while the target process is paused at the DLL load event; if wanted, calls `DkmModuleInstance.TryLoadSymbols()` synchronously before `DllMain` / `StartupModule()`. |
-| Trigger during a session | Call `DkmModuleInstance.TryLoadSymbols()` now if the module is loaded. Otherwise add it to the live wanted set snapshot so `OnModuleInstanceLoad` loads it when mapped. |
-| Session ends | MRU bookkeeping (MRU-3). Save state. |
-| Solution closed / extension disabled / Scope changed to exclude / VS shutdown | Restore the user's settings from the backup. Delete the backup file. |
+| Qualifying solution opened, extension enabled | Back up the user's symbol settings flags and original `IncludeList` to disk (§9.2). Apply manual-load mode: `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false` (D-13, D-17). |
+| Before launch/attach (or when breakpoints change) | Resolve active breakpoints to module keys and binary names. Populate the user's original `IncludeList` + breakpoint modules + `AlwaysLoadPatterns` into VS's `IncludeList` (D-17, D-20). |
+| Module loads during a session (`IDkmModuleInstanceLoadNotification`) | Visual Studio checks `IncludeList` natively and loads symbols synchronously at DLL map time for modules with breakpoints before `DllMain` / `StartupModule()`. |
+| Trigger during a session (break / call stack / frame activation / mid-session breakpoint) | Load symbols on demand (`Module.LoadSymbols()`) immediately for the required module(s). |
+| Session ends | Log session summary. (No MRU bookkeeping; no state saving). |
+| Solution closed / extension disabled / Scope changed to exclude / VS shutdown | Restore the user's original settings flags and original `IncludeList` from the backup. Delete the backup file. |
 | VS starts and a backup file exists (previous crash) | Restore from the backup before doing anything else. Log it. |
 
-Only these three boolean flags are ever modified: **manual-load mode** (`IsManualLoad`), **load-adjacent** (`IsLoadAdjacent`), and **automatic additional symbol load** (`IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`). Symbol paths, cache folder, symbol servers, the **include list** (`IncludeList`), and the **exclude list** (`ExcludeList`) are never touched (D-15).
+Only these settings are modified: **manual-load mode** (`IsManualLoad`), **load-adjacent** (`IsLoadAdjacent`), **automatic additional symbol load** (`IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`), and the **include list** (`IncludeList`). The user's original `IncludeList` entries are preserved and merged with active breakpoint modules. Symbol paths, cache folder, symbol servers, and the **exclude list** (`ExcludeList`) are never touched (D-15, D-17, D-20).
 
 > Disabling the extension during a session takes effect at the next session. The log says so. The user can still use VS's built-in "Load All Symbols".
 
@@ -238,38 +233,37 @@ Only these three boolean flags are ever modified: **manual-load mode** (`IsManua
 ### 8.2 Output window pane — "On-Demand Symbols"
 
 At `Info` level, it logs:
-- Session start: `Session #42 — UnrealEditor.exe — wanted 15 modules (pinned 2, MRU 9, breakpoints 3, always 1); pruned 4 from MRU.`
+- Session start: `Session #42 — UnrealEditor.exe — wanted 4 modules (breakpoints 3, always 1).`
 - Each load: `[12:01:03.512] Loading symbols: UnrealEditor-MyGame.dll — Breakpoint: MyActor.cpp(42)`
 - Failures: `Symbols not found for UnrealEditor-Foo.dll (searched: ...)`
-- Session end: `Session ended — 812 modules loaded, symbols for 21 (15 at load, 6 on demand). MRU: 21 entries.`
+- Session end: `Session ended — 812 modules loaded, symbols for 7 (4 at load, 3 on demand).`
 - Warnings: unresolved breakpoint files, settings restored after a crash.
 
 `Verbose` adds resolution details and skipped triggers. `Diagnostic` adds raw debugger events and timing.
 
-### 8.3 Tool window — "On-Demand Symbols"
+### 8.3 Tool window — "On-Demand Symbols" (Diagnostics / Status)
 
-Opened from **Debug > Windows > On-Demand Symbols** and **View > Other Windows**. It shows a sortable grid with one row per tracked module key:
+Opened from **Debug > Windows > On-Demand Symbols** and **View > Other Windows**. It shows a sortable grid of tracked modules:
 
 | Column | Content |
 |---|---|
 | Module | Module key (UBT module name or DLL name) |
 | Binary | Resolved DLL file name(s) |
 | Status | In the current session: Not loaded / Loaded (no symbols) / Symbols loaded / Symbols not found |
-| Source | Pinned / MRU / Always / Session-only |
+| Source | Breakpoint / Always / OnDemand |
 | Last reason | For example `Breakpoint: MyActor.cpp(42)` |
-| Last triggered | Relative time |
-| Runs since trigger | Number (shows when it will be pruned) |
 
-- **Row actions:** Pin/Unpin, Forget, Load Symbols Now (during a session), Open Containing Folder, Copy Name.
-- **Toolbar:** Enabled toggle, Clear MRU (with confirmation), Refresh, Open Log, Open Options.
-- **Header strip:** live session counters (modules loaded / symbols loaded / pending wanted).
-- The window must work in design mode (shows persisted state) and in debug mode (adds live status).
+- **Row actions:** Load Symbols Now (during a session), Open Containing Folder, Copy Name.
+- **Toolbar:** Enabled toggle, Refresh, Open Log, Open Options.
+- **Header strip:** live session counters (modules loaded / symbols loaded / on-demand loads).
+- The window works in design mode (shows breakpoint modules configured in IncludeList) and in debug mode (adds live status).
 
 ### 8.4 Context menu commands
 
 On a C/C++ file in Solution Explorer, a document tab, or the code editor context menu:
-- **Always Load Symbols for '{Module}'**: checkable, pins/unpins the resolved module key for this solution. The text shows the resolved module name. The command is hidden or disabled if the file can't be resolved.
-- **Load Symbols for '{Module}' Now**: visible only while debugging. Loads immediately and records reason `Manual`.
+- **Load Symbols for '{Module}' Now**: visible only while debugging. Loads immediately on demand and records reason `Manual`.
+
+*(The former "Always Load Symbols for '{Module}'" pin command has been removed per D-20.)*
 
 ### 8.5 Options page — Tools > Options > Debugging > On-Demand Symbols
 
@@ -283,10 +277,6 @@ On a C/C++ file in Solution Explorer, a document tab, or the code editor context
 | Call stack | `CallStackMaxFrames` | 128 |
 | Call stack | `CallStackIncludeExternalModules` | true |
 | Call stack | `LoadOnFrameActivation` | true |
-| MRU | `MruEnabled` | true |
-| MRU | `MruMaxRuns` | 5 |
-| MRU | `MruMaxAgeHours` | 24 |
-| MRU | `MruMaxEntries` | 200 |
 | Lists | `AlwaysLoadPatterns` (`;`-separated wildcards on DLL/EXE file name) | `UnrealEditor.exe;UnrealEditor-Win64-*.exe` |
 | Lists | `NeverLoadPatterns` | *(empty)* |
 | Logging | `LogLevel` (Off / Info / Verbose / Diagnostic) | Info |
@@ -299,36 +289,14 @@ The options page uses a `DialogPage`, which works in both VS 2022 and VS 2026.
 
 ## 9. Persistence
 
-### 9.1 Per-solution state
+### 9.1 Per-solution state — *(not required per DECISIONS.md D-20)*
 
-- Path: `<SolutionDir>/.vs/<SolutionName>/OnDemandSymbols/state.json`.
-- Debug sessions started without a solution use `%LOCALAPPDATA%/OnDemandSymbols/nosolution/<hash of exe path>/state.json`.
-- Writes are atomic (write a temp file, then rename). A corrupt file is renamed to `state.json.bad` and replaced with fresh state, with a warning in the log.
-
-```json
-{
-  "schemaVersion": 1,
-  "sessionCount": 42,
-  "forceUnrealMode": null,
-  "modules": {
-    "MyGame": {
-      "kind": "Unreal",
-      "binaries": ["UnrealEditor-MyGame.dll"],
-      "pinned": false,
-      "lastTriggerUtc": "2026-11-05T19:58:12Z",
-      "runsSinceTrigger": 0,
-      "lastReason": "Breakpoint",
-      "lastReasonDetail": "MyActor.cpp(42)",
-      "triggerCount": 17
-    }
-  }
-}
-```
+Because MRU tracking and module pinning are removed, the extension does not need to persist module history in `state.json`. All launch symbol requirements are derived dynamically and freshly from active solution breakpoints at launch time.
 
 ### 9.2 Symbol settings backup (global)
 
 - Path: `%LOCALAPPDATA%/OnDemandSymbols/<VS instance id>[_<root suffix>]/symbol-settings-backup.json`. The instance ID separates VS 2022, VS 2026 and the Experimental instance.
-- Contents: the user's original manual-load flag (`IsManualLoad`), load-adjacent flag (`IsLoadAdjacent`), automatic-symbol-load flag (`AutomaticSymbolLoad`), a timestamp, and the PID of the VS process that applied it.
+- Contents: the user's original manual-load flag (`IsManualLoad`), load-adjacent flag (`IsLoadAdjacent`), automatic-symbol-load flag (`AutomaticSymbolLoad`), original `IncludeList`, a timestamp, and the PID of the VS process that applied it.
 - On startup, if a backup exists and its PID isn't a live process of this VS instance, restore it (crash recovery).
 
 ### 9.3 Extension options
@@ -365,7 +333,7 @@ Stored through `DialogPage` in the VS settings store (global per VS instance).
 
 These are answered with the defaults above. Revisit them during implementation.
 
-1. Should an attach session count as a "run" for MRU pruning? **Default: yes.**
+1. Should an attach session count as a "run" for MRU pruning? **Obsolete:** MRU tracking is removed per D-20.
 2. Should the main editor EXE plus a small core set (`Core`, `CoreUObject`, `Engine`) be always-loaded by default to make early crash stacks nicer? **Default: EXE only.** The call-stack trigger covers the rest.
 3. When several Unreal processes are debugged in one session (for example editor plus a PIE client process), are their triggers shared? **Default: yes**, keys are per solution.
-4. If VS already loads symbols for call-stack modules on its own in "only specified modules" mode, should the call-stack trigger (CS-1) defer to it and only record MRU hits? **Resolved (D-13):** VS 17.0+ exposes `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`, which the extension sets to `false` while active so CS-1 (`CallStackMode`) and `NeverLoadPatterns` have deterministic control.
+4. If VS already loads symbols for call-stack modules on its own in "only specified modules" mode, should the call-stack trigger (CS-1) defer to it? **Resolved (D-13):** VS 17.0+ exposes `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad`, which the extension sets to `false` while active so CS-1 (`CallStackMode`) and `NeverLoadPatterns` have deterministic control.

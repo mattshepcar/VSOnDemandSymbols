@@ -5,11 +5,10 @@
 - Framework: xUnit. Target `net8.0` for fast local runs, and also `net472` to match the VS runtime.
 - No VS dependencies, no real clock (`FakeClock`), and either a fake file system or temporary fixture folders.
 - Required coverage:
-  - **MruStore:** hits, run increments, pruning at exactly `MruMaxRuns` and exactly `MruMaxAge`, the EITHER semantics, pinned entries never pruned, `MruMaxEntries` eviction order, forget/pin/unpin.
-  - **LoadPolicy:** set algebra of SPEC §5.7, never-load wins over triggers but not over manual loads, pattern matching including `ue:` patterns.
+  - **LoadPolicy:** set algebra of SPEC §5.7 (IncludeList from breakpoint keys + AlwaysLoad − NeverLoad), never-load wins over triggers but not over manual loads, pattern matching including `ue:` patterns.
   - **Unreal resolver:** every golden case in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §7, plus multiple-Build.cs folders, deep nesting, plugin/project/engine owners, Intermediate paths, unresolved paths, cache invalidation.
   - **DLL name parser:** positive and negative cases, including Windows API-set DLLs, third-party DLLs with hyphens, and hot reload / config suffixes.
-  - **StateRepository:** round-trip, atomic write, corrupt file recovery, unknown future schema version (refuse to overwrite; log it).
+  - *(MruStore and MRU StateRepository tests removed per D-20)*
 - Fixture trees: put minimal fake engine/project trees under `tests/VSOnDemandSymbols.Core.Tests/Fixtures/` (empty `.Build.cs`, `.uplugin`, `.uproject`, `Build.version`, and sample `.modules` JSON).
 
 ## 2. Integration tests (opt-in)
@@ -33,11 +32,11 @@ Run these against a real UE 5.x project (C++ game module plus one project plugin
 | M8 | *(Removed per D-16)* | — |
 | M9 | *(Removed per D-16)* | — |
 | M10 | Live Coding patch (Ctrl+Alt+F11) with a breakpoint in the changed function | The patch's symbols load; the breakpoint in the patched code is hit. |
-| M11 | Run 6 sessions without touching module X (triggered in session 0) | X is loaded in sessions 1–5 and pruned at the start of session 6. |
-| M12 | Advance the clock / wait 24 h after X's trigger, then F5 | X is pruned. |
-| M13 | Pin X through the context menu; repeat M11 | X is never pruned. |
+| M11 | *(Removed per D-20: MRU removed)* | — |
+| M12 | *(Removed per D-20: MRU removed)* | — |
+| M13 | *(Removed per D-20: Pinning removed)* | — |
 | M14 | Never-load `UnrealEditor-Foo.dll`, set a breakpoint in Foo | No automatic load; the log explains why; the Modules window "Load Symbols" still works. |
-| M15 | Load symbols manually through the Modules window for module Y | MRU hit with reason `Manual`. |
+| M15 | Load symbols manually through the Modules window for module Y | Event logged with reason `Manual`. |
 | M16 | Close the solution | Tools > Options > Debugging > Symbols shows exactly the user's original settings. |
 | M17 | Kill devenv.exe mid-session, restart VS | The settings are restored at startup, and the log says so. |
 | M18 | Toggle Enabled off, F5 | Normal VS symbol behaviour (all symbols). |
@@ -48,6 +47,6 @@ Run these against a real UE 5.x project (C++ game module plus one project plugin
 
 ## 4. Performance checks
 
-- Use the Diagnostic log level to time: wanted-set computation, the module-load handler (aggregate and max), and each `LoadSymbols` call.
-- Compare editor startup time (launch to main window) for: VS default (all symbols), extension with an empty MRU, and extension with a typical MRU. Record the results in `docs/BENCHMARKS.md`.
+- Use the Diagnostic log level to time: breakpoint module resolution, IncludeList update, and each `LoadSymbols` call.
+- Compare editor startup time (launch to main window) for: VS default (all symbols), extension with empty IncludeList (only always-load list), and extension with breakpoint modules in IncludeList. Record the results in `docs/BENCHMARKS.md`.
 

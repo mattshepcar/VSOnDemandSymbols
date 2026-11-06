@@ -13,17 +13,15 @@ VSOnDemandSymbols/
 │  │  ├─ VSOnDemandSymbols.vsdconfigxml   # Concord component configuration → compiled to .vsdconfig
 │  │  ├─ source.extension.vsixmanifest    # Registers Package + DebuggerEngineExtension asset
 │  │  ├─ VSOnDemandSymbols.vsct           # commands, menus, toolbar
-│  │  ├─ Commands/                        # Toggle, Pin, LoadNow, ShowToolWindow
+│  │  ├─ Commands/                        # Toggle, LoadNow, ShowToolWindow
 │  │  ├─ Debugger/                        # Concord component + SymbolSettingsController + DTE hooks (§3)
 │  │  ├─ Projects/                        # IProjectModelProvider implementation (DTE/VCProjectEngine)
 │  │  ├─ Options/                         # DialogPage
-│  │  ├─ ToolWindow/                      # WPF tool window + view model
+│  │  ├─ ToolWindow/                      # WPF tool window + view model (Diagnostics / Status)
 │  │  └─ Logging/                         # Output window pane logger
 │  └─ VSOnDemandSymbols.Core/             # netstandard2.0. NO Visual Studio references.
 │     ├─ Modules/                         # ModuleKey, resolvers, Unreal naming, manifests, DLL parser
 │     ├─ Policy/                          # LoadPolicy, TriggerReason, WildcardPattern
-│     ├─ Mru/                             # MruStore, pruning rules
-│     ├─ State/                           # JSON state repository, schema, atomic writes
 │     └─ Abstractions/                    # IClock, IFileSystem, ILogger, IProjectModelProvider
 └─ tests/
    ├─ VSOnDemandSymbols.Core.Tests/       # xUnit (net8.0 + net472), fixture trees, golden tests
@@ -40,44 +38,39 @@ The existing blank project currently sits at the repo root. Phase 1 moves it to 
 flowchart TD
     subgraph VSIX["VSIX + Concord Component (VS-specific)"]
         PKG["VSOnDemandSymbolsPackage"]
-        SSC["SymbolSettingsController (manual-load flags only)"]
-        CSM["ConcordSymbolMonitor (IDkmModuleInstanceLoad / SymbolsLoaded / BreakpointManager)"]
+        SSC["SymbolSettingsController (manual-load flags & IncludeList)"]
+        CSM["ConcordSymbolMonitor (IDkmModuleInstanceLoad / SymbolsLoaded)"]
         ST["SessionTracker"]
         MR["LoadedModuleRegistry (DkmModuleInstance)"]
-        SL["SymbolLoader (DkmModuleInstance.TryLoadSymbols)"]
-        BW["BreakpointWatcher (CommandEvents + Concord unbound BP)"]
+        SL["SymbolLoader (DTE Module.LoadSymbols)"]
+        BW["BreakpointWatcher / Ad7BreakpointEventListener"]
         CST["CallStackTrigger"]
         FAT["FrameActivationTrigger"]
         PMP["ProjectModelProvider"]
-        UI["Commands / ToolWindow / Options / OutputLog"]
+        UI["Commands / Options / OutputLog"]
     end
     subgraph CORE["Core (pure .NET)"]
         RES["CompositeResolver (Unreal + MsBuild)"]
         NAM["UnrealBinaryNaming + ManifestReader + DllNameParser"]
         POL["LoadPolicy"]
-        MRU["MruStore"]
-        REPO["StateRepository"]
     end
     PKG --> SSC
     PKG --> ST
     CSM --> MR
-    CSM --> BW
     CSM --> POL
     BW --> RES
+    BW --> POL
+    POL --> SSC
     CST --> MR
     FAT --> MR
-    BW --> POL
     CST --> POL
     FAT --> POL
     POL --> SL
     SL --> MR
     RES --> NAM
     RES --> PMP
-    POL --> MRU
-    MRU --> REPO
-    ST --> MRU
     UI --> POL
-    UI --> MRU
+    UI --> SSC
 ```
 
 ## 3. Components
@@ -85,17 +78,15 @@ flowchart TD
 | Component | Responsibility | Thread |
 |---|---|---|
 | `VSOnDemandSymbolsPackage` | Async background load; builds the object graph; subscribes to solution events; crash-recovery restore at startup. | Background, then UI for service access |
-| `SymbolSettingsController` | Back up, apply and restore VS symbol settings boolean flags (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`; SPEC §7.4, §9.2). **Never modifies `IncludeList` or `ExcludeList`.** Single owner of all writes to symbol settings. Idempotent. | UI |
-| `ConcordSymbolMonitor` | IDE-side Concord component (`ComponentLevel = 210000`, in-process in `devenv.exe`). Implements `IDkmModuleInstanceLoadNotification`, `IDkmModuleInstanceUnloadNotification`, `IDkmModuleSymbolsLoadedNotification`, `IDkmBreakpointManagerNotification`, and `IDkmProcessExitNotification`. Calls `moduleInstance.TryLoadSymbols()` synchronously on module load when the module matches the wanted set. | Concord engine worker thread (off UI thread) |
-| `ConcordSymbolBridge` | Thread-safe in-process bridge holding the current immutable wanted-set snapshot and routing Concord notifications to `LoadedModuleRegistry`, `BreakpointWatcher`, `SymbolLoader`, and `OutputLog`. | Any (lock-free / concurrent) |
-| `SessionTracker` | Session start/end, qualification (SPEC §7.3), run counting. | UI / Engine |
+| `SymbolSettingsController` | Back up, apply and restore VS symbol settings boolean flags (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`) and manages `IncludeList` dynamically by merging active breakpoint modules with the user's backed-up original list (D-15, D-17, D-18, D-20). Single owner of symbol settings writes. Idempotent. | UI |
+| `ConcordSymbolMonitor` | IDE-side Concord component (`ComponentLevel = 210000`, in-process in `devenv.exe`). Implements `IDkmModuleInstanceLoadNotification`, `IDkmModuleInstanceUnloadNotification`, `IDkmModuleSymbolsLoadedNotification`, and `IDkmProcessExitNotification`. Maintains `LoadedModuleRegistry`. | Concord engine worker thread (off UI thread) |
+| `ConcordSymbolBridge` | Thread-safe in-process bridge holding current wanted-set snapshot and routing notifications. | Any (lock-free / concurrent) |
+| `SessionTracker` | Session start/end, qualification (SPEC §7.3), session summary logging. No MRU bookkeeping. | UI / Engine |
 | `LoadedModuleRegistry` | For each process: loaded modules → (`DkmModuleInstance`, path, `ModuleKey?`, symbol state). Reverse-maps each module to a key once, at load. | Any (`ConcurrentDictionary`) |
-| `SymbolLoader` | De-duplicating queue of load requests (key + reason). Calls `DkmModuleInstance.TryLoadSymbols()`, tracks the result, and logs. Never loads the same module twice per session. | Background / Concord worker thread |
-| `BreakpointWatcher` | Detects breakpoint changes via `CommandEvents.AfterExecute` (design-time and run-time) plus Concord `IDkmBreakpointManagerNotification` (`DkmPendingFileLineBreakpoint` / `DkmPendingFunctionBreakpoint`), resolves files to keys, raises `Breakpoint` triggers. | UI for DTE, background for resolution |
+| `SymbolLoader` | De-duplicating queue of mid-session load requests (key + reason). Loads symbols via DTE `Module.LoadSymbols()`, tracks the result, and logs. | Background / UI |
+| `BreakpointWatcher` / `Ad7BreakpointEventListener` | Observes breakpoint events (`IDebugBreakpointErrorEvent2`, design-time changes), resolves files to keys, updates `IncludeList`, and triggers on-demand loads. | UI for DTE, background for resolution |
 | `CallStackTrigger` / `FrameActivationTrigger` | SPEC §5.2 and §5.3. Examines frames on break / frame activation and queues `SymbolLoader` for modules without symbols. | UI / background |
-| `LoadPolicy` (Core) | Computes the wanted set (SPEC §5.7) and answers "should module X load?" for a reason; applies the always/never patterns. | Any (immutable snapshots) |
-| `MruStore` (Core) | Hits, run increments, pruning, pin/forget. | Any (locked) |
-| `StateRepository` (Core) | Load/save of `state.json` with atomic writes and schema versioning. | Background |
+| `LoadPolicy` (Core) | Computes `IncludeList` set (SPEC §5.7) from breakpoint keys and `AlwaysLoadPatterns`; evaluates whether on-demand module loads are permitted against `NeverLoadPatterns`. | Any (immutable snapshots) |
 | `CompositeResolver` (Core) | Source file → keys (MODULE_RESOLUTION.md). Cached. | Background |
 | `ProjectModelProvider` (VSIX) | Exposes solution/project info (TargetPath, project membership, static-lib references) to Core through `IProjectModelProvider`. Snapshots are built on the UI thread and then used from any thread. | UI to build, any to read |
 | `OutputLog` | `ILogger` implementation that writes to the "On-Demand Symbols" output pane; level filter. | Any (`OutputStringThreadSafe`) |
@@ -108,20 +99,23 @@ flowchart TD
 sequenceDiagram
     participant U as User
     participant VS as VS Shell
-    participant H as BeforeLaunch hook
+    participant H as BeforeLaunch hook / BreakpointWatcher
     participant P as LoadPolicy
-    participant B as ConcordSymbolBridge
-    participant C as ConcordSymbolMonitor
+    participant S as SymbolSettingsController
+    participant D as VS Debug Engine
     U->>VS: F5
     VS->>H: Debug.Start BeforeExecute
-    H->>P: Prune MRU, resolve breakpoints
-    P-->>H: Wanted set (keys → DLL names)
-    H->>B: Publish immutable WantedSet snapshot
-    VS->>C: Launch UnrealEditor.exe (manual-load mode active)
-    loop For each of ~800 native DLLs (on Concord worker thread, target paused)
-        C->>B: Is module in WantedSet?
-        alt Wanted and no symbols loaded
-            C->>C: moduleInstance.TryLoadSymbols() (before DllMain/StartupModule)
+    H->>P: Resolve active breakpoints
+    P-->>H: Breakpoint modules (DLL names)
+    H->>S: Update IncludeList (breakpoints + AlwaysLoad + user original)
+    S-->>VS: SaveSymbolSettings(IncludeList)
+    VS->>D: Launch UnrealEditor.exe (manual-load mode active)
+    loop For each native DLL loaded at startup
+        D->>D: Is DLL in IncludeList?
+        alt In IncludeList
+            D->>D: VS loads symbols natively; breakpoints bind immediately
+        else Not in IncludeList
+            D->>D: Symbols skipped; fast startup
         end
     end
 ```
@@ -131,21 +125,21 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant C as ConcordSymbolMonitor / BreakpointWatcher
+    participant BW as BreakpointWatcher / Ad7BreakpointEventListener
     participant R as Resolver
-    participant P as LoadPolicy
+    participant S as SymbolSettingsController
     participant L as SymbolLoader
     participant M as LoadedModuleRegistry
-    U->>C: Sets breakpoint in MyActor.cpp
-    C->>R: Resolve file
-    R-->>C: Unreal:MyGame
-    C->>P: Trigger(MyGame, Breakpoint)
-    P->>M: Is MyGame loaded?
+    U->>BW: Sets breakpoint in MyActor.cpp
+    BW->>R: Resolve file
+    R-->>BW: Unreal:MyGame -> UnrealEditor-MyGame.dll
+    BW->>S: Add to IncludeList
+    BW->>M: Is MyGame loaded?
     alt loaded without symbols
-        P->>L: moduleInstance.TryLoadSymbols()
+        BW->>L: Load symbols now (Module.LoadSymbols)
         L-->>U: Breakpoint binds automatically
     else not loaded yet
-        P->>P: Add to WantedSet snapshot (loaded when DLL maps in OnModuleInstanceLoad)
+        Note over BW,S: VS will load symbols when mapped via IncludeList
     end
 ```
 

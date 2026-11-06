@@ -3,17 +3,16 @@
 ## What this project is
 
 **On-Demand Symbols** is a Visual Studio extension (VSIX) that speeds up debugging large native C++ applications, mainly the **Unreal Engine 5 editor** (about 800 DLLs). It puts the debugger into "load only specified modules" mode, then loads symbols automatically for exactly the modules that are needed:
-- modules with breakpoints
-- modules on the call stack when execution breaks
-- a most-recently-used list, pruned after 5 runs or 1 day
+- modules with breakpoints (populated into the debugger's `IncludeList` before launch so breakpoints bind immediately)
+- modules on the call stack when execution breaks (loaded on demand)
 
-**Read [docs/SPEC.md](docs/SPEC.md) before writing any code.** It's the source of truth for behaviour. Requirement IDs (BP-1, CS-2, MRU-4, NF-1, …) are referenced throughout. Cite them in code comments, commits and tests where relevant.
+**Read [docs/SPEC.md](docs/SPEC.md) before writing any code.** It's the source of truth for behaviour. Requirement IDs (BP-1, CS-2, NF-1, …) are referenced throughout. Cite them in code comments, commits and tests where relevant.
 
 ## Documentation map
 
 | Doc | Use it for |
 |---|---|
-| [docs/SPEC.md](docs/SPEC.md) | What the extension does: triggers, MRU rules, UI, settings, persistence, non-functional requirements |
+| [docs/SPEC.md](docs/SPEC.md) | What the extension does: triggers, IncludeList setup, UI, settings, persistence, non-functional requirements |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Project layout, components, threading, sequences |
 | [docs/MODULE_RESOLUTION.md](docs/MODULE_RESOLUTION.md) | Source file → module → DLL mapping (Unreal and vcxproj). The Unreal naming rules are **provisional** until Phase 2 |
 | [docs/VS_DEBUGGER_INTEGRATION.md](docs/VS_DEBUGGER_INTEGRATION.md) | VS debugger APIs (AD7, DTE, symbol settings, Concord), open risks, Phase 0 spikes |
@@ -29,10 +28,10 @@
 
 ## Golden rules
 
-1. **Never leave the user's VS symbol settings modified.** All writes go through `SymbolSettingsController`, which backs up first and restores on close, disable, exit and crash recovery (SPEC §7.4, §9.2). Only the manual-load flag (`IsManualLoad`), the load-adjacent flag (`IsLoadAdjacent`), and the automatic additional symbol load flag (`AutomaticSymbolLoad`) may be changed. **Never** touch symbol paths, servers, the cache, the include list, or the exclude list (D-15).
+1. **Never leave the user's VS symbol settings modified.** All writes go through `SymbolSettingsController`, which backs up first and restores on close, disable, exit and crash recovery (SPEC §7.4, §9.2). The manual-load flag (`IsManualLoad`), the load-adjacent flag (`IsLoadAdjacent`), the automatic additional symbol load flag (`AutomaticSymbolLoad`), and the `IncludeList` are managed dynamically by the extension. The user's original `IncludeList` is preserved and merged with modules containing breakpoints (D-17, D-18, D-20). **Never** touch symbol paths, servers, the cache, or the exclude list.
 2. **Never break the debug session.** Every debugger event handler is wrapped in try/catch and logs failures (NF-5).
 3. **Keep the module-load path cheap.** About 800 module loads happen at startup. No file I/O, no blocking, no LINQ-heavy allocation in that handler (NF-1). Precompute everything before launch.
-4. **Core stays VS-free.** Logic that can be tested without VS (resolution, naming, MRU, policy, state) lives in `VSOnDemandSymbols.Core` (netstandard2.0) with unit tests. The VSIX project is a thin adapter.
+4. **Core stays VS-free.** Logic that can be tested without VS (resolution, naming, policy) lives in `VSOnDemandSymbols.Core` (netstandard2.0) with unit tests. The VSIX project is a thin adapter.
 5. **Spec first.** If behaviour needs to differ from SPEC.md, update SPEC.md (and add a DECISIONS.md entry) in the same change, or ask the user. Don't silently diverge.
 6. **Don't guess Unreal naming rules.** If something isn't confirmed in MODULE_RESOLUTION.md §8, check the UBT source or ask. Mark any assumption clearly as provisional.
 

@@ -42,6 +42,12 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     /// </summary>
     public bool IsEnabled { get; set; }
 
+    /// <summary>
+    /// Gets or sets the symbol loading policy when execution breaks or context changes.
+    /// Defaults to the <c>ODS_BREAK_SYMBOL_LOAD_MODE</c> environment variable if set, otherwise <see cref="BreakSymbolLoadMode.LocalOnly"/>.
+    /// </summary>
+    public BreakSymbolLoadMode BreakSymbolLoadMode { get; set; } = BreakSymbolLoadModeExtensions.FromEnvironment();
+
     public DebuggerSessionMonitor(
         DTE2 dte,
         IVsDebugger vsDebugger,
@@ -262,7 +268,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        if (!IsEnabled)
+        if (!IsEnabled || BreakSymbolLoadMode == BreakSymbolLoadMode.Off)
         {
             return;
         }
@@ -306,7 +312,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         var debugger = _dte.Debugger;
-        if (!IsEnabled || debugger?.CurrentMode != dbgDebugMode.dbgBreakMode)
+        if (!IsEnabled || BreakSymbolLoadMode == BreakSymbolLoadMode.Off || debugger?.CurrentMode != dbgDebugMode.dbgBreakMode)
         {
             return;
         }
@@ -329,7 +335,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         var debugger = _dte.Debugger;
-        if (!IsEnabled || debugger?.DebuggedProcesses == null)
+        if (!IsEnabled || BreakSymbolLoadMode == BreakSymbolLoadMode.Off || debugger?.DebuggedProcesses == null)
         {
             return;
         }
@@ -420,8 +426,11 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 return;
             }
 
-            // Load symbols using scoped masking so internet symbol servers are never queried
-            _settings.ExecuteWithMaskedSymbolServers(candidateBinaries, () =>
+            bool maskServers = (BreakSymbolLoadMode == BreakSymbolLoadMode.LocalOnly);
+            string modeDesc = maskServers ? " (local-only)" : string.Empty;
+
+            // Load symbols using configured server policy (masked or unmasked)
+            _settings.ExecuteWithCandidateModules(candidateBinaries, maskSymbolServers: maskServers, () =>
             {
                 ThreadHelper.ThrowIfNotOnUIThread();
                 foreach (var mod in targetModules)
@@ -434,7 +443,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
                     try
                     {
-                        _logger.Info($"Loading symbols on demand (local-only): {modFileName} — {reason}");
+                        _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason}");
                         mod.LoadSymbols(string.Empty);
                     }
                     catch (Exception ex)
@@ -442,11 +451,11 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         // Expected when symbols are not available locally (e.g. OS DLLs not in local cache)
                         if (WildcardPattern.IsUserCodeModule(modFileName))
                         {
-                            _logger.Warning($"Could not load local symbols for {modFileName}: {ex.Message}");
+                            _logger.Warning($"Could not load symbols for {modFileName}: {ex.Message}");
                         }
                         else
                         {
-                            _logger.Diagnostic($"Local symbols not available for system module {modFileName}: {ex.Message}");
+                            _logger.Diagnostic($"Symbols not available for system module {modFileName}: {ex.Message}");
                         }
                     }
                     finally

@@ -245,6 +245,49 @@ public sealed class SymbolSettingsManager
     }
 
     /// <summary>
+    /// Prepares symbol settings for on-demand loading of candidate modules:
+    /// ensures candidate modules are added to IncludeList so Visual Studio's manual-load mode permits loading them,
+    /// optionally masks remote symbol servers so only local/cached symbols are resolved,
+    /// and restores original settings/server flags in finally.
+    /// </summary>
+    public void ExecuteWithCandidateModules(IEnumerable<string>? candidateModules, bool maskSymbolServers, Action loadAction)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        if (loadAction == null) throw new ArgumentNullException(nameof(loadAction));
+
+        if (maskSymbolServers)
+        {
+            ExecuteWithMaskedSymbolServers(candidateModules, loadAction);
+            return;
+        }
+
+        EnsureBackupExists();
+        var current = _settingsManager.GetCurrentSymbolSettings();
+        var updated = current.Clone();
+
+        bool changed = false;
+        if (candidateModules != null)
+        {
+            foreach (string candidate in candidateModules)
+            {
+                string clean = WildcardPattern.ExtractFileNameSafe(candidate);
+                if (!string.IsNullOrWhiteSpace(clean))
+                {
+                    updated.IncludeList.Add(clean, true);
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow: false);
+        }
+
+        loadAction();
+    }
+
+    /// <summary>
     /// Executes an action with remote symbol servers temporarily masked (disabled)
     /// and candidate module names merged into IncludeList, ensuring that only local and cached
     /// symbols are resolved by Visual Studio's native debug engine without querying internet servers.

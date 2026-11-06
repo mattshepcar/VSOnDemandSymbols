@@ -35,14 +35,14 @@ This document is the actionable, phased implementation plan for the clean-slate 
     - [x] 6.1.4 Hook `DebuggerEvents.OnContextChanged` to handle thread switching in the Threads window and frame activation in the Call Stack window.
     - [x] 6.1.5 Ensure candidate modules are added to `IncludeList` during the masked pass so `IsManualLoad = true` permits native loading.
     - [x] 6.1.6 Verify that all locally available symbols (adjacent, local paths, cache) load without network traffic, and right-click "Load Symbols" still queries internet servers.
-  - [ ] **Step 6.2: Introduce Simple Configuration Variable**
-    - [ ] 6.2.1 Define `BreakSymbolLoadMode` enum in `VSOnDemandSymbols.Core` (`Off = 0`, `LocalOnly = 1` [Default], `All = 2`).
-    - [ ] 6.2.2 Wire `BreakSymbolLoadMode` into `DebuggerSessionMonitor` to branch between:
+  - [x] **Step 6.2: Introduce Simple Configuration Variable**
+    - [x] 6.2.1 Define `BreakSymbolLoadMode` enum in `VSOnDemandSymbols.Core` (`Off = 0`, `LocalOnly = 1` [Default], `All = 2`).
+    - [x] 6.2.2 Wire `BreakSymbolLoadMode` into `DebuggerSessionMonitor` to branch between:
       - `Off`: Keep current behavior (no break symbol loading).
       - `LocalOnly`: Load local/cached symbols with server masking.
       - `All`: Load symbols with no server masking (allows remote servers).
-    - [ ] 6.2.3 Add environment variable override (`ODS_BREAK_SYMBOL_LOAD_MODE`) for immediate testing and verification without UI.
-    - [ ] 6.2.4 Add unit tests for configuration parsing and enum validation in `VSOnDemandSymbols.Core.Tests`.
+    - [x] 6.2.3 Add environment variable override (`ODS_BREAK_SYMBOL_LOAD_MODE`) for immediate testing and verification without UI.
+    - [x] 6.2.4 Add unit tests for configuration parsing and enum validation in `VSOnDemandSymbols.Core.Tests`.
   - [ ] **Step 6.3: Expose Configuration in Visual Studio Extension Settings**
     - [ ] 6.3.1 Implement `OnDemandSymbolsOptionPage : DialogPage` in `VSOnDemandSymbols/Options/` exposing `BreakSymbolLoadMode` in `Tools -> Options -> On-Demand Symbols -> General`.
     - [ ] 6.3.2 Register `[ProvideOptionPage]` on `VSOnDemandSymbolsPackage`.

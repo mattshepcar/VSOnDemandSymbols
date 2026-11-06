@@ -95,6 +95,7 @@ VSOnDemandSymbols/
 │   │   ├── Modules/
 │   │   │   └── UnrealModuleResolver.cs     # *.Build.cs walk-up, candidate DLL generator, Unreal solution check
 │   │   ├── Policy/
+│   │   │   ├── BreakSymbolLoadMode.cs      # Off, LocalOnly (default), All
 │   │   │   └── WildcardPattern.cs          # Wildcard pattern matcher (*, ?)
 │   │   └── State/
 │   │       └── SymbolSettingsBackupStore.cs# JSON backup read/write & PID crash recovery
@@ -151,10 +152,13 @@ VSOnDemandSymbols/
   * Coalesces error event bursts to the UI thread, rescans breakpoints via DTE, updates `IncludeList`, and invokes `mod.LoadSymbols("")` on matching modules in `DTE.Debugger.DebuggedProcesses`.
   * Breakpoints activate immediately without restarting the debug session.
   * Logs symbol loads with reason `Breakpoint`.
-* Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode`:
-  * Inspects `DTE.Debugger.CurrentThread.StackFrames`.
-  * For each frame without symbols, locates the matching `EnvDTE90.Module` from `DTE.Debugger.DebuggedProcesses` and calls `mod.LoadSymbols("")`.
-  * Logs every symbol load with reason `CallStack`.
+* Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode` and `OnContextChanged`:
+  * Governed by `BreakSymbolLoadMode` (`Off`, `LocalOnly` [default], `All`), configurable via environment variable or settings.
+  * Inspects `CurrentThread.StackFrames` fully, and up to 10 frames of background threads in `CurrentProgram.Threads` (stopping at the first user-code module).
+  * For `LocalOnly`, temporarily masks remote symbol servers so Visual Studio native loader resolves only adjacent, locally cached, or local path PDBs without network latency.
+  * For `All`, resolves symbols with remote symbol servers unmasked.
+  * For each frame without symbols, locates matching `EnvDTE90.Module` and calls `mod.LoadSymbols("")`.
+  * Logs symbol loads with reason `BreakMode` or `ContextChanged`.
 
 #### 5. `VSOnDemandSymbolsPackage` (VSIX)
 * Attributes: `[ProvideAutoLoad(CppSolutionUiContextGuidString, PackageAutoLoadFlags.BackgroundLoad)]`.

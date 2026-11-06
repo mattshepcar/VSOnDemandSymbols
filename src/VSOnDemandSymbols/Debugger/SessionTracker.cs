@@ -16,9 +16,7 @@ using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
-using VSOnDemandSymbols.Core.Mru;
 using VSOnDemandSymbols.Core.Policy;
-using VSOnDemandSymbols.Core.State;
 using VSOnDemandSymbols.Projects;
 
 namespace VSOnDemandSymbols.Debugger;
@@ -26,7 +24,7 @@ namespace VSOnDemandSymbols.Debugger;
 /// <summary>
 /// Coordinates solution qualification (SPEC §7.1–§7.3), before-launch wanted-set computation (S5),
 /// breakpoint triggers (BP-1–BP-7), call-stack triggers (CS-1–CS-6), frame-activation triggers (FA-1–FA-2),
-/// manual-load recording (ML-1), session start/end logging (SPEC §8.2), and MRU persistence (SPEC §5.6, §9.1).
+/// manual-load logging (ML-1), session start/end logging (SPEC §8.2), and IncludeList management (D-17, D-18, D-20).
 /// </summary>
 public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 {
@@ -48,7 +46,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private readonly IClock _clock;
     private readonly ILogger _logger;
 
-    private readonly StateRepository _stateRepository;
     private readonly UnrealOwnerDetector _ownerDetector;
     private readonly UnrealManifestReader _manifestReader;
     private readonly UnrealDllNameParser _dllParser;
@@ -57,7 +54,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private readonly MsBuildResolver _msBuildResolver;
     private readonly CompositeResolver _compositeResolver;
     private readonly UnrealSolutionDetector _solutionDetector;
-    private readonly MruStore _mruStore;
     private readonly LoadPolicy _loadPolicy;
     private readonly CallStackEvaluator _callStackEvaluator;
 
@@ -75,10 +71,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private uint _solutionEventsCookie;
 
     private UnrealSolutionInfo _currentSolutionInfo = UnrealSolutionInfo.NotUnreal;
-    private SolutionState _currentSolutionState = new();
     private string? _currentSolutionPath;
-    private string? _currentStateFilePath;
-    private DateTime _lastKnownStateWriteUtc;
+    private int _sessionCount;
 
     private IDebugProgram2? _activeBreakProgram;
     private IDebugThread2? _activeBreakThread;
@@ -113,7 +107,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
     public bool IsQualifyingSolutionOpen => Volatile.Read(ref _isQualifyingSolutionOpen);
     public UnrealSolutionInfo CurrentSolutionInfo => _currentSolutionInfo;
-    public MruStore MruStore => _mruStore;
     public LoadPolicy LoadPolicy => _loadPolicy;
     public UnrealResolver UnrealResolver => _unrealResolver;
     public MsBuildResolver MsBuildResolver => _msBuildResolver;
@@ -142,7 +135,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         _clock = clock ?? throw new ArgumentNullException(nameof(clock));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        _stateRepository = new StateRepository(_fileSystem, _logger);
         _ownerDetector = new UnrealOwnerDetector(_fileSystem);
         _manifestReader = new UnrealManifestReader(_fileSystem, _logger);
         _dllParser = new UnrealDllNameParser();
@@ -154,7 +146,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             Scope = _scope
         };
         _solutionDetector = new UnrealSolutionDetector(_fileSystem, _ownerDetector);
-        _mruStore = new MruStore(_clock);
         _loadPolicy = new LoadPolicy(WildcardPattern.ParseMultiple(DefaultAlwaysLoadPatterns));
         _callStackEvaluator = new CallStackEvaluator(_loadPolicy);
     }
@@ -190,15 +181,12 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             if (!isSameSolution)
             {
                 _currentSolutionPath = solutionFullName;
-                _currentStateFilePath = StateRepository.GetSolutionStateFilePath(solutionFullName!);
-                LoadStateFromDisk(_currentStateFilePath);
             }
 
             IReadOnlyList<string> projectPaths = CollectSolutionProjectPaths();
             _currentSolutionInfo = _solutionDetector.Detect(
                 solutionFullName,
-                projectPaths,
-                _currentSolutionState.ForceUnrealMode);
+                projectPaths);
 
             _unrealResolver.EngineRoot = _currentSolutionInfo.EngineRoot;
             _unrealResolver.ProjectRoot = _currentSolutionInfo.ProjectRoot;
@@ -226,12 +214,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 bool newlyQualified = !_isQualifyingSolutionOpen || !isSameSolution;
                 _isQualifyingSolutionOpen = true;
 
-                // Ensure the per-solution state file exists on disk so users and tests can inspect or edit it.
-                if (_currentStateFilePath != null && !_fileSystem.FileExists(_currentStateFilePath))
-                {
-                    SaveStateToDisk();
-                }
-
                 _symbolSettingsController.ApplyManualLoadMode();
 
                 if (newlyQualified)
@@ -240,10 +222,9 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                     _logger.Info(
                         $"{modeLabel} solution detected: '{Path.GetFileName(solutionFullName)}' " +
                         $"(ProjectRoot={_currentSolutionInfo.ProjectRoot ?? "none"}, " +
-                        $"EngineRoot={_currentSolutionInfo.EngineRoot ?? "none"}, " +
-                        $"MRU entries={_mruStore.GetEntries().Count}).");
+                        $"EngineRoot={_currentSolutionInfo.EngineRoot ?? "none"}).");
 
-                    PublishWantedSetSnapshot(pruneMru: false);
+                    PublishWantedSetSnapshot();
                     _lastDesignModeBreakpointSignature = CaptureCurrentBreakpointSignature();
                     _lastSeenDesignModeBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
                     _symbolSettingsController.ApplyWantedSetToIncludeList(_bridge.CurrentSnapshot.WantedFileNames, "solution opened");
@@ -263,7 +244,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     }
 
     /// <summary>
-    /// Runs before debug launch or attach (S5) to prune the MRU, resolve enabled breakpoints,
+    /// Runs before debug launch or attach (S5) to resolve enabled breakpoints,
     /// and publish an immutable <see cref="WantedSetSnapshot"/> to <see cref="ConcordSymbolBridge"/>.
     /// </summary>
     public void PrepareSessionBeforeLaunch()
@@ -278,9 +259,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         try
         {
             var sw = Stopwatch.StartNew();
-
-            // Reload state.json if it was modified on disk outside the extension (e.g. manual test setup).
-            ReloadStateIfModifiedExternally();
 
             if (_scope == SymbolScope.AllNative)
             {
@@ -300,7 +278,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 _bridge.ResetForNewSession();
                 _symbolLoader.ResetForNewSession();
 
-                PublishWantedSetSnapshot(pruneMru: true);
+                PublishWantedSetSnapshot();
 
                 _sessionPreparedForLaunch = true;
                 _sessionStartedLogged = false;
@@ -473,11 +451,10 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         {
             if (!_sessionPreparedForLaunch)
             {
-                // If launch bypassed CommandEvents.BeforeExecute, prune MRU and build snapshot from in-memory state.
+                // If launch bypassed CommandEvents.BeforeExecute, build snapshot from in-memory state.
                 _bridge.ResetForNewSession();
                 _symbolLoader.ResetForNewSession();
-                IReadOnlyList<ModuleKey> pruned = _mruStore.StartSessionAndPrune();
-                BuildAndPublishSnapshotCore(pruned, breakpointKeys: Array.Empty<ModuleKey>(), breakpointReasons: null);
+                BuildAndPublishSnapshotCore(breakpointKeys: Array.Empty<ModuleKey>(), breakpointReasons: null);
                 _sessionPreparedForLaunch = true;
 
                 _logger.Warning(
@@ -489,15 +466,13 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             if (!_sessionStartedLogged)
             {
                 _sessionStartedLogged = true;
-                _currentSolutionState.SessionCount++;
+                _sessionCount++;
 
                 var snapshot = _bridge.CurrentSnapshot;
                 _logger.Info(
-                    $"Session #{_currentSolutionState.SessionCount} — {exeName} — " +
+                    $"Session #{_sessionCount} — {exeName} — " +
                     $"wanted {snapshot.WantedKeys.Count} modules " +
-                    $"(pinned {snapshot.PinnedCount}, MRU {snapshot.MruCount}, " +
-                    $"breakpoints {snapshot.BreakpointCount}, always {snapshot.AlwaysCount}); " +
-                    $"pruned {snapshot.PrunedCount} from MRU.");
+                    $"(breakpoints {snapshot.BreakpointCount}, always {snapshot.AlwaysCount}).");
 
                 if (snapshot.WantedKeys.Count > 0)
                 {
@@ -547,7 +522,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             ?? _bridge.CurrentSnapshot.TryResolveLoadedModule(fileName)
             ?? new ModuleKey(ModuleKind.External, fileName);
 
-        _mruStore.RecordHit(key, TriggerReason.Manual, fileName, new[] { fileName });
         _bridge.AddWantedKeyLive(key, "Manual", new[] { fileName });
         _logger.Info($"Recorded manual symbol load: {fileName} ({key}) — Manual");
     }
@@ -576,7 +550,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
         const string prefix = "Breakpoint: ";
         var reasons = new Dictionary<ModuleKey, string>();
-        foreach (var key in ResolveDteBreakpoints(recordMruHits: true, reasons))
+        foreach (var key in ResolveDteBreakpoints(reasons))
         {
             string? detail = reasons.TryGetValue(key, out string? r) && r.StartsWith(prefix, StringComparison.Ordinal)
                 ? r.Substring(prefix.Length)
@@ -772,7 +746,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
         foreach (var decision in decisions)
         {
-            _mruStore.RecordHit(decision.Key, TriggerReason.CallStack, decision.Detail, decision.CandidateFileNames);
             _symbolLoader.EnqueueLoad(decision.Key, TriggerReason.CallStack, decision.Detail, decision.CandidateFileNames);
         }
     }
@@ -1034,14 +1007,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
         FinalizeSessionEndIfStarted();
 
-        if (_isQualifyingSolutionOpen)
-        {
-            SaveStateToDisk();
-        }
-
         _isQualifyingSolutionOpen = false;
         _currentSolutionPath = null;
-        _currentStateFilePath = null;
         _currentSolutionInfo = UnrealSolutionInfo.NotUnreal;
         _projectModelProvider.Clear();
         _msBuildResolver.InvalidateCache();
@@ -1079,22 +1046,17 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             int onDemand = _bridge.ModuleRegistry.SymbolsLoadedOnDemandCount;
             int totalSymbols = atLoad + onDemand;
 
-            _mruStore.EndSession();
-            SaveStateToDisk();
-
-            int mruCount = _mruStore.GetEntries().Count;
             _logger.Info(
                 $"Session ended — {totalModules} modules loaded, symbols for {totalSymbols} " +
-                $"({atLoad} at load, {onDemand} on demand). MRU: {mruCount} entries.");
+                $"({atLoad} at load, {onDemand} on demand).");
 
             _bridge.ResetForNewSession();
             _symbolLoader.ResetForNewSession();
         }
 
         // D-18: Do NOT clear IncludeList at session end. Re-populate it with the next session's wanted set
-        // (now including this session's MRU hits) so it is already in place before the next launch,
-        // independent of whether the before-launch hook fires. The user's original IncludeList is only
-        // restored on solution close, disable, VS exit, or crash recovery.
+        // so it is already in place before the next launch, independent of whether the before-launch hook fires.
+        // The user's original IncludeList is only restored on solution close, disable, VS exit, or crash recovery.
         _ = _joinableTaskFactory.RunAsync(RefreshIncludeListForNextSessionAsync);
     }
 
@@ -1118,7 +1080,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 }
             }
 
-            PublishWantedSetSnapshot(pruneMru: false);
+            PublishWantedSetSnapshot();
             _lastDesignModeBreakpointSignature = CaptureCurrentBreakpointSignature();
             _lastSeenDesignModeBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
             _symbolSettingsController.ApplyWantedSetToIncludeList(
@@ -1148,52 +1110,21 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         }
     }
 
-    private void PublishWantedSetSnapshot(bool pruneMru)
+    private void PublishWantedSetSnapshot()
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        IReadOnlyList<ModuleKey> pruned = pruneMru
-            ? _mruStore.StartSessionAndPrune()
-            : Array.Empty<ModuleKey>();
-
         var breakpointReasons = new Dictionary<ModuleKey, string>();
-        var breakpointKeys = ResolveDteBreakpoints(recordMruHits: pruneMru, breakpointReasons);
-        BuildAndPublishSnapshotCore(pruned, breakpointKeys, breakpointReasons);
+        var breakpointKeys = ResolveDteBreakpoints(breakpointReasons);
+        BuildAndPublishSnapshotCore(breakpointKeys, breakpointReasons);
     }
 
     private void BuildAndPublishSnapshotCore(
-        IReadOnlyList<ModuleKey> pruned,
         IReadOnlyList<ModuleKey> breakpointKeys,
         IReadOnlyDictionary<ModuleKey, string>? breakpointReasons)
     {
-        var bpKeySet = new HashSet<ModuleKey>(breakpointKeys);
-        var entries = _mruStore.GetEntries();
-        var pinnedKeys = new List<ModuleKey>();
-        var mruKeys = new List<ModuleKey>();
         var keyReasons = new Dictionary<ModuleKey, string>();
         var wantedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in entries)
-        {
-            if (entry.Pinned)
-            {
-                pinnedKeys.Add(entry.Key);
-                keyReasons[entry.Key] = "Pinned";
-            }
-            else if (_mruStore.Options.MruEnabled)
-            {
-                // Only count as an MRU carry-over if it had prior triggers or wasn't solely added by this session's breakpoint scan
-                if (!bpKeySet.Contains(entry.Key) || entry.TriggerCount > 1)
-                {
-                    mruKeys.Add(entry.Key);
-                }
-
-                string detailSuffix = !string.IsNullOrWhiteSpace(entry.LastReasonDetail)
-                    ? $": {entry.LastReasonDetail}"
-                    : string.Empty;
-                keyReasons[entry.Key] = $"MRU ({entry.LastReason}{detailSuffix})";
-            }
-        }
 
         foreach (var bpKey in breakpointKeys)
         {
@@ -1203,15 +1134,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             }
             else
             {
-                var entry = _mruStore.TryGetEntry(bpKey);
-                if (entry != null && entry.LastReason == TriggerReason.Breakpoint)
-                {
-                    keyReasons[bpKey] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, entry.LastReasonDetail);
-                }
-                else
-                {
-                    keyReasons[bpKey] = "Breakpoint";
-                }
+                keyReasons[bpKey] = "Breakpoint";
             }
         }
 
@@ -1229,8 +1152,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         }
 
         HashSet<ModuleKey> wantedKeys = _loadPolicy.ComputeWantedSet(
-            pinnedKeys,
-            mruKeys,
             breakpointKeys,
             sessionTriggeredKeys: null,
             getCandidateBinaries: key => _compositeResolver.GetCandidateFileNames(key));
@@ -1240,15 +1161,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             foreach (string candidate in _compositeResolver.GetCandidateFileNames(wantedKey))
             {
                 wantedFileNames.Add(WildcardPattern.ExtractFileNameSafe(candidate));
-            }
-
-            var entry = _mruStore.TryGetEntry(wantedKey);
-            if (entry != null)
-            {
-                foreach (string bin in entry.Binaries)
-                {
-                    wantedFileNames.Add(WildcardPattern.ExtractFileNameSafe(bin));
-                }
             }
         }
 
@@ -1262,17 +1174,13 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             dllParser: _dllParser,
             manifestDllToModuleMap: manifestMap,
             isAllNativeScope: _scope == SymbolScope.AllNative,
-            pinnedCount: pinnedKeys.Count,
-            mruCount: mruKeys.Count,
             breakpointCount: breakpointKeys.Count,
-            alwaysCount: alwaysCount,
-            prunedCount: pruned.Count);
+            alwaysCount: alwaysCount);
 
         _bridge.PublishSnapshot(snapshot);
     }
 
     private IReadOnlyList<ModuleKey> ResolveDteBreakpoints(
-        bool recordMruHits,
         Dictionary<ModuleKey, string> breakpointReasons)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
@@ -1320,11 +1228,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                         var candidates = _compositeResolver.GetCandidateFileNames(key);
                         if (!_loadPolicy.IsNeverLoad(key, candidates))
                         {
-                            if (recordMruHits)
-                            {
-                                _mruStore.RecordHit(key, TriggerReason.Breakpoint, detail, candidates);
-                            }
-
                             breakpointReasons[key] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, detail);
                             breakpointKeys.Add(key);
                         }
@@ -1354,11 +1257,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                             var candidates = _compositeResolver.GetCandidateFileNames(key.Value);
                             if (!_loadPolicy.IsNeverLoad(key.Value, candidates))
                             {
-                                if (recordMruHits)
-                                {
-                                    _mruStore.RecordHit(key.Value, TriggerReason.Breakpoint, func, candidates);
-                                }
-
                                 breakpointReasons[key.Value] = SymbolLoader.FormatReason(TriggerReason.Breakpoint, func);
                                 breakpointKeys.Add(key.Value);
                             }
@@ -1607,7 +1505,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         _lastDesignModeBreakpointSignature = currentSignature;
         _lastSeenDesignModeBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
 
-        PublishWantedSetSnapshot(pruneMru: false);
+        PublishWantedSetSnapshot();
         _symbolSettingsController.ApplyWantedSetToIncludeList(
             _bridge.CurrentSnapshot.WantedFileNames,
             $"design-mode {reasonDetail}");
@@ -1798,7 +1696,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
         foreach (var decision in decisions)
         {
-            _mruStore.RecordHit(decision.Key, TriggerReason.FrameActivated, decision.Detail, decision.CandidateFileNames);
             _symbolLoader.EnqueueLoad(decision.Key, TriggerReason.FrameActivated, decision.Detail, decision.CandidateFileNames);
         }
     }
@@ -1897,56 +1794,6 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         catch
         {
             // Ignore inaccessible subproject
-        }
-    }
-
-    private void LoadStateFromDisk(string stateFilePath)
-    {
-        _currentSolutionState = _stateRepository.Load(stateFilePath);
-        StateRepository.PopulateMruStore(_currentSolutionState, _mruStore);
-        _lastKnownStateWriteUtc = _fileSystem.FileExists(stateFilePath)
-            ? _fileSystem.GetLastWriteTimeUtc(stateFilePath)
-            : DateTime.MinValue;
-    }
-
-    private void ReloadStateIfModifiedExternally()
-    {
-        if (string.IsNullOrWhiteSpace(_currentStateFilePath) || !_fileSystem.FileExists(_currentStateFilePath!))
-        {
-            return;
-        }
-
-        DateTime diskWriteUtc = _fileSystem.GetLastWriteTimeUtc(_currentStateFilePath!);
-        if (diskWriteUtc > _lastKnownStateWriteUtc)
-        {
-            LoadStateFromDisk(_currentStateFilePath!);
-        }
-    }
-
-    private void SaveStateToDisk()
-    {
-        if (string.IsNullOrWhiteSpace(_currentStateFilePath))
-        {
-            return;
-        }
-
-        try
-        {
-            var updatedState = StateRepository.CreateFromMru(
-                _mruStore,
-                _currentSolutionState.SessionCount,
-                _currentSolutionState.ForceUnrealMode);
-
-            _currentSolutionState = updatedState;
-            _stateRepository.Save(_currentStateFilePath!, updatedState);
-            if (_fileSystem.FileExists(_currentStateFilePath!))
-            {
-                _lastKnownStateWriteUtc = _fileSystem.GetLastWriteTimeUtc(_currentStateFilePath!);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.Error($"Failed to save solution state to '{_currentStateFilePath}'.", ex);
         }
     }
 

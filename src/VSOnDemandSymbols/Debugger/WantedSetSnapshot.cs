@@ -21,11 +21,8 @@ public sealed class WantedSetSnapshot
         dllParser: new UnrealDllNameParser(),
         manifestDllToModuleMap: new Dictionary<string, ModuleKey>(StringComparer.OrdinalIgnoreCase),
         isAllNativeScope: false,
-        pinnedCount: 0,
-        mruCount: 0,
         breakpointCount: 0,
-        alwaysCount: 0,
-        prunedCount: 0);
+        alwaysCount: 0);
 
     private readonly HashSet<ModuleKey> _wantedKeys;
     private readonly HashSet<string> _wantedFileNames;
@@ -39,11 +36,8 @@ public sealed class WantedSetSnapshot
     public UnrealDllNameParser DllParser { get; }
     public bool IsAllNativeScope { get; }
 
-    public int PinnedCount { get; }
-    public int MruCount { get; }
     public int BreakpointCount { get; }
     public int AlwaysCount { get; }
-    public int PrunedCount { get; }
 
     public WantedSetSnapshot(
         HashSet<ModuleKey> wantedKeys,
@@ -53,11 +47,8 @@ public sealed class WantedSetSnapshot
         UnrealDllNameParser dllParser,
         Dictionary<string, ModuleKey> manifestDllToModuleMap,
         bool isAllNativeScope,
-        int pinnedCount,
-        int mruCount,
         int breakpointCount,
-        int alwaysCount,
-        int prunedCount)
+        int alwaysCount)
     {
         _wantedKeys = wantedKeys ?? throw new ArgumentNullException(nameof(wantedKeys));
         _wantedFileNames = wantedFileNames ?? throw new ArgumentNullException(nameof(wantedFileNames));
@@ -66,11 +57,8 @@ public sealed class WantedSetSnapshot
         DllParser = dllParser ?? throw new ArgumentNullException(nameof(dllParser));
         _manifestDllToModuleMap = manifestDllToModuleMap ?? throw new ArgumentNullException(nameof(manifestDllToModuleMap));
         IsAllNativeScope = isAllNativeScope;
-        PinnedCount = pinnedCount;
-        MruCount = mruCount;
         BreakpointCount = breakpointCount;
         AlwaysCount = alwaysCount;
-        PrunedCount = prunedCount;
     }
 
     /// <summary>
@@ -180,11 +168,8 @@ public sealed class WantedSetSnapshot
             DllParser,
             _manifestDllToModuleMap,
             IsAllNativeScope,
-            PinnedCount,
-            MruCount,
             BreakpointCount,
-            AlwaysCount,
-            PrunedCount);
+            AlwaysCount);
     }
 }
 

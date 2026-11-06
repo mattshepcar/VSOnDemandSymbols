@@ -7,26 +7,22 @@ namespace VSOnDemandSymbols.Core.Tests.Policy;
 public class LoadPolicyTests
 {
     [Fact]
-    public void ComputeWantedSet_UnionsAllSources_SubtractsNeverLoad()
+    public void ComputeWantedSet_UnionsBreakpointsAndAlwaysLoad_SubtractsNeverLoad()
     {
-        var pinned = new[] { new ModuleKey(ModuleKind.Unreal, "PinnedMod") };
-        var mru = new[] { new ModuleKey(ModuleKind.Unreal, "MruMod") };
-        var bp = new[] { new ModuleKey(ModuleKind.Unreal, "BpMod") };
+        var always = WildcardPattern.ParseMultiple("ue:AlwaysMod");
+        var bp = new[] { new ModuleKey(ModuleKind.Unreal, "BpMod"), new ModuleKey(ModuleKind.Unreal, "NeverMod") };
         var sessionTriggered = new[] { new ModuleKey(ModuleKind.Unreal, "SessionMod") };
-        var never = WildcardPattern.ParseMultiple("ue:MruMod; BpMod.dll");
+        var never = WildcardPattern.ParseMultiple("ue:NeverMod");
 
-        var policy = new LoadPolicy(neverLoadPatterns: never);
+        var policy = new LoadPolicy(alwaysLoadPatterns: always, neverLoadPatterns: never);
         var wanted = policy.ComputeWantedSet(
-            pinnedKeys: pinned,
-            mruKeys: mru,
             breakpointKeys: bp,
             sessionTriggeredKeys: sessionTriggered);
 
-        Assert.Contains(new ModuleKey(ModuleKind.Unreal, "PinnedMod"), wanted);
+        Assert.Contains(new ModuleKey(ModuleKind.Unreal, "AlwaysMod"), wanted);
         Assert.Contains(new ModuleKey(ModuleKind.Unreal, "BpMod"), wanted);
         Assert.Contains(new ModuleKey(ModuleKind.Unreal, "SessionMod"), wanted);
-        // MruMod matches ue:MruMod -> excluded
-        Assert.DoesNotContain(new ModuleKey(ModuleKind.Unreal, "MruMod"), wanted);
+        Assert.DoesNotContain(new ModuleKey(ModuleKind.Unreal, "NeverMod"), wanted);
     }
 
     [Fact]

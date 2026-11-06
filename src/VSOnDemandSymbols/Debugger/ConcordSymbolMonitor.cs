@@ -120,7 +120,7 @@ public sealed class ConcordSymbolMonitor :
     }
 
     /// <summary>
-    /// Detects user-initiated symbol loads (e.g. from the Modules window) and records <c>Manual</c> MRU hits (SPEC §5.5, ML-1).
+    /// Detects user-initiated symbol loads (e.g. from the Modules window) and logs them as <c>Manual</c> (SPEC §5.5, ML-1).
     /// </summary>
     public void OnModuleSymbolsLoaded(
         DkmModuleInstance moduleInstance,

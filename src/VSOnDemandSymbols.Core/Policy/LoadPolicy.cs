@@ -185,8 +185,6 @@ public sealed class LoadPolicy
     }
 
     public HashSet<ModuleKey> ComputeWantedSet(
-        IEnumerable<ModuleKey> pinnedKeys,
-        IEnumerable<ModuleKey> mruKeys,
         IEnumerable<ModuleKey> breakpointKeys,
         IEnumerable<ModuleKey>? sessionTriggeredKeys = null,
         Func<ModuleKey, IReadOnlyList<string>>? getCandidateBinaries = null)
@@ -200,16 +198,6 @@ public sealed class LoadPolicy
             {
                 wanted.Add(new ModuleKey(ModuleKind.Unreal, p.Pattern));
             }
-        }
-
-        if (pinnedKeys != null)
-        {
-            foreach (var k in pinnedKeys) wanted.Add(k);
-        }
-
-        if (mruKeys != null)
-        {
-            foreach (var k in mruKeys) wanted.Add(k);
         }
 
         if (LoadOnBreakpoints && breakpointKeys != null)

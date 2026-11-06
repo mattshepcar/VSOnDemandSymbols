@@ -13,14 +13,14 @@
 
 ### 1.1 The Problem
 The Unreal Editor loads ~800 DLLs at startup. Loading debug symbols (PDBs) for all of them doubles editor boot time under the debugger. Usually only a handful of modules need symbols:
-- Modules containing active breakpoints (needed so breakpoints bind at launch)
+- Modules containing breakpoints (both enabled and disabled, so enabling a breakpoint mid-session binds immediately)
 - Modules on the call stack when execution breaks (needed to diagnose exceptions and inspect code)
 
 Visual Studio provides a "Load only specified modules" mode, but managing that include list by hand across 800 DLLs is impractical.
 
 ### 1.2 The Goal
 Provide an **invisible, transparent, zero-maintenance** extension that:
-1. **Accelerates boot time:** Puts VS into manual-load mode and loads symbols at startup *only* for modules with active breakpoints (plus `UnrealEditor.exe`). Startup speed is within 10% of booting with symbol loading completely disabled.
+1. **Accelerates boot time:** Puts VS into manual-load mode and loads symbols at startup *only* for modules with breakpoints (plus `UnrealEditor.exe`). Startup speed is within 10% of booting with symbol loading completely disabled.
 2. **Guarantees breakpoint binding:** Breakpoints bind immediately at launch without user intervention.
 3. **Resolves call stacks on break:** When execution stops (breakpoint hit, crash, assertion, step), missing symbols for the breaking thread's stack frames are loaded on demand via DTE.
 4. **Never damages user settings:** The user's original symbol settings flags and original `IncludeList` are backed up to disk and restored on solution close, extension disable, VS exit, or after a crash (**Golden Rule #1**).
@@ -144,11 +144,11 @@ VSOnDemandSymbols/
 
 #### 4. `DebuggerSessionMonitor` (VSIX)
 * Subscribes to `DTE.Events.CommandEvents` for `StandardCommandSet97:cmdidStart (295)` (F5 Launch).
-  * Resolves all enabled breakpoints from `DTE.Debugger.Breakpoints`.
+  * Resolves all breakpoints (both enabled and disabled, D-25) from `DTE.Debugger.Breakpoints`.
   * Adds `UnrealEditor.exe`, `UnrealEditor-Win64-*.exe`, and candidate DLL names to `IncludeList` via `SymbolSettingsManager`.
 * Subscribes to AD7 `IVsDebugger.AdviseDebugEventCallback` (`IDebugBreakpointErrorEvent2`):
-  * When a breakpoint is added or enabled mid-session while running (or in break mode), Visual Studio's debug engine reports a binding error if the module's symbols are not loaded.
-  * Coalesces error event bursts to the UI thread, rescans active breakpoints via DTE, updates `IncludeList`, and invokes `mod.LoadSymbols("")` on matching modules in `DTE.Debugger.DebuggedProcesses`.
+  * When a new breakpoint is added mid-session while running (or in break mode), Visual Studio's debug engine reports a binding error if the module's symbols are not loaded.
+  * Coalesces error event bursts to the UI thread, rescans breakpoints via DTE, updates `IncludeList`, and invokes `mod.LoadSymbols("")` on matching modules in `DTE.Debugger.DebuggedProcesses`.
   * Breakpoints activate immediately without restarting the debug session.
   * Logs symbol loads with reason `Breakpoint`.
 * Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode`:

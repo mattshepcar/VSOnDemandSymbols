@@ -78,8 +78,8 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     }
 
     /// <summary>
-    /// Resolves enabled breakpoints to candidate binary names and populates Visual Studio's <c>IncludeList</c>.
-    /// Returns the list of candidate binary wildcard patterns for modules with active breakpoints.
+    /// Resolves breakpoints (both enabled and disabled) to candidate binary names and populates Visual Studio's <c>IncludeList</c>.
+    /// Returns the list of candidate binary wildcard patterns for modules with breakpoints.
     /// </summary>
     public IReadOnlyList<string> UpdateIncludeListFromBreakpoints(string reason = "before launch")
     {
@@ -103,7 +103,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             {
                 foreach (Breakpoint bp in _dte.Debugger.Breakpoints)
                 {
-                    if (!bp.Enabled || string.IsNullOrWhiteSpace(bp.File))
+                    if (string.IsNullOrWhiteSpace(bp.File))
                     {
                         continue;
                     }
@@ -121,12 +121,12 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 }
             }
 
-            _settings.ApplyManualMode(wantedBinaries, reason: $"{reason} (active breakpoints: {breakpointCount})");
+            _settings.ApplyManualMode(wantedBinaries, reason: $"{reason} (breakpoints: {breakpointCount})");
             return candidatePatterns;
         }
         catch (Exception ex)
         {
-            _logger.Error("Failed to update IncludeList from active breakpoints.", ex);
+            _logger.Error("Failed to update IncludeList from breakpoints.", ex);
             return Array.Empty<string>();
         }
     }

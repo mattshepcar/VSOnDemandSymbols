@@ -120,15 +120,17 @@ This document provides step-by-step verification instructions for the V2 clean-s
 
 ---
 
-### Test Case 9: Activating Disabled Breakpoint While Process is Running (D-24)
+### Test Case 9: Activating Disabled Breakpoint While Process is Running (D-25)
 1. Before starting debugging, set a breakpoint in a module and **disable** it (right-click glyph > Disable Breakpoint, or uncheck it in the Breakpoints window).
-2. Launch the Unreal Editor under the debugger (F5) and allow it to enter run mode.
-3. While the editor is running (not in a break state), **enable** the breakpoint (check the box in the Breakpoints window or right-click glyph > Enable Breakpoint).
-4. **Verify:**
-   - Visual Studio receives the breakpoint error notification from the debug engine.
+2. Press **F5** to launch the editor.
+3. **Verify at startup:**
    - The Output pane logs:
      ```
-     [Info] IncludeList updated (breakpoint bind error (active breakpoints: <N>)): <M> wanted binaries + <K> user entries.
-     [Info] Loading symbols on demand: UnrealEditor-<ModuleName>.dll — Breakpoint
+     [Info] IncludeList updated (before launch (breakpoints: 1)): 2 wanted binaries + <N> user entries.
      ```
-   - Symbols load on demand while running, and the breakpoint activates and binds immediately (solid red circle).
+   - Candidate wildcard for the module (`UnrealEditor-<ModuleName>*.dll`) was included in `IncludeList` even though the breakpoint was disabled.
+   - Visual Studio loads symbols for the module during startup.
+4. While the editor is running (not in a break state), **enable** the breakpoint (check the box in the Breakpoints window or right-click glyph > Enable Breakpoint).
+5. **Verify:**
+   - Because symbols are already loaded in the process, the breakpoint activates and binds immediately without any delay (glyph becomes solid red).
+   - When execution reaches the line, the breakpoint hits successfully.

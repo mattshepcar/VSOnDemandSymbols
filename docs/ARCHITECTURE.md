@@ -79,8 +79,8 @@ flowchart TD
 | Component | Project | Responsibility | Primary APIs Used |
 |---|---|---|---|
 | **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. | `AsyncPackage`, `IVsSolutionEvents` |
-| **`SymbolSettingsManager`** | VSIX | Single point of contact for symbol settings. Backs up original settings before any modification; applies manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`); merges active breakpoint binaries into `IncludeList`; cleanly restores original settings on close, disable, or crash recovery. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
-| **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints and update `IncludeList`. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `EnvDTE90.Module` |
+| **`SymbolSettingsManager`** | VSIX | Single point of contact for symbol settings. Backs up original settings before any modification; applies manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`); merges breakpoint module binaries into `IncludeList`; cleanly restores original settings on close, disable, or crash recovery. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
+| **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints (both enabled and disabled, D-25) and update `IncludeList`. Observes AD7 `IDebugBreakpointErrorEvent2` to load symbols on demand when breakpoints are added while running. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
 | **`UnrealModuleResolver`** | Core | Resolves source files to module names by walking up the directory tree to find `{Module}.Build.cs` (handling intermediate UHT and unity paths). Generates candidate DLL names (`UnrealEditor-{Module}*.dll`). Detects Unreal solutions (`*.uproject` or `Engine/Build/Build.version`). | `IFileSystem`, `ConcurrentDictionary` cache |
 | **`SymbolSettingsBackupStore`** | Core | Serializes symbol settings backups to `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`. Checks PID on startup to detect and recover from previous Visual Studio crashes. | `Newtonsoft.Json`, `IFileSystem` |
 | **`OutputLog`** | VSIX | Thread-safe logger outputting to the dedicated "On-Demand Symbols" pane in the Visual Studio Output window. | `IVsOutputWindowPane` |
@@ -107,7 +107,7 @@ During initial exploration (Phases 0–4), three complex subsystems were evaluat
 ### 3.3 Why MRU, Pinning, and Persistent State Were Eliminated (D-20)
 * **The Premise:** An MRU (Most Recently Used) cache and module pinning list were proposed to persist previously symbolized modules across debugging runs into `.vs/state.json`.
 * **The Reality:** On-demand symbol loading during break mode is fast (~100 ms). Carrying forward modules across sessions caused the `IncludeList` to bloat over time, steadily eroding the startup speedup that the extension exists to provide.
-* **The Solution:** The `IncludeList` is populated before launch solely for modules with active breakpoints (plus `UnrealEditor.exe` and `UnrealEditor-Win64-*.exe`). No session history or per-solution state files are maintained.
+* **The Solution:** The `IncludeList` is populated before launch solely for modules with breakpoints, both enabled and disabled (plus `UnrealEditor.exe` and `UnrealEditor-Win64-*.exe`, D-25). No session history or per-solution state files are maintained.
 
 ---
 

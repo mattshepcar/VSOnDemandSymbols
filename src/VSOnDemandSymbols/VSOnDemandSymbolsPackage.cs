@@ -13,6 +13,7 @@ using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.State;
 using VSOnDemandSymbols.Debugger;
 using VSOnDemandSymbols.Logging;
+using VSOnDemandSymbols.Options;
 
 namespace VSOnDemandSymbols;
 
@@ -32,6 +33,20 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectCapability:VisualC",
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
+[ProvideOptionPage(
+    typeof(OnDemandSymbolsOptionPage),
+    "On-Demand Symbols",
+    "General",
+    0,
+    0,
+    true)]
+[ProvideProfile(
+    typeof(OnDemandSymbolsOptionPage),
+    "On-Demand Symbols",
+    "General",
+    0,
+    0,
+    true)]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {
@@ -91,6 +106,17 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
             _sessionMonitor = new DebuggerSessionMonitor(_dte, vsDebugger, JoinableTaskFactory, _symbolSettingsManager, _resolver, _logger);
+
+            var optionPage = (OnDemandSymbolsOptionPage)GetDialogPage(typeof(OnDemandSymbolsOptionPage));
+            if (optionPage != null)
+            {
+                _sessionMonitor.BreakSymbolLoadMode = optionPage.BreakSymbolLoadMode;
+                optionPage.Applied += () =>
+                {
+                    _sessionMonitor.BreakSymbolLoadMode = optionPage.BreakSymbolLoadMode;
+                    _logger?.Info($"Break-mode symbol loading mode set to: {optionPage.BreakSymbolLoadMode}");
+                };
+            }
 
             _vsSolution.AdviseSolutionEvents(this, out _solutionEventsCookie);
 

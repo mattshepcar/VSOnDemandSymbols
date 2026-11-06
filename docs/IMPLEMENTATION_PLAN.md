@@ -27,7 +27,7 @@ This document is the actionable, phased implementation plan for the clean-slate 
   - [x] 5.1 Run Core test suite.
   - [x] 5.2 Validate against `NativeSample` and write verification instructions for Unreal Editor.
   - [x] 5.3 Commit clean implementation to git with descriptive commit message.
-- [ ] **Phase 6: Configurable Break-Mode Symbol Loading (Call Stack & Threads)**
+- [x] **Phase 6: Configurable Break-Mode Symbol Loading (Call Stack & Threads)**
   - [x] **Step 6.1: Local Symbol Resolution without Config (Hardcoded Server Masking)**
     - [x] 6.1.1 Update `SymbolSettingsBackupDto` and `SymbolSettingsBackupStore` to record `UseMSSymbolServers`, `UseNugetSymbolServers`, and remote `SymbolPaths` states.
     - [x] 6.1.2 Implement scoped symbol server masking in `SymbolSettingsManager`: `ExecuteWithMaskedSymbolServers()`.
@@ -43,10 +43,10 @@ This document is the actionable, phased implementation plan for the clean-slate 
       - `All`: Load symbols with no server masking (allows remote servers).
     - [x] 6.2.3 Add environment variable override (`ODS_BREAK_SYMBOL_LOAD_MODE`) for immediate testing and verification without UI.
     - [x] 6.2.4 Add unit tests for configuration parsing and enum validation in `VSOnDemandSymbols.Core.Tests`.
-  - [ ] **Step 6.3: Expose Configuration in Visual Studio Extension Settings**
-    - [ ] 6.3.1 Implement `OnDemandSymbolsOptionPage : DialogPage` in `VSOnDemandSymbols/Options/` exposing `BreakSymbolLoadMode` in `Tools -> Options -> On-Demand Symbols -> General`.
-    - [ ] 6.3.2 Register `[ProvideOptionPage]` on `VSOnDemandSymbolsPackage`.
-    - [ ] 6.3.3 Connect settings synchronization from `OnDemandSymbolsOptionPage` to `DebuggerSessionMonitor`.
+  - [x] **Step 6.3: Expose Configuration in Visual Studio Extension Settings**
+    - [x] 6.3.1 Implement `OnDemandSymbolsOptionPage : DialogPage` in `VSOnDemandSymbols/Options/` exposing `BreakSymbolLoadMode` in `Tools -> Options -> On-Demand Symbols -> General`.
+    - [x] 6.3.2 Register `[ProvideOptionPage]` on `VSOnDemandSymbolsPackage`.
+    - [x] 6.3.3 Connect settings synchronization from `OnDemandSymbolsOptionPage` to `DebuggerSessionMonitor`.
 
 ---
 

@@ -146,6 +146,11 @@ VSOnDemandSymbols/
 * Subscribes to `DTE.Events.CommandEvents` for `StandardCommandSet97:cmdidStart (295)` (F5 Launch).
   * Resolves all enabled breakpoints from `DTE.Debugger.Breakpoints`.
   * Adds `UnrealEditor.exe`, `UnrealEditor-Win64-*.exe`, and candidate DLL names to `IncludeList` via `SymbolSettingsManager`.
+* Subscribes to AD7 `IVsDebugger.AdviseDebugEventCallback` (`IDebugBreakpointErrorEvent2`):
+  * When a breakpoint is added or enabled mid-session while running (or in break mode), Visual Studio's debug engine reports a binding error if the module's symbols are not loaded.
+  * Coalesces error event bursts to the UI thread, rescans active breakpoints via DTE, updates `IncludeList`, and invokes `mod.LoadSymbols("")` on matching modules in `DTE.Debugger.DebuggedProcesses`.
+  * Breakpoints activate immediately without restarting the debug session.
+  * Logs symbol loads with reason `Breakpoint`.
 * Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode`:
   * Inspects `DTE.Debugger.CurrentThread.StackFrames`.
   * For each frame without symbols, locates the matching `EnvDTE90.Module` from `DTE.Debugger.DebuggedProcesses` and calls `mod.LoadSymbols("")`.

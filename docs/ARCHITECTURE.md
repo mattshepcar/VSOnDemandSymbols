@@ -166,7 +166,38 @@ sequenceDiagram
     VS->>User: Call Stack window resolves with function names and line numbers
 ```
 
-### 4.3 Solution Close (Clean Settings Restore)
+### 4.3 Breakpoint Added or Activated Mid-Session (Running or Break Mode)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant VS as Visual Studio
+    participant Dbg as Native Debug Engine
+    participant DSM as DebuggerSessionMonitor
+    participant UMR as UnrealModuleResolver
+    participant SSM as SymbolSettingsManager
+    participant Log as OutputLog
+
+    User->>VS: Add breakpoint in MyActor.cpp or enable disabled breakpoint
+    VS->>Dbg: Attempt to bind pending breakpoint
+    Dbg-->>DSM: IDebugEventCallback2.Event (IDebugBreakpointErrorEvent2)
+    DSM->>DSM: Coalesce event burst to UI thread (alwaysYield)
+    DSM->>VS: Query active breakpoints (DTE.Debugger.Breakpoints)
+    DSM->>UMR: ResolveModuleFromSource(bp.File) -> "MyGame"
+    UMR-->>DSM: Candidate pattern: UnrealEditor-MyGame*.dll
+    DSM->>SSM: ApplyManualMode(wantedBinaries) -> Update IncludeList
+    alt Module already loaded in process
+        DSM->>VS: Locate EnvDTE90.Module (UnrealEditor-MyGame.dll)
+        DSM->>VS: Call mod.LoadSymbols("")
+        DSM->>Log: Log "Loading symbols on demand: UnrealEditor-MyGame.dll — Breakpoint"
+        VS->>Dbg: Symbols loaded -> Pending breakpoint binds immediately
+        Dbg-->>User: Breakpoint glyph becomes solid red
+    else Module not yet loaded
+        Note over DSM,Dbg: Symbol settings IncludeList is updated; VS loads symbols when mapped
+    end
+```
+
+### 4.4 Solution Close (Clean Settings Restore)
 
 ```mermaid
 sequenceDiagram

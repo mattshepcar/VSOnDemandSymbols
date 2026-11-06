@@ -39,5 +39,30 @@ public class WildcardPatternTests
         Assert.Equal("ue:Engine", patterns[1].RawPattern);
         Assert.Equal("*.dll", patterns[2].RawPattern);
     }
+
+    [Theory]
+    [InlineData("UnrealEditor-MyGame*.dll", "UnrealEditor-MyGame.dll", true)]
+    [InlineData("UnrealEditor-MyGame*.dll", "UnrealEditor-MyGame-Win64-DebugGame.dll", true)]
+    [InlineData("UnrealEditor-MyGame*.dll", @"D:\Binaries\Win64\UnrealEditor-MyGame-Win64-Development.dll", true)]
+    [InlineData("UnrealEditor-MyGame*.dll", "UnrealEditor-OtherGame.dll", false)]
+    [InlineData("UnrealEditor-MyGame*.dll", "", false)]
+    public void MatchesFileName_ValidatesCandidateAgainstLoadedModuleNames(string pattern, string fileName, bool expected)
+    {
+        Assert.Equal(expected, WildcardPattern.MatchesFileName(pattern, fileName));
+    }
+
+    [Fact]
+    public void MatchesAnyFileName_MatchesWhenAnyPatternMatches()
+    {
+        var patterns = new[]
+        {
+            new WildcardPattern("UnrealEditor-MyGame*.dll"),
+            new WildcardPattern("UnrealEditor-Combat*.dll")
+        };
+
+        Assert.True(WildcardPattern.MatchesAnyFileName(patterns, "UnrealEditor-Combat-Win64-DebugGame.dll"));
+        Assert.True(WildcardPattern.MatchesAnyFileName(patterns, "UnrealEditor-MyGame.dll"));
+        Assert.False(WildcardPattern.MatchesAnyFileName(patterns, "UnrealEditor-Engine.dll"));
+    }
 }
 

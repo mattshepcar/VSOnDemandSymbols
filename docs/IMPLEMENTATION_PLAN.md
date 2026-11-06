@@ -17,7 +17,7 @@ This document is the actionable, phased implementation plan for the clean-slate 
   - [x] 2.3 Update unit tests in `VSOnDemandSymbols.Core.Tests` and verify all tests pass (`dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build`).
 - [x] **Phase 3: VSIX Debugger Integration**
   - [x] 3.1 Implement `SymbolSettingsManager` (reads/writes `IVsDebuggerSymbolSettings120A`, applies manual mode, merges `IncludeList`, crash recovery).
-  - [x] 3.2 Implement `DebuggerSessionMonitor` (hooks F5 launch via `CommandEvents.BeforeExecute`, updates `IncludeList` from `DTE.Debugger.Breakpoints`, hooks `DebuggerEvents.OnEnterBreakMode` to load missing call-stack symbols via `Module.LoadSymbols`).
+  - [x] 3.2 Implement `DebuggerSessionMonitor` (hooks F5 launch via `CommandEvents.BeforeExecute`, updates `IncludeList` from `DTE.Debugger.Breakpoints`, hooks AD7 `IDebugBreakpointErrorEvent2` for live mid-session breakpoint binding, hooks `DebuggerEvents.OnEnterBreakMode` to load missing call-stack symbols via `Module.LoadSymbols`).
   - [x] 3.3 Connect `OutputLog` for clean diagnostic logging to the "On-Demand Symbols" pane.
 - [x] **Phase 4: Package Lifecycle & Commands**
   - [x] 4.1 Update `VSOnDemandSymbolsPackage`: background load, C++ solution UI context rule, solution open/close listeners, crash recovery check on startup.

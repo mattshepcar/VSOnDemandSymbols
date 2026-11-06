@@ -66,6 +66,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             _dte = await GetServiceAsync(typeof(SDTE)) as DTE2;
 
             if (debuggerObj is not IVsDebuggerSymbolSettingsManager120A settingsManager ||
+                debuggerObj is not IVsDebugger vsDebugger ||
                 _vsSolution == null ||
                 _dte == null)
             {
@@ -89,7 +90,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             _symbolSettingsManager.RecoverFromCrashIfNeeded();
 
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
-            _sessionMonitor = new DebuggerSessionMonitor(_dte, _symbolSettingsManager, _resolver, _logger);
+            _sessionMonitor = new DebuggerSessionMonitor(_dte, vsDebugger, JoinableTaskFactory, _symbolSettingsManager, _resolver, _logger);
 
             _vsSolution.AdviseSolutionEvents(this, out _solutionEventsCookie);
 

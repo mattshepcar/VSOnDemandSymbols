@@ -101,3 +101,34 @@ This document provides step-by-step verification instructions for the V2 clean-s
      [Warning] Restored symbol settings after a previous unexpected exit (IsManualLoad=..., IsLoadAdjacent=..., AutomaticSymbolLoad=..., IncludeList.Count=...).
      ```
    - Symbol settings are restored to their pre-crash original state, and the orphaned backup file is deleted.
+
+---
+
+### Test Case 8: Adding Breakpoint While Process is Running (D-24)
+1. Launch the Unreal Editor under the debugger (F5). Ensure the process is actively running (not in a break state).
+2. Open a source file belonging to an Unreal module that does not yet have symbols loaded (e.g. `MyGameMode.cpp`).
+3. Set a new breakpoint on an executable line (press **F9** or click in the editor margin).
+4. **Verify:**
+   - The Output pane logs:
+     ```
+     [Info] IncludeList updated (breakpoint bind error (active breakpoints: <N>)): <M> wanted binaries + <K> user entries.
+     [Info] Loading symbols on demand: UnrealEditor-<ModuleName>.dll — Breakpoint
+     ```
+   - Visual Studio loads symbols for the module immediately while the process continues running.
+   - The breakpoint glyph binds and changes from hollow to a solid red circle.
+   - When execution reaches that line, the breakpoint hits successfully.
+
+---
+
+### Test Case 9: Activating Disabled Breakpoint While Process is Running (D-24)
+1. Before starting debugging, set a breakpoint in a module and **disable** it (right-click glyph > Disable Breakpoint, or uncheck it in the Breakpoints window).
+2. Launch the Unreal Editor under the debugger (F5) and allow it to enter run mode.
+3. While the editor is running (not in a break state), **enable** the breakpoint (check the box in the Breakpoints window or right-click glyph > Enable Breakpoint).
+4. **Verify:**
+   - Visual Studio receives the breakpoint error notification from the debug engine.
+   - The Output pane logs:
+     ```
+     [Info] IncludeList updated (breakpoint bind error (active breakpoints: <N>)): <M> wanted binaries + <K> user entries.
+     [Info] Loading symbols on demand: UnrealEditor-<ModuleName>.dll — Breakpoint
+     ```
+   - Symbols load on demand while running, and the breakpoint activates and binds immediately (solid red circle).

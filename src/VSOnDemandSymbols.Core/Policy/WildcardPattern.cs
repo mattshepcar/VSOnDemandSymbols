@@ -123,6 +123,16 @@ public sealed class WildcardPattern
         return list;
     }
 
+    public static bool MatchesFileName(string rawPattern, string fileNameOrPath)
+    {
+        if (string.IsNullOrWhiteSpace(rawPattern) || string.IsNullOrEmpty(fileNameOrPath))
+        {
+            return false;
+        }
+
+        return new WildcardPattern(rawPattern).IsMatchFileName(fileNameOrPath);
+    }
+
     public static bool MatchesAnyFileName(IEnumerable<WildcardPattern> patterns, string fileNameOrPath)
     {
         foreach (var p in patterns)

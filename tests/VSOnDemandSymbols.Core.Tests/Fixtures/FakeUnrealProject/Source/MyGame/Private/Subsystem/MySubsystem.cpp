@@ -1,4 +1,0 @@
-void UMySubsystem::Initialize()
-{
-}
-

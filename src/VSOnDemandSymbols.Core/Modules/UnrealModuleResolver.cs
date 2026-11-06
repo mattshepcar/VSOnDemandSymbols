@@ -69,9 +69,8 @@ public sealed class UnrealModuleResolver
                 return cachedModule;
             }
 
-            // Boundary check: stop at project or engine root
-            if (_fileSystem.FileExists(Path.Combine(dir, "*.uproject")) ||
-                _fileSystem.DirectoryExists(Path.Combine(dir, "Engine", "Source")))
+            // Boundary check: stop at project, plugin, or engine root
+            if (IsBoundaryDirectory(dir))
             {
                 string? modAtBoundary = TryFindModuleInDirectory(dir);
                 _dirToModuleCache[dir] = modAtBoundary;
@@ -149,6 +148,29 @@ public sealed class UnrealModuleResolver
         {
             $"UnrealEditor-{moduleName}*.dll"
         };
+    }
+
+    private bool IsBoundaryDirectory(string dir)
+    {
+        try
+        {
+            if (_fileSystem.DirectoryExists(Path.Combine(dir, "Engine", "Source")))
+            {
+                return true;
+            }
+
+            if (_fileSystem.EnumerateFiles(dir, "*.uproject", SearchOption.TopDirectoryOnly).Any() ||
+                _fileSystem.EnumerateFiles(dir, "*.uplugin", SearchOption.TopDirectoryOnly).Any())
+            {
+                return true;
+            }
+        }
+        catch
+        {
+            // Ignore boundary lookup errors
+        }
+
+        return false;
     }
 
     private string? TryFindModuleInDirectory(string dir)

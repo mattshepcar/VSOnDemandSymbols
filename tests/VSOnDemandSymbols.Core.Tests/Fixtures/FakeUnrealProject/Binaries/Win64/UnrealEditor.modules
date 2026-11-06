@@ -1,8 +1,0 @@
-{
-  "BuildId": "12345678",
-  "Modules": {
-    "MyGame": "UnrealEditor-MyGame.dll",
-    "MyGameEditor": "UnrealEditor-MyGameEditor.dll"
-  }
-}
-

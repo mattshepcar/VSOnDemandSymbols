@@ -6,34 +6,29 @@ namespace VSOnDemandSymbols.Core.Tests.Policy;
 
 public class BreakSymbolLoadModeTests
 {
-    [Fact]
-    public void EnumValues_MatchExpectedIntRepresentations()
-    {
-        Assert.Equal(0, (int)BreakSymbolLoadMode.Off);
-        Assert.Equal(1, (int)BreakSymbolLoadMode.LocalOnly);
-        Assert.Equal(2, (int)BreakSymbolLoadMode.All);
-    }
-
     [Theory]
+    // Empty & invalid defaults to LocalOnly
     [InlineData(null, BreakSymbolLoadMode.LocalOnly)]
     [InlineData("", BreakSymbolLoadMode.LocalOnly)]
     [InlineData("   ", BreakSymbolLoadMode.LocalOnly)]
     [InlineData("invalid", BreakSymbolLoadMode.LocalOnly)]
     [InlineData("-1", BreakSymbolLoadMode.LocalOnly)]
     [InlineData("99", BreakSymbolLoadMode.LocalOnly)]
+    // Numeric representations
     [InlineData("0", BreakSymbolLoadMode.Off)]
+    [InlineData("1", BreakSymbolLoadMode.LocalOnly)]
+    [InlineData("2", BreakSymbolLoadMode.All)]
+    // Enum names & case-insensitivity
     [InlineData("Off", BreakSymbolLoadMode.Off)]
-    [InlineData("off", BreakSymbolLoadMode.Off)]
+    [InlineData("localonly", BreakSymbolLoadMode.LocalOnly)]
+    [InlineData("ALL", BreakSymbolLoadMode.All)]
+    // Off aliases
     [InlineData("none", BreakSymbolLoadMode.Off)]
     [InlineData("disabled", BreakSymbolLoadMode.Off)]
     [InlineData("false", BreakSymbolLoadMode.Off)]
-    [InlineData("1", BreakSymbolLoadMode.LocalOnly)]
-    [InlineData("LocalOnly", BreakSymbolLoadMode.LocalOnly)]
-    [InlineData("localonly", BreakSymbolLoadMode.LocalOnly)]
+    // LocalOnly aliases
     [InlineData("local", BreakSymbolLoadMode.LocalOnly)]
-    [InlineData("2", BreakSymbolLoadMode.All)]
-    [InlineData("All", BreakSymbolLoadMode.All)]
-    [InlineData("all", BreakSymbolLoadMode.All)]
+    // All aliases
     [InlineData("remote", BreakSymbolLoadMode.All)]
     [InlineData("network", BreakSymbolLoadMode.All)]
     [InlineData("true", BreakSymbolLoadMode.All)]

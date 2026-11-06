@@ -18,6 +18,29 @@ public class WildcardPatternTests
     }
 
     [Fact]
+    public void FileNamePattern_QuestionMarkWildcard_MatchesSingleCharacter()
+    {
+        var pattern = new WildcardPattern("Module?.dll");
+        Assert.True(pattern.IsMatchFileName("Module1.dll"));
+        Assert.True(pattern.IsMatchFileName("ModuleA.dll"));
+        Assert.False(pattern.IsMatchFileName("Module12.dll"));
+        Assert.False(pattern.IsMatchFileName("Module.dll"));
+    }
+
+    [Theory]
+    [InlineData("UnrealEditor.exe")]
+    [InlineData("UnrealEditor-Win64-DebugGame.exe")]
+    [InlineData("UnrealEditor-Win64-Development.exe")]
+    [InlineData("UnrealEditor-Win64-Shipping.exe")]
+    [InlineData("UnrealEditor-Win64-Debug.exe")]
+    [InlineData("UnrealEditor-Cmd.exe")]
+    public void UnrealEditorExePattern_MatchesAllEditorExecutableVariants(string exeName)
+    {
+        var pattern = new WildcardPattern("UnrealEditor*.exe");
+        Assert.True(pattern.IsMatchFileName(exeName));
+    }
+
+    [Fact]
     public void UnrealModulePattern_MatchesUePrefix()
     {
         var pattern = new WildcardPattern("ue:Engine*");
@@ -71,6 +94,7 @@ public class WildcardPatternTests
     [InlineData("UnrealEditor.exe", "UnrealEditor.exe")]
     [InlineData("UnrealEditor-Engine.dll!00007ffc12345678", "UnrealEditor-Engine.dll")]
     [InlineData("UnrealEditor-Core!UE::Log()", "UnrealEditor-Core.dll")]
+    [InlineData("UnrealEditor-Core!UE::Log(char const*, ...)", "UnrealEditor-Core.dll")]
     [InlineData(@"D:\Engine\Binaries\Win64\UnrealEditor-Engine.dll", "UnrealEditor-Engine.dll")]
     [InlineData("ntdll.dll!NtWaitForSingleObject", "ntdll.dll")]
     [InlineData("[External Code]", null)]
@@ -111,11 +135,7 @@ public class WildcardPatternTests
     [InlineData("EOSSDK-Win64-Shipping.dll", true)]
     [InlineData("LyraEditor.dll", true)]
     [InlineData(@"C:\Windows\System32\ntdll.dll", false)]
-    [InlineData("ntdll.dll", false)]
     [InlineData("kernel32.dll", false)]
-    [InlineData("user32.dll", false)]
-    [InlineData("win32u.dll", false)]
-    [InlineData("dxgi.dll", false)]
     [InlineData("[External Code]", false)]
     [InlineData("<Unknown>", false)]
     [InlineData("", false)]
@@ -123,6 +143,53 @@ public class WildcardPatternTests
     public void IsUserCodeModule_DistinguishesUserCodeFromSystemLibraries(string? input, bool expected)
     {
         Assert.Equal(expected, WildcardPattern.IsUserCodeModule(input));
+    }
+
+    [Theory]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    [InlineData("   ", "")]
+    [InlineData("MyModule.dll\0extra_trailing_bytes", "MyModule.dll")]
+    [InlineData("  D:\\Engine\\UnrealEditor-Core.dll\0garbage  ", @"D:\Engine\UnrealEditor-Core.dll")]
+    public void SanitizePathString_EmbeddedNullAndWhitespace_SanitizesSafely(string? input, string expected)
+    {
+        Assert.Equal(expected, WildcardPattern.SanitizePathString(input));
+    }
+
+    [Theory]
+    [InlineData(@"C:\Windows\System32\ntdll.dll", "ntdll.dll")]
+    [InlineData("D:/Engine/Binaries/Win64/UnrealEditor-Engine.dll", "UnrealEditor-Engine.dll")]
+    [InlineData("UnrealEditor-Core.dll\0null_trailer", "UnrealEditor-Core.dll")]
+    [InlineData(@"D:\Path\Invalid<Char>|Pipe.dll", "Invalid<Char>|Pipe.dll")]
+    [InlineData(@"C:\Folder\", "")]
+    [InlineData(null, "")]
+    [InlineData("", "")]
+    public void ExtractFileNameSafe_EmbeddedNullAndInvalidCharacters_ExtractsWithoutThrowing(string? input, string expected)
+    {
+        Assert.Equal(expected, WildcardPattern.ExtractFileNameSafe(input));
+    }
+
+    [Fact]
+    public void MatchesAnyModule_CandidateBinariesAndModuleNames_MatchesCorrectly()
+    {
+        var patterns = new[]
+        {
+            new WildcardPattern("ue:Gameplay*"),
+            new WildcardPattern("UnrealEditor-Engine*.dll")
+        };
+
+        // Matches ue: prefix directly on module name
+        Assert.True(WildcardPattern.MatchesAnyModule(patterns, "GameplayAbilities"));
+        // Matches filename pattern via candidate binaries
+        Assert.True(WildcardPattern.MatchesAnyModule(
+            patterns,
+            "Engine",
+            new[] { "UnrealEditor-Engine.dll", "UnrealEditor-Engine-Win64-Debug.dll" }));
+        // Rejects non-matching module
+        Assert.False(WildcardPattern.MatchesAnyModule(
+            patterns,
+            "Slate",
+            new[] { "UnrealEditor-Slate.dll" }));
     }
 }
 

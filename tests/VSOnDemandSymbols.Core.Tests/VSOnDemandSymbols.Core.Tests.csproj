@@ -23,9 +23,5 @@
     <ProjectReference Include="..\..\src\VSOnDemandSymbols.Core\VSOnDemandSymbols.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Fixtures\**\*.cs" />
-    <None Include="Fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 
 </Project>

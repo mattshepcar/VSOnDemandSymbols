@@ -41,15 +41,58 @@ public sealed class UnrealModuleResolverTests
     [Fact]
     public void ResolveModuleFromSource_IntermediateUhtFile_ReturnsModuleName()
     {
-        string? module = _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Inc\MyGame\UHT\MyActor.gen.cpp");
-        Assert.Equal("MyGame", module);
+        string? moduleWithUht = _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Inc\MyGame\UHT\MyActor.gen.cpp");
+        Assert.Equal("MyGame", moduleWithUht);
+
+        string? moduleWithoutUht = _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Inc\MyGame\MyActor.gen.h");
+        Assert.Equal("MyGame", moduleWithoutUht);
     }
 
     [Fact]
     public void ResolveModuleFromSource_IntermediateUnityFile_ReturnsModuleName()
     {
-        string? module = _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Development\MyGame\Module.MyGame.1_of_3.cpp");
+        // Pre-UE 5.6 format (N_of_Total)
+        Assert.Equal("MyGame", _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Development\MyGame\Module.MyGame.1_of_3.cpp"));
+        // UE 5.6+ partitioned unity format (.N.cpp)
+        Assert.Equal("MyGame", _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Development\MyGame\Module.MyGame.1.cpp"));
+        // Single unity file (.cpp)
+        Assert.Equal("MyGame", _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Intermediate\Build\Win64\UnrealEditor\Development\MyGame\Module.MyGame.cpp"));
+    }
+
+    [Fact]
+    public void ResolveModuleFromSource_ForwardSlashes_ResolvesCorrectly()
+    {
+        string? module = _resolver.ResolveModuleFromSource("C:/Dev/MyGame/Source/MyGame/Private/MyActor.cpp");
         Assert.Equal("MyGame", module);
+    }
+
+    [Fact]
+    public void ResolveModuleFromSource_FileOutsideModule_StopsAtProjectBoundaryAndReturnsNull()
+    {
+        // Standalone source file inside the project directory tree but outside any module
+        _fileSystem.WriteAllText(@"C:\Dev\MyGame\Tools\StandaloneTool.cpp", "// standalone");
+        string? moduleInProject = _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Tools\StandaloneTool.cpp");
+        Assert.Null(moduleInProject);
+
+        // File completely outside the project
+        string? moduleOutside = _resolver.ResolveModuleFromSource(@"C:\Dev\External\Standalone.cpp");
+        Assert.Null(moduleOutside);
+    }
+
+    [Fact]
+    public void NullOrEmptyInputs_ReturnsGracefulDefaults()
+    {
+        Assert.Null(_resolver.ResolveModuleFromSource(null!));
+        Assert.Null(_resolver.ResolveModuleFromSource(""));
+        Assert.Null(_resolver.ResolveModuleFromSource("   "));
+
+        Assert.Empty(_resolver.GetCandidateBinaries(null!));
+        Assert.Empty(_resolver.GetCandidateBinaries(""));
+        Assert.Empty(_resolver.GetCandidateBinaries("   "));
+
+        Assert.False(_resolver.IsUnrealSolution(null!));
+        Assert.False(_resolver.IsUnrealSolution(""));
+        Assert.False(_resolver.IsUnrealSolution("   "));
     }
 
     [Fact]
@@ -73,19 +116,6 @@ public sealed class UnrealModuleResolverTests
         var candidates = _resolver.GetCandidateBinaries("MyGame");
         var pattern = new WildcardPattern(candidates[0]);
         Assert.True(pattern.IsMatchFileName(binaryName));
-    }
-
-    [Theory]
-    [InlineData("UnrealEditor.exe")]
-    [InlineData("UnrealEditor-Win64-DebugGame.exe")]
-    [InlineData("UnrealEditor-Win64-Development.exe")]
-    [InlineData("UnrealEditor-Win64-Shipping.exe")]
-    [InlineData("UnrealEditor-Win64-Debug.exe")]
-    [InlineData("UnrealEditor-Cmd.exe")]
-    public void UnrealEditorExePattern_MatchesAllEditorExecutableVariants(string exeName)
-    {
-        var pattern = new WildcardPattern("UnrealEditor*.exe");
-        Assert.True(pattern.IsMatchFileName(exeName));
     }
 
     [Fact]

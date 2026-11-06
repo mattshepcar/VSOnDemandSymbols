@@ -17,6 +17,18 @@ public class SymbolSettingsBackupStoreTests
         Assert.Equal(
             @"C:\Users\Dev\AppData\Local\OnDemandSymbols\18.0_1a2b3c4d_Exp\symbol-settings-backup.json",
             path);
+
+        // Sanitization of invalid filesystem characters
+        string sanitizedPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\Users\Dev\AppData\Local", "18.0:1a2b/Exp*test");
+        Assert.Equal(
+            @"C:\Users\Dev\AppData\Local\OnDemandSymbols\18.0_1a2b_Exp_test\symbol-settings-backup.json",
+            sanitizedPath);
+
+        // Null / whitespace instance ID falls back to "Default"
+        string defaultPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\Users\Dev\AppData\Local", "   ");
+        Assert.Equal(
+            @"C:\Users\Dev\AppData\Local\OnDemandSymbols\Default\symbol-settings-backup.json",
+            defaultPath);
     }
 
     [Fact]
@@ -141,6 +153,47 @@ public class SymbolSettingsBackupStoreTests
         var recovery = store.CheckCrashRecovery(backupPath, currentProcessId: 5000);
 
         Assert.Null(recovery);
+    }
+
+    [Fact]
+    public void CheckCrashRecovery_SameProcessId_ReturnsBackup()
+    {
+        // When checking crash recovery for the same PID, it belongs to this session and should be recovered
+        var store = new SymbolSettingsBackupStore(
+            _fs,
+            _clock,
+            NullLogger.Instance,
+            isDevenvProcessAlive: pid => true);
+
+        string backupPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\LocalAppData", "18.0_Exp");
+        store.SaveBackup(backupPath, isManualLoad: false, isLoadAdjacent: true, automaticSymbolLoad: true, processId: 4000);
+
+        var recovery = store.CheckCrashRecovery(backupPath, currentProcessId: 4000);
+
+        Assert.NotNull(recovery);
+        Assert.False(recovery!.IsManualLoad);
+    }
+
+    [Fact]
+    public void TryLoadBackup_CorruptJson_ReturnsNullAndDoesNotThrow()
+    {
+        var store = new SymbolSettingsBackupStore(_fs, _clock, NullLogger.Instance);
+        string backupPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\LocalAppData", "18.0_Exp");
+
+        _fs.WriteAllText(backupPath, "{ corrupt json syntax !!@@ ");
+
+        var result = store.TryLoadBackup(backupPath);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void DeleteBackup_NonExistentFile_DoesNotThrow()
+    {
+        var store = new SymbolSettingsBackupStore(_fs, _clock, NullLogger.Instance);
+        string backupPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\LocalAppData", "NonExistentInstance");
+
+        // Should complete silently without exception
+        store.DeleteBackup(backupPath);
     }
 }
 

@@ -1,7 +1,0 @@
-{
-  "BuildId": "12345678",
-  "Modules": {
-    "MyPlugin": "UnrealEditor-MyPlugin.dll"
-  }
-}
-

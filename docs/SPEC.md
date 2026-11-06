@@ -109,7 +109,7 @@ VSOnDemandSymbols/
 │           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
 │
 └── tests/
-    └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with FakeUnrealProject
+    └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with InMemoryFileSystem
 ```
 
 ### 4.1 Component Details

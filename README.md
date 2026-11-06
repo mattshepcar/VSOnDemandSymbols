@@ -32,3 +32,18 @@ Real-time status, module resolutions, and symbol-loading events are reported dir
    * **All:** Queries configured remote symbol servers if symbols are missing locally.
    * **Off:** Disables automatic symbol loading on break (startup breakpoint preloading remains active).
 
+---
+
+## Built With (Vibe Coded)
+
+This project was "vibe coded" using AI coding assistants:
+* **Claude Opus 5.5**
+* **Gemini 4 Argon**
+* ...and written mostly by **Gemini 3.8 Flash**
+
+---
+
+## License
+
+Licensed under the [MIT License](LICENSE).
+

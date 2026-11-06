@@ -31,3 +31,4 @@ jobs:
 
       - name: Run unit tests
         run: dotnet run --project tests/VSOnDemandSymbols.Core.Tests --configuration Release --no-build
+

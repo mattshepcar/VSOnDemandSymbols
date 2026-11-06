@@ -5,7 +5,7 @@
     <DisplayName>On-Demand Symbols</DisplayName>
     <Description>Accelerates Visual Studio debugger startup and breakpoint binding for Unreal Engine 5 projects by loading symbols on demand.</Description>
     <MoreInfo>https://github.com/mattshepcar/VSOnDemandSymbols</MoreInfo>
-    <License>LICENSE.txt</License>
+    <License>LICENSE</License>
     <Icon>Resources\Icon.png</Icon>
   </Metadata>
   <Installation>

@@ -6,6 +6,30 @@
     }
   },
   "properties": {
+    "debugging.symbols.onDemandLoading.statsSummary": {
+      "type": "string",
+      "title": "Startup Acceleration Stats",
+      "description": "Total PDB symbol loads avoided and estimated time saved by On-Demand Symbols during Unreal Editor boots.",
+      "default": "No editor launches recorded yet."
+    },
+    "debugging.symbols.onDemandLoading.totalPdbsAvoided": {
+      "type": "integer",
+      "title": "Lifetime PDBs Avoided",
+      "description": "Total number of unnecessary PDB symbol loads skipped during editor startup.",
+      "default": 0
+    },
+    "debugging.symbols.onDemandLoading.estimatedTimeSaved": {
+      "type": "string",
+      "title": "Estimated Time Saved",
+      "description": "Total developer startup wait time saved across all editor launches (based on symbols accounting for ~50% of boot time).",
+      "default": "0s"
+    },
+    "debugging.symbols.onDemandLoading.lastLaunchSavings": {
+      "type": "string",
+      "title": "Last Launch Savings",
+      "description": "PDBs skipped and estimated time saved during the most recent editor startup.",
+      "default": "None"
+    },
     "debugging.symbols.onDemandLoading.breakSymbolLoadMode": {
       "type": "string",
       "title": "Break Symbol Loading",

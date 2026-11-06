@@ -13,8 +13,10 @@ using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.Policy;
 using VSOnDemandSymbols.Core.State;
+using VSOnDemandSymbols.Core.Statistics;
 using VSOnDemandSymbols.Debugger;
 using VSOnDemandSymbols.Logging;
+using VSOnDemandSymbols.Statistics;
 
 namespace VSOnDemandSymbols;
 
@@ -47,6 +49,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
     private SymbolSettingsManager? _symbolSettingsManager;
     private UnrealModuleResolver? _resolver;
     private DebuggerSessionMonitor? _sessionMonitor;
+    private StartupStatisticsManager? _statsManager;
 
     private IVsSolution? _vsSolution;
     private DTE2? _dte;
@@ -94,8 +97,32 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             // SPEC.md §1.2: If a backup file exists from a previous crash, restore it immediately.
             _symbolSettingsManager.RecoverFromCrashIfNeeded();
 
+            string statsFilePath = StartupStatisticsManager.ResolveDefaultStatsFilePath(vsShell);
+            var statsStore = new StartupStatisticsStore(
+                PhysicalFileSystem.Instance,
+                SystemClock.Instance,
+                _logger,
+                statsFilePath);
+
+            ISettingsManager? settingsManagerUnified = null;
+            _statsManager = new StartupStatisticsManager(
+                statsStore,
+                () => settingsManagerUnified,
+                _logger,
+                JoinableTaskFactory);
+
+            settingsManagerUnified = await GetServiceAsync(typeof(ISettingsManager)) as ISettingsManager;
+            _statsManager.SynchronizeToSettings();
+
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
-            _sessionMonitor = new DebuggerSessionMonitor(_dte, vsDebugger, JoinableTaskFactory, _symbolSettingsManager, _resolver, _logger);
+            _sessionMonitor = new DebuggerSessionMonitor(
+                _dte,
+                vsDebugger,
+                JoinableTaskFactory,
+                _symbolSettingsManager,
+                _resolver,
+                _logger,
+                _statsManager);
 
             var settingsReader = await GetServiceAsync(typeof(ISettingsReader)) as ISettingsReader;
             if (settingsReader != null)
@@ -141,7 +168,9 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
                 {
                     _sessionMonitor.IsEnabled = true;
                 }
-                _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}'. On-Demand Symbols active.");
+                var lifetimeNotice = _statsManager?.Store.Load().FormatLifetimeNotice();
+                string noticeSuffix = !string.IsNullOrWhiteSpace(lifetimeNotice) ? $" {lifetimeNotice}" : string.Empty;
+                _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}'. On-Demand Symbols active.{noticeSuffix}");
                 _sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened");
             }
             else

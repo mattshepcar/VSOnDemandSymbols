@@ -140,9 +140,9 @@ sequenceDiagram
     loop For each of ~1,000 DLLs mapped
         Dbg->>Dbg: Is DLL name in IncludeList?
         alt Yes (Breakpoint module / EXE)
-            Dbg->>Dbg: Load PDB synchronously; breakpoint binds immediately
+            Dbg->>Dbg: Load PDB synchronously (breakpoint binds immediately)
         else No
-            Dbg->>Dbg: Skip PDB; startup proceeds at maximum speed
+            Dbg->>Dbg: Skip PDB (startup proceeds at maximum speed)
         end
     end
 ```
@@ -194,7 +194,7 @@ sequenceDiagram
         VS->>Dbg: Symbols loaded -> Pending breakpoint binds immediately
         Dbg-->>User: Breakpoint glyph becomes solid red
     else Module not yet loaded
-        Note over DSM,Dbg: Symbol settings IncludeList is updated; VS loads symbols when mapped
+        Note over DSM,Dbg: Symbol settings IncludeList is updated, so VS loads symbols when mapped
     end
 ```
 
@@ -213,7 +213,7 @@ sequenceDiagram
     Pkg->>SSM: RestoreOriginalSettings()
     SSM->>SSM: Restore user flags & IncludeList from disk backup
     SSM->>SSM: Delete symbol-settings-backup.json
-    Pkg->>Log: Log "Solution closed; restored original symbol settings."
+    Pkg->>Log: Log "Solution closed, restored original symbol settings."
     VS-->>User: Visual Studio returned to user's original symbol settings
 ```
 

@@ -2,7 +2,7 @@
 
 ## 1. Solution Overview
 
-**On-Demand Symbols** is a lightweight, zero-maintenance Visual Studio extension designed specifically to speed up debugging large native Unreal Engine 5 applications (~800 DLLs).
+**On-Demand Symbols** is a lightweight, zero-maintenance Visual Studio extension designed specifically to speed up debugging large native Unreal Engine 5 applications (ballpark ~1,000 DLLs).
 
 The solution contains two projects and only **6 core source files**:
 
@@ -102,7 +102,7 @@ During initial exploration (Phases 0–4), three complex subsystems were evaluat
 
 ### 3.2 Why MSBuild Project Crawling Was Eliminated
 * **The Premise:** An MSBuild project crawler (`MsBuildResolver`, `ProjectModelProvider`, `VCProjectEngine`) was initially built to support generic non-Unreal C++ solutions (`Scope = AllNative`).
-* **The Reality:** Standard non-Unreal C++ solutions typically contain only a handful of DLLs and do not suffer from the 800-DLL startup problem. Crawling MSBuild project dependency graphs introduced ~700 lines of complex COM interop, potential UI-thread deadlocks, and solution evaluation overhead.
+* **The Reality:** Standard non-Unreal C++ solutions typically contain only a handful of DLLs and do not suffer from the ~1,000-DLL startup problem. Crawling MSBuild project dependency graphs introduced ~700 lines of complex COM interop, potential UI-thread deadlocks, and solution evaluation overhead.
 * **The Solution:** Non-Unreal solutions are declared out of scope. When a non-Unreal solution is opened, the extension remains completely inert. For Unreal solutions, directory walk-up to `*.Build.cs` resolves modules in `< 1 ms`.
 
 ### 3.3 Why MRU, Pinning, and Persistent State Were Eliminated
@@ -137,7 +137,7 @@ sequenceDiagram
     DSM->>SSM: ApplyManualMode(wantedBinaries)
     SSM->>VS: Write to IncludeList & SaveSymbolSettings()
     VS->>Dbg: Launch UnrealEditor.exe
-    loop For each of ~800 DLLs mapped
+    loop For each of ~1,000 DLLs mapped
         Dbg->>Dbg: Is DLL name in IncludeList?
         alt Yes (Breakpoint module / EXE)
             Dbg->>Dbg: Load PDB synchronously; breakpoint binds immediately

@@ -5,18 +5,18 @@
 | **Product** | Visual Studio Extension (VSIX) "On-Demand Symbols" |
 | **Status** | Approved Architecture Specification |
 | **Targets** | Visual Studio 2022 17.14+ and Visual Studio 2026 (x64), native C++ debugging |
-| **Primary Use Case** | Debugging Unreal Engine 5.x editor builds (`UnrealEditor.exe` with ~800 `UnrealEditor-*.dll` modules) |
+| **Primary Use Case** | Debugging Unreal Engine 5.x editor builds (`UnrealEditor.exe` with ballpark ~1,000 `UnrealEditor-*.dll` modules, e.g. ~930–1,130 in Lyra) |
 
 ---
 
 ## 1. Problem & Goal
 
 ### 1.1 The Problem
-The Unreal Editor loads ~800 DLLs at startup. Loading debug symbols (PDBs) for all of them doubles editor boot time under the debugger. Usually only a handful of modules need symbols:
+The Unreal Editor loads ballpark ~1,000 DLLs at startup (e.g. 933 Unreal modules and 950+ total DLLs mapped during Lyra editor startup). Loading debug symbols (PDBs) for all of them doubles editor boot time under the debugger. Usually only a handful of modules need symbols:
 - Modules containing breakpoints (both enabled and disabled, so enabling a breakpoint mid-session binds immediately)
 - Modules on the call stack when execution breaks (needed to diagnose exceptions and inspect code)
 
-Visual Studio provides a "Load only specified modules" mode, but managing that include list by hand across 800 DLLs is impractical.
+Visual Studio provides a "Load only specified modules" mode, but managing that include list by hand across ~1,000 DLLs is impractical.
 
 ### 1.2 The Goal
 Provide an **invisible, transparent, zero-maintenance** extension that:
@@ -28,7 +28,7 @@ Provide an **invisible, transparent, zero-maintenance** extension that:
 ### 1.3 Scope & Non-Goals
 - **In Scope:** Unreal Engine 5.x solutions (`.sln` / `.slnx`) debugging native C++.
 - **Out of Scope (Explicit Non-Goals):**
-  - Non-Unreal MSBuild solutions (standard C++ solutions have only a few DLLs and do not suffer from the 800-DLL startup problem).
+  - Non-Unreal MSBuild solutions (standard C++ solutions have only a few DLLs and do not suffer from the ~1,000-DLL startup problem).
   - Monolithic builds (single executable; no modular DLLs).
   - Managed (.NET) code, Linux/Android/consoles, and remote debugging.
   - Complex diagnostic tool windows (the extension is invisible; status is reported to the Output window).

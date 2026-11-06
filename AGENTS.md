@@ -2,7 +2,7 @@
 
 ## What this project is
 
-**On-Demand Symbols** is a lightweight Visual Studio extension (VSIX) that speeds up debugging large native C++ applications, specifically the **Unreal Engine 5 editor** (about 800 DLLs). It puts the debugger into "load only specified modules" mode, then loads symbols automatically for exactly the modules that are needed:
+**On-Demand Symbols** is a lightweight Visual Studio extension (VSIX) that speeds up debugging large native C++ applications, specifically the **Unreal Engine 5 editor** (ballpark ~1,000 DLLs). It puts the debugger into "load only specified modules" mode, then loads symbols automatically for exactly the modules that are needed:
 - modules with breakpoints (populated into the debugger's `IncludeList` before launch so breakpoints bind immediately)
 - modules on the call stack when execution breaks (loaded on demand via DTE)
 

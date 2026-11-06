@@ -151,7 +151,7 @@ Confirmed regex / parser logic, matched against the file name (case-insensitive)
 - `app` must be one of the known prefixes for this solution: `UnrealEditor`, `UE4Editor`, `UnrealGame`, or a target name found in `*.Target.cs` files of the project. This avoids misreading third-party DLLs such as `api-ms-win-core-...dll`.
 - The result is `ModuleKey(Unreal, module)`.
 - Live Coding patch names get their own pattern once confirmed.
-- Unit-test this exhaustively. It runs for every one of the ~800 module loads, so it must be fast: precompiled `Regex` or a hand-written parser, plus an allocation-free fast path that rejects names without a known prefix.
+- Unit-test this exhaustively. It runs for every one of the ~1,000 module loads, so it must be fast: precompiled `Regex` or a hand-written parser, plus an allocation-free fast path that rejects names without a known prefix.
 
 ---
 

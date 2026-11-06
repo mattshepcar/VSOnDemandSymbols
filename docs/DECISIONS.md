@@ -7,7 +7,7 @@ This document records the active architectural decisions governing the **On-Dema
 ## Active Architectural Decisions
 
 ### ADR-01: Native VS IncludeList for Startup Symbol Loading
-* **Context:** The Unreal Editor loads ~800 DLLs at startup. Loading symbols for all of them doubles debugger startup time.
+* **Context:** The Unreal Editor loads ballpark ~1,000 DLLs at startup (e.g. 933 Unreal modules and 950+ total DLLs in Lyra). Loading symbols for all of them doubles debugger startup time.
 * **Decision:** Put Visual Studio into manual-load mode (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`) and populate `IVsDebuggerSymbolSettings120A.IncludeList` before launch with modules containing breakpoints (plus `UnrealEditor*.exe`).
 * **Rationale:** Visual Studio's native debug engine (`CppDebug.dll`) checks `IncludeList` directly at DLL mapping time. If a binary matches, symbols load synchronously before `StartupModule()`. This achieves zero module-load overhead—no extension code, file I/O, or LINQ allocations run on the module mapping path.
 
@@ -47,7 +47,7 @@ This document records the active architectural decisions governing the **On-Dema
 * **Rationale:** On-demand symbol loading during break mode is fast (~100 ms). Carrying forward module history across sessions caused `IncludeList` to bloat over time, steadily degrading the startup speedup that the extension exists to deliver.
 
 ### ADR-09: Dedicated Unreal Engine 5 Scope
-* **Context:** Non-Unreal C++ solutions typically contain only a few DLLs and do not suffer from the 800-DLL startup problem.
+* **Context:** Non-Unreal C++ solutions typically contain only a few DLLs and do not suffer from the ~1,000-DLL startup problem.
 * **Decision:** Target Unreal Engine 5 solutions exclusively. The extension checks for `*.uproject` or `Engine/Build/Build.version`. If neither is found, the extension remains completely inert.
 * **Rationale:** Avoids brittle MSBuild project dependency crawling and eliminates unnecessary settings interception on standard projects.
 
@@ -65,7 +65,7 @@ During early development (Phases 0–4), several complex alternatives were proto
 | Subsystem / Feature | Approach Explored | Why It Was Retired |
 |---|---|---|
 | **Concord Engine Component** | Prototyped using `Microsoft.VisualStudio.Debugger.Engine` and `.vsdconfigxml` to intercept DLL loads via `IDkmModuleInstanceLoadNotification` and call `DkmModuleInstance.TryLoadSymbols()`. | `TryLoadSymbols()` throws `NotImplementedException` (`0x80004001` / `E_NOTIMPL`) for native C++ modules in Visual Studio. Implementing Concord's `IDkmBreakpointManagerNotification` also corrupted editor breakpoint glyphs. Stripping Concord removed custom build tooling (`vsdconfigtool.exe`) and private IDE DLL dependencies. |
-| **MSBuild Project Crawling** | Evaluated `MsBuildResolver` and `VCProjectEngine` to crawl project dependency trees for generic non-Unreal C++ solutions. | Introduced ~700 lines of complex COM interop, potential UI-thread deadlocks, and evaluation delays. Standard C++ solutions do not have the 800-DLL problem, making this unnecessary. |
+| **MSBuild Project Crawling** | Evaluated `MsBuildResolver` and `VCProjectEngine` to crawl project dependency trees for generic non-Unreal C++ solutions. | Introduced ~700 lines of complex COM interop, potential UI-thread deadlocks, and evaluation delays. Standard C++ solutions do not have the ~1,000-DLL problem, making this unnecessary. |
 | **Recently-Built Scanners** | Scanned DLL and PDB write timestamps to pre-load symbols for recently compiled modules. | Binary modification timestamps are a poor proxy for debugging intent. Syncing source control or switching branches recompiled DLLs the user was not debugging. Intent is better captured by breakpoints. |
 | **MRU & Module Pinning** | Maintained an MRU cache and module pinning list in `.vs/state.json` persisted across VS runs. | Bloated `IncludeList` over time, eroding startup performance. On-demand break resolution is fast enough (~100 ms) that session history caching was unnecessary. |
 | **Debug Menu Toggle** | Implemented `Debug > On-Demand Symbols > Enabled` menu command via `VSCommandTable.vsct`. | Provided negligible utility over Visual Studio's Extension Manager. Removed to eliminate `.vsct` compilation and keep menus clean. |

@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        default: "v1.0.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: msbuild VSOnDemandSymbols.slnx /t:Restore /p:Configuration=Release /v:minimal
+
+      - name: Build solution
+        run: msbuild VSOnDemandSymbols.slnx /p:Configuration=Release /p:UseSharedCompilation=false /nr:false /v:minimal
+
+      - name: Run unit tests
+        run: dotnet run --project tests/VSOnDemandSymbols.Core.Tests --configuration Release --no-build
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name || github.ref_name }}
+          name: Release ${{ inputs.tag_name || github.ref_name }}
+          files: src/VSOnDemandSymbols/bin/Release/net472/VSOnDemandSymbols.vsix
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

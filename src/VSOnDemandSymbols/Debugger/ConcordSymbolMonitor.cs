@@ -75,39 +75,18 @@ public sealed class ConcordSymbolMonitor :
             _bridge.ModuleRegistry.RegisterModuleLoad(moduleInstance, key, fileName);
 
             bool shouldLoad = snapshot.ShouldLoadAtModuleLoad(fileName, key, out string reasonDescription);
-            if (shouldLoad)
+            if (moduleInstance.Module != null)
             {
-                if (moduleInstance.Module == null)
+                _bridge.ModuleRegistry.RecordStartupSymbolLoad(moduleInstance.UniqueId);
+                if (shouldLoad)
                 {
-                    _bridge.TryMarkLoadAttempted(moduleInstance.UniqueId);
-                    _bridge.MarkExtensionInitiatedLoad(moduleInstance.UniqueId);
-                    _bridge.Logger.Info($"Loading symbols: {fileName} — {reasonDescription}");
-
-                    try
-                    {
-                        moduleInstance.TryLoadSymbols();
-                    }
-                    catch (DkmException dkmEx)
-                    {
-                        _bridge.Logger.Verbose($"TryLoadSymbols returned {dkmEx.Code} for {fileName}: {dkmEx.Message}");
-                    }
-
-                    if (moduleInstance.Module != null)
-                    {
-                        _bridge.ModuleRegistry.RecordStartupSymbolLoad(moduleInstance.UniqueId);
-                    }
-                    else
-                    {
-                        _bridge.RemoveExtensionInitiatedLoad(moduleInstance.UniqueId);
-                        string searchDetails = ConcordSymbolBridge.GetSymbolSearchDetails(moduleInstance);
-                        _bridge.Logger.Info($"Symbols not found for {fileName} (searched: {searchDetails})");
-                    }
+                    _bridge.Logger.Info($"Symbols loaded: {fileName} — {reasonDescription}");
                 }
-                else
-                {
-                    _bridge.ModuleRegistry.RecordStartupSymbolLoad(moduleInstance.UniqueId);
-                    _bridge.Logger.Info($"Symbols already loaded: {fileName} — {reasonDescription}");
-                }
+            }
+            else if (shouldLoad)
+            {
+                string searchDetails = ConcordSymbolBridge.GetSymbolSearchDetails(moduleInstance);
+                _bridge.Logger.Info($"Symbols not loaded for {fileName} ({reasonDescription}; searched: {searchDetails})");
             }
 
             if (sw != null)

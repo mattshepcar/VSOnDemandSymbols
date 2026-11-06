@@ -4,7 +4,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using EnvDTE80;
 using Microsoft.VisualStudio.Debugger;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Threading;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.Policy;
@@ -12,9 +15,8 @@ using VSOnDemandSymbols.Core.Policy;
 namespace VSOnDemandSymbols.Debugger;
 
 /// <summary>
-/// De-duplicating symbol loader that calls <see cref="DkmModuleInstance.TryLoadSymbols()"/>
-/// and logs every symbol load with its trigger reason (SPEC §8.2, ARCHITECTURE.md §3).
-/// Never attempts to load the same <see cref="DkmModuleInstance"/> twice per session for automatic triggers.
+/// De-duplicating symbol loader that coordinates native symbol loading
+/// via Visual Studio symbol settings IncludeList and DTE Module.LoadSymbols (SPEC §8.2, ARCHITECTURE.md §3).
 /// </summary>
 public sealed class SymbolLoader
 {
@@ -39,15 +41,20 @@ public sealed class SymbolLoader
     }
 
     private readonly ConcordSymbolBridge _bridge;
+    private readonly JoinableTaskFactory _joinableTaskFactory;
     private readonly ILogger _logger;
     private readonly ConcurrentDictionary<Guid, byte> _attemptedModuleInstanceIds = new();
     private readonly ConcurrentDictionary<ModuleKey, byte> _queuedKeys = new();
     private readonly ConcurrentQueue<LoadRequest> _queue = new();
     private int _isProcessingQueue;
 
-    public SymbolLoader(ConcordSymbolBridge bridge, ILogger logger)
+    public DTE2? Dte { get; set; }
+    public SymbolSettingsController? SymbolSettingsController { get; set; }
+
+    public SymbolLoader(ConcordSymbolBridge bridge, JoinableTaskFactory joinableTaskFactory, ILogger logger)
     {
         _bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
+        _joinableTaskFactory = joinableTaskFactory ?? throw new ArgumentNullException(nameof(joinableTaskFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -139,6 +146,7 @@ public sealed class SymbolLoader
 
     /// <summary>
     /// Loads symbols for a specific <see cref="DkmModuleInstance"/> with de-duplication and logging.
+    /// Updates Visual Studio's IncludeList and triggers native symbol loading via AD7 / DTE.
     /// </summary>
     public bool TryLoadModuleInstance(
         DkmModuleInstance moduleInstance,
@@ -176,44 +184,58 @@ public sealed class SymbolLoader
 
             _logger.Info($"Loading symbols: {fileName} — {reasonDescription}");
 
-            bool logDiag = _logger.IsEnabled(LogLevel.Diagnostic);
-            Stopwatch? sw = logDiag ? Stopwatch.StartNew() : null;
+            // Trigger native symbol load via VS Symbol Settings IncludeList and DTE Module.LoadSymbols
+            TriggerNativeSymbolLoad(fileName);
 
-            try
-            {
-                moduleInstance.TryLoadSymbols();
-            }
-            catch (DkmException dkmEx)
-            {
-                _logger.Verbose($"TryLoadSymbols returned {dkmEx.Code} for {fileName}: {dkmEx.Message}");
-            }
-
-            if (sw != null)
-            {
-                sw.Stop();
-            }
-
-            if (moduleInstance.Module != null)
-            {
-                _bridge.ModuleRegistry.RecordOnDemandSymbolLoad(moduleInstance.UniqueId);
-                if (sw != null)
-                {
-                    _logger.Diagnostic($"TryLoadSymbols succeeded for '{fileName}' in {sw.Elapsed.TotalMilliseconds:F2} ms.");
-                }
-
-                return true;
-            }
-
-            _bridge.RemoveExtensionInitiatedLoad(moduleInstance.UniqueId);
-            string searchDetails = ConcordSymbolBridge.GetSymbolSearchDetails(moduleInstance);
-            _logger.Info($"Symbols not found for {fileName} (searched: {searchDetails})");
-            return false;
+            return true;
         }
         catch (Exception ex)
         {
             _bridge.RemoveExtensionInitiatedLoad(moduleInstance.UniqueId);
-            _logger.Error($"Error calling TryLoadSymbols for '{moduleInstance.Name}'.", ex);
+            _logger.Error($"Error initiating symbol load for '{moduleInstance.Name}'.", ex);
             return false;
+        }
+    }
+
+    private void TriggerNativeSymbolLoad(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return;
+        }
+
+        _ = _joinableTaskFactory.RunAsync(() => TriggerNativeSymbolLoadAsync(fileName));
+    }
+
+    private async Task TriggerNativeSymbolLoadAsync(string fileName)
+    {
+        await _joinableTaskFactory.SwitchToMainThreadAsync();
+
+        try
+        {
+            SymbolSettingsController?.AddModuleToIncludeList(new[] { fileName }, loadSymbolsNow: true);
+
+            if (Dte?.Debugger?.DebuggedProcesses != null)
+            {
+                foreach (EnvDTE.Process proc in Dte.Debugger.DebuggedProcesses)
+                {
+                    if (proc is EnvDTE90.Process3 proc3 && proc3.Modules != null)
+                    {
+                        foreach (EnvDTE90.Module mod in proc3.Modules)
+                        {
+                            string modName = WildcardPattern.ExtractFileNameSafe(mod.Name);
+                            if (string.Equals(modName, fileName, StringComparison.OrdinalIgnoreCase))
+                            {
+                                mod.LoadSymbols(string.Empty);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Verbose($"Native symbol load invocation for '{fileName}' resulted in: {ex.Message}");
         }
     }
 

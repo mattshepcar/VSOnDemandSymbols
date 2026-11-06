@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio;
@@ -13,6 +14,7 @@ using Microsoft.VisualStudio.Debugger.Breakpoints;
 using Microsoft.VisualStudio.Debugger.Symbols;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Threading;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.Mru;
@@ -33,6 +35,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private static readonly Guid VsDebugCmdSetGuid = new("C9DD4A59-47FB-11D2-83E7-00C04F9902C1");
 
     private readonly AsyncPackage _package;
+    private readonly JoinableTaskFactory _joinableTaskFactory;
     private readonly DTE2 _dte;
     private readonly IVsSolution _vsSolution;
     private readonly SymbolSettingsController _symbolSettingsController;
@@ -97,6 +100,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         ILogger logger)
     {
         _package = package ?? throw new ArgumentNullException(nameof(package));
+        _joinableTaskFactory = package.JoinableTaskFactory;
         _dte = dte ?? throw new ArgumentNullException(nameof(dte));
         _vsSolution = vsSolution ?? throw new ArgumentNullException(nameof(vsSolution));
         _symbolSettingsController = symbolSettingsController ?? throw new ArgumentNullException(nameof(symbolSettingsController));
@@ -190,6 +194,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                         $"MRU entries={_mruStore.GetEntries().Count}).");
 
                     PublishWantedSetSnapshot(pruneMru: false);
+                    _symbolSettingsController.ApplyWantedSetToIncludeList(_bridge.CurrentSnapshot.WantedFileNames, loadSymbolsNow: false);
                 }
             }
             else if (_isQualifyingSolutionOpen)
@@ -241,6 +246,9 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 _sessionPreparedForLaunch = true;
                 _sessionStartedLogged = false;
             }
+
+            var snapshot = _bridge.CurrentSnapshot;
+            _symbolSettingsController.ApplyWantedSetToIncludeList(snapshot.WantedFileNames, loadSymbolsNow: false);
 
             sw.Stop();
             _logger.Diagnostic($"Pre-launch wanted-set preparation completed in {sw.Elapsed.TotalMilliseconds:F2} ms.");
@@ -656,6 +664,15 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             _bridge.ResetForNewSession();
             _symbolLoader.ResetForNewSession();
         }
+
+        // Reset IncludeList to the user's original entries off the session lock
+        _ = _joinableTaskFactory.RunAsync(ResetIncludeListAsync);
+    }
+
+    private async Task ResetIncludeListAsync()
+    {
+        await _joinableTaskFactory.SwitchToMainThreadAsync();
+        _symbolSettingsController.ApplyWantedSetToIncludeList(Array.Empty<string>(), loadSymbolsNow: false);
     }
 
     private void PublishWantedSetSnapshot(bool pruneMru)

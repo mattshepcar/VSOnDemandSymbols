@@ -83,7 +83,11 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
             var bridge = ConcordSymbolBridge.Instance;
             bridge.Logger = _logger;
 
-            var symbolLoader = new SymbolLoader(bridge, _logger);
+            var symbolLoader = new SymbolLoader(bridge, JoinableTaskFactory, _logger)
+            {
+                Dte = dte,
+                SymbolSettingsController = _symbolSettingsController
+            };
             bridge.SymbolLoader = symbolLoader;
 
             _sessionTracker = new SessionTracker(

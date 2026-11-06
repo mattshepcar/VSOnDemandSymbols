@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using Newtonsoft.Json;
@@ -47,7 +48,8 @@ public sealed class SymbolSettingsBackupStore
         bool isManualLoad,
         bool isLoadAdjacent,
         bool automaticSymbolLoad,
-        int processId)
+        int processId,
+        IEnumerable<SymbolOptionBackupDto>? includeList = null)
     {
         if (string.IsNullOrWhiteSpace(backupFilePath))
         {
@@ -59,6 +61,7 @@ public sealed class SymbolSettingsBackupStore
             IsManualLoad = isManualLoad,
             IsLoadAdjacent = isLoadAdjacent,
             AutomaticSymbolLoad = automaticSymbolLoad,
+            IncludeList = includeList != null ? new List<SymbolOptionBackupDto>(includeList) : new List<SymbolOptionBackupDto>(),
             TimestampUtc = _clock.UtcNow,
             ProcessId = processId
         };

@@ -25,18 +25,30 @@ public class SymbolSettingsBackupStoreTests
         var store = new SymbolSettingsBackupStore(_fs, _clock, NullLogger.Instance);
         string backupPath = SymbolSettingsBackupStore.GetBackupFilePath(@"C:\LocalAppData", "18.0_Exp");
 
+        var originalInclude = new[]
+        {
+            new SymbolOptionBackupDto { Name = "MyCustomModule.dll", IsEnabled = true },
+            new SymbolOptionBackupDto { Name = "DisabledModule.dll", IsEnabled = false }
+        };
+
         var saved = store.SaveBackup(
             backupPath,
             isManualLoad: false,
             isLoadAdjacent: true,
             automaticSymbolLoad: true,
-            processId: 12345);
+            processId: 12345,
+            includeList: originalInclude);
 
         Assert.True(_fs.FileExists(backupPath));
         Assert.False(saved.IsManualLoad);
         Assert.True(saved.IsLoadAdjacent);
         Assert.True(saved.AutomaticSymbolLoad);
         Assert.Equal(12345, saved.ProcessId);
+        Assert.Equal(2, saved.IncludeList.Count);
+        Assert.Equal("MyCustomModule.dll", saved.IncludeList[0].Name);
+        Assert.True(saved.IncludeList[0].IsEnabled);
+        Assert.Equal("DisabledModule.dll", saved.IncludeList[1].Name);
+        Assert.False(saved.IncludeList[1].IsEnabled);
 
         var loaded = store.TryLoadBackup(backupPath);
         Assert.NotNull(loaded);
@@ -45,6 +57,9 @@ public class SymbolSettingsBackupStoreTests
         Assert.True(loaded.AutomaticSymbolLoad);
         Assert.Equal(12345, loaded.ProcessId);
         Assert.Equal(_clock.UtcNow, loaded.TimestampUtc);
+        Assert.Equal(2, loaded.IncludeList.Count);
+        Assert.Equal("MyCustomModule.dll", loaded.IncludeList[0].Name);
+        Assert.True(loaded.IncludeList[0].IsEnabled);
 
         store.DeleteBackup(backupPath);
         Assert.False(_fs.FileExists(backupPath));

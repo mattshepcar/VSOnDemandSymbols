@@ -111,10 +111,12 @@ We combine two clean, documented mechanisms (Strategy B + Concord Strategy A):
 - `GetCurrentSymbolSettings()` returns `IVsDebuggerSymbolSettings120A`, which also implements `IVsDebuggerSymbolSettings170` (`aa6086eb-b8f7-4b4a-be6b-37e4dfe1a933`).
 - Setting `IsManualLoad = true`, `IsLoadAdjacent = false`, and `AutomaticSymbolLoad = false` via `SaveSymbolSettings(settings, loadSymbolsNow: false)` suppresses automatic symbol loading without touching the user's `IncludeList` or `ExcludeList` (D-13, D-15).
 
-### 7.2 S2 — On-Demand `DkmModuleInstance.TryLoadSymbols()`
+### 7.2 S2 — On-Demand `DkmModuleInstance.TryLoadSymbols()` & Native IncludeList (D-17)
 
-- `DkmModuleInstance.TryLoadSymbols()` is a documented, thread-safe Concord API on `Microsoft.VisualStudio.Debugger.DkmModuleInstance`.
-- When called, Concord's `BMFileLineBreakpointCollection.OnModuleSymbolsLoaded` automatically binds pending file/line and function breakpoints in that module and notifies the IDE to refresh call stacks.
+- `DkmModuleInstance.TryLoadSymbols()` is documented as part of the Concord API (`Microsoft.VisualStudio.Debugger.DkmModuleInstance`), but live testing against native C++ modules in Visual Studio 2022 revealed that VS's native debug engine (`CppDebug.dll`) throws `NotImplementedException` (`0x80004001` / `E_NOTIMPL` from `IDkmSymbolLocator`).
+- Instead, Visual Studio's native debug engine natively inspects `IVsDebuggerSymbolSettings120A.IncludeList` during module mapping in manual-load mode (`IsManualLoad = true`). If the binary name matches an entry in `IncludeList`, VS loads symbols automatically before module execution.
+- For on-demand symbol loading mid-session, adding the binary name to `IncludeList` with `loadSymbolsNow: true` and invoking `EnvDTE90.Module.LoadSymbols("")` on matching debugged processes commands VS to load symbols immediately and bind breakpoints.
+- The user's original `IncludeList` entries are backed up and restored on session end, solution close, disable, or crash recovery, ensuring user settings integrity.
 
 ### 7.3 S3 — Concord `IDkmModuleInstanceLoadNotification` & `.vsdconfig` Compilation
 

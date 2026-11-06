@@ -62,7 +62,7 @@ This document provides step-by-step verification instructions for the V2 clean-s
 ### Test Case 4: Clean IDE UI (Transparent Background Operation)
 1. Inspect the Visual Studio menus (**Debug**, **Tools**, etc.).
 2. **Verify:**
-   - No unnecessary menu items, toolbars, or sub-menus are added (clean IDE experience per D-23).
+   - No unnecessary menu items, toolbars, or sub-menus are added (clean IDE experience per ADR-10).
    - All extension status messages and diagnostic logs appear exclusively in the dedicated **Output** window under the "On-Demand Symbols" pane.
 
 ---
@@ -104,7 +104,7 @@ This document provides step-by-step verification instructions for the V2 clean-s
 
 ---
 
-### Test Case 8: Adding Breakpoint While Process is Running (D-24)
+### Test Case 8: Adding Breakpoint While Process is Running (ADR-04)
 1. Launch the Unreal Editor under the debugger (F5). Ensure the process is actively running (not in a break state).
 2. Open a source file belonging to an Unreal module that does not yet have symbols loaded (e.g. `MyGameMode.cpp`).
 3. Set a new breakpoint on an executable line (press **F9** or click in the editor margin).
@@ -120,7 +120,7 @@ This document provides step-by-step verification instructions for the V2 clean-s
 
 ---
 
-### Test Case 9: Activating Disabled Breakpoint While Process is Running (D-25)
+### Test Case 9: Activating Disabled Breakpoint While Process is Running (ADR-03)
 1. Before starting debugging, set a breakpoint in a module and **disable** it (right-click glyph > Disable Breakpoint, or uncheck it in the Breakpoints window).
 2. Press **F5** to launch the editor.
 3. **Verify at startup:**

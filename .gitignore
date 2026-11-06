@@ -16,9 +16,8 @@ TestResults/
 *.trx
 coverage*/
 
-## Spikes (throwaway)
-spikes/**/bin/
-spikes/**/obj/
+## Scratch & Temp
+scratch/
 
 ## OS
 Thumbs.db

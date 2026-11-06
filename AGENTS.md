@@ -14,16 +14,13 @@
 |---|---|
 | [docs/SPEC.md](docs/SPEC.md) | **Primary specification** for the clean-slate minimal architecture |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **System architecture**, component responsibilities, and **learnings on why Concord, MSBuild, and MRU were eliminated** |
-| [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | **Progress tracker** with phased milestones |
-| [docs/MANUAL_VERIFICATION.md](docs/MANUAL_VERIFICATION.md) | **Step-by-step test scenarios** for manual verification in the Experimental instance |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | **Architecture Decision Records (ADRs)** and key design rationale |
 | [docs/MODULE_RESOLUTION.md](docs/MODULE_RESOLUTION.md) | **Unreal module naming rules** and confirmed UBT source citations |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | **Decision log (D-1 to D-21)** documenting all historical pivots and reversals |
-| [docs/BENCHMARKS.md](docs/BENCHMARKS.md) | **Startup measurement protocol** and performance benchmarks |
+| [docs/MANUAL_VERIFICATION.md](docs/MANUAL_VERIFICATION.md) | **Step-by-step test scenarios** for manual verification in the Experimental instance |
 
 ## Current status
 
 - The project runs on the **clean-slate minimal architecture** on branch `v2-minimal`.
-- All 5 phases in [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) are complete.
 - The Unreal Engine source is at `D:\UnrealEngine`. It is read-only reference material outside the workspace.
 
 ## Golden rules

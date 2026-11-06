@@ -39,15 +39,15 @@ Provide an **invisible, transparent, zero-maintenance** extension that:
 
 This architecture incorporates critical empirical lessons learned across development and testing:
 
-1. **Native VS IncludeList handles startup loading (D-17):**
+1. **Native VS IncludeList handles startup loading (ADR-01):**
    When `IsManualLoad = true` and `IsLoadAdjacent = false`, Visual Studio's native debug engine (`CppDebug.dll`) automatically inspects `IVsDebuggerSymbolSettings120A.IncludeList` during module mapping. If a module's file name matches an entry, VS natively loads its PDB synchronously before `StartupModule()` executes.
-2. **Concord is completely eliminated (D-15/D-17/D-19 reversal):**
+2. **Concord is completely eliminated (ADR-01, ADR-02):**
    `DkmModuleInstance.TryLoadSymbols()` throws `NotImplementedException` (`0x80004001` / `E_NOTIMPL`) in Visual Studio for native C++ modules. Furthermore, Concord's `IDkmBreakpointManagerNotification` breaks editor breakpoint glyphs. Concord provides no functional symbol-loading capability for native C++. Stripping Concord entirely eliminates `.vsdconfig`, `vsdconfigtool.exe`, and unmanaged IDE DLL references.
-3. **Mid-session on-demand loading uses standard DTE (D-17):**
+3. **Mid-session on-demand loading uses standard DTE (ADR-02):**
    When execution stops in break mode, invoking `EnvDTE90.Module.LoadSymbols("")` on the breaking thread's un-symbolized modules immediately commands VS to load their PDBs.
-4. **No MRU, pinning, or state tracking across runs (D-20):**
+4. **No MRU, pinning, or state tracking across runs (ADR-08):**
    On-demand loading during breaks is fast (~100 ms). Carrying forward module history across sessions via MRU lists or `.vs/state.json` is unnecessary and degrades startup time.
-5. **No MSBuild project crawler (D-21):**
+5. **No MSBuild project crawler (ADR-09):**
    Unreal Engine uses UnrealBuildTool (UBT) and `*.Build.cs` files rather than MSBuild project graphs. Standard MSBuild project dependency crawling is completely bypassed in favor of a fast `*.Build.cs` directory walk-up.
 
 ---
@@ -145,7 +145,7 @@ VSOnDemandSymbols/
 
 #### 4. `DebuggerSessionMonitor` (VSIX)
 * Subscribes to `DTE.Events.CommandEvents` for `StandardCommandSet97:cmdidStart (295)` (F5 Launch).
-  * Resolves all breakpoints (both enabled and disabled, D-25) from `DTE.Debugger.Breakpoints`.
+  * Resolves all breakpoints (both enabled and disabled, ADR-03) from `DTE.Debugger.Breakpoints`.
   * Adds `UnrealEditor.exe`, `UnrealEditor-Win64-*.exe`, and candidate DLL names to `IncludeList` via `SymbolSettingsManager`.
 * Subscribes to AD7 `IVsDebugger.AdviseDebugEventCallback` (`IDebugBreakpointErrorEvent2`):
   * When a new breakpoint is added mid-session while running (or in break mode), Visual Studio's debug engine reports a binding error if the module's symbols are not loaded.

@@ -12,9 +12,7 @@ VSOnDemandSymbols/
 ├── VSOnDemandSymbols.slnx                  # Solution file
 ├── docs/                                   # Architectural and design documentation
 │   ├── ARCHITECTURE.md                     # This document (system architecture & design rationale)
-│   ├── BENCHMARKS.md                       # Startup performance benchmarking protocol
-│   ├── DECISIONS.md                        # Append-only decision log (D-1 to D-21)
-│   ├── IMPLEMENTATION_PLAN.md              # Phased implementation plan and progress tracker
+│   ├── DECISIONS.md                        # Architecture Decision Records (ADR)
 │   ├── MANUAL_VERIFICATION.md              # Manual test procedures in Experimental instance
 │   ├── MODULE_RESOLUTION.md                # Unreal module naming and resolution reference
 │   └── SPEC.md                             # Architectural and functional specification
@@ -25,6 +23,7 @@ VSOnDemandSymbols/
 │   │   ├── Modules/
 │   │   │   └── UnrealModuleResolver.cs     # *.Build.cs directory walk-up & candidate DLL generator
 │   │   ├── Policy/
+│   │   │   ├── BreakSymbolLoadMode.cs      # Break-mode symbol load policy (Off, LocalOnly, All)
 │   │   │   └── WildcardPattern.cs          # Path sanitization & wildcard matching
 │   │   └── State/
 │   │       ├── SymbolSettingsBackupDto.cs  # Backup DTO schema
@@ -32,8 +31,10 @@ VSOnDemandSymbols/
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, standard NuGet references)
 │       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context auto-load, lifecycle
-│       ├── VSCommandTable.vsct             # Debug > On-Demand Symbols > Enabled command
+│       ├── UnifiedSettings/
+│       │   └── registration.json           # Modern Unified Settings manifest (Debugging -> Symbols)
 │       ├── Debugger/
+│       │   ├── IVsDebuggerSymbolSettings161.cs # COM interop for UseNugetSymbolServers
 │       │   ├── IVsDebuggerSymbolSettings170.cs # COM interop for AutomaticSymbolLoad
 │       │   ├── SymbolSettingsManager.cs    # Reads/writes IVsDebuggerSymbolSettings120A & disk backup
 │       │   └── DebuggerSessionMonitor.cs   # BeforeExecute (F5) hook, Breakpoints, OnEnterBreakMode
@@ -80,7 +81,7 @@ flowchart TD
 |---|---|---|---|
 | **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. | `AsyncPackage`, `IVsSolutionEvents` |
 | **`SymbolSettingsManager`** | VSIX | Single point of contact for symbol settings. Backs up original settings before any modification; applies manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`); merges breakpoint module binaries into `IncludeList`; cleanly restores original settings on close, disable, or crash recovery. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
-| **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints (both enabled and disabled, D-25) and update `IncludeList`. Observes AD7 `IDebugBreakpointErrorEvent2` to load symbols on demand when breakpoints are added while running. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
+| **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints (both enabled and disabled, ADR-03) and update `IncludeList`. Observes AD7 `IDebugBreakpointErrorEvent2` to load symbols on demand when breakpoints are added while running. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
 | **`UnrealModuleResolver`** | Core | Resolves source files to module names by walking up the directory tree to find `{Module}.Build.cs` (handling intermediate UHT and unity paths). Generates candidate DLL names (`UnrealEditor-{Module}*.dll`). Detects Unreal solutions (`*.uproject` or `Engine/Build/Build.version`). | `IFileSystem`, `ConcurrentDictionary` cache |
 | **`SymbolSettingsBackupStore`** | Core | Serializes symbol settings backups to `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`. Checks PID on startup to detect and recover from previous Visual Studio crashes. | `Newtonsoft.Json`, `IFileSystem` |
 | **`OutputLog`** | VSIX | Thread-safe logger outputting to the dedicated "On-Demand Symbols" pane in the Visual Studio Output window. | `IVsOutputWindowPane` |
@@ -89,9 +90,9 @@ flowchart TD
 
 ## 3. Why Concord, MSBuild, and MRU Were Eliminated
 
-During initial exploration (Phases 0–4), three complex subsystems were evaluated and subsequently removed. Their elimination is documented in [DECISIONS.md](DECISIONS.md) (D-15 through D-21).
+During initial exploration (Phases 0–4), three complex subsystems were evaluated and subsequently removed. Their elimination is documented in [DECISIONS.md](DECISIONS.md).
 
-### 3.1 Why Concord Was Eliminated (D-17, D-19, D-21)
+### 3.1 Why Concord Was Eliminated
 * **The Premise:** Concord (`Microsoft.VisualStudio.Debugger.Engine`) was initially considered to intercept DLL loads via `IDkmModuleInstanceLoadNotification` and call `moduleInstance.TryLoadSymbols()` synchronously off the UI thread without touching `IncludeList`.
 * **The Reality:**
   1. **`TryLoadSymbols` is unsupported for native C++:** In Visual Studio, `DkmModuleInstance.TryLoadSymbols()` throws `NotImplementedException` (`0x80004001` / `E_NOTIMPL`) for native C++ modules. Visual Studio's native debug engine (`CppDebug.dll`) does not implement `IDkmSymbolLocator`.
@@ -99,15 +100,15 @@ During initial exploration (Phases 0–4), three complex subsystems were evaluat
   3. **Build & packaging overhead:** Concord required private IDE assembly references (`Microsoft.VisualStudio.Debugger.Engine.dll`), custom MSBuild targets (`Microsoft.VSSDK.Debugger.VSDConfigTool.targets`), `vsdconfigtool.exe`, `.vsdconfigxml` configuration files, and `DebuggerEngineExtension` VSIX assets.
 * **The Solution:** Visual Studio's native debug engine automatically checks `IVsDebuggerSymbolSettings120A.IncludeList` during module mapping when manual mode is active. Mid-session loads are handled directly via standard DTE `Module.LoadSymbols("")`. Concord was completely stripped.
 
-### 3.2 Why MSBuild Project Crawling Was Eliminated (D-21)
+### 3.2 Why MSBuild Project Crawling Was Eliminated
 * **The Premise:** An MSBuild project crawler (`MsBuildResolver`, `ProjectModelProvider`, `VCProjectEngine`) was initially built to support generic non-Unreal C++ solutions (`Scope = AllNative`).
 * **The Reality:** Standard non-Unreal C++ solutions typically contain only a handful of DLLs and do not suffer from the 800-DLL startup problem. Crawling MSBuild project dependency graphs introduced ~700 lines of complex COM interop, potential UI-thread deadlocks, and solution evaluation overhead.
 * **The Solution:** Non-Unreal solutions are declared out of scope. When a non-Unreal solution is opened, the extension remains completely inert. For Unreal solutions, directory walk-up to `*.Build.cs` resolves modules in `< 1 ms`.
 
-### 3.3 Why MRU, Pinning, and Persistent State Were Eliminated (D-20)
+### 3.3 Why MRU, Pinning, and Persistent State Were Eliminated
 * **The Premise:** An MRU (Most Recently Used) cache and module pinning list were proposed to persist previously symbolized modules across debugging runs into `.vs/state.json`.
 * **The Reality:** On-demand symbol loading during break mode is fast (~100 ms). Carrying forward modules across sessions caused the `IncludeList` to bloat over time, steadily eroding the startup speedup that the extension exists to provide.
-* **The Solution:** The `IncludeList` is populated before launch solely for modules with breakpoints, both enabled and disabled (plus `UnrealEditor.exe` and `UnrealEditor-Win64-*.exe`, D-25). No session history or per-solution state files are maintained.
+* **The Solution:** The `IncludeList` is populated before launch solely for modules with breakpoints, both enabled and disabled (plus `UnrealEditor.exe` and `UnrealEditor-Win64-*.exe`, ADR-03). No session history or per-solution state files are maintained.
 
 ---
 

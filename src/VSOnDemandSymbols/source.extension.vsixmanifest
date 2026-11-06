@@ -3,7 +3,7 @@
   <Metadata>
     <Identity Id="VSOnDemandSymbols.d46f1838-c1d1-4b8a-b1d2-c1673443aee8" Version="1.0" Language="en-US" Publisher="VSOnDemandSymbols" />
     <DisplayName>On-Demand Symbols</DisplayName>
-    <Description>On-demand symbol loading for large native C++ applications, such as Unreal Engine 5.</Description>
+    <Description>Accelerates Visual Studio debugger startup and breakpoint binding for Unreal Engine 5 projects by loading symbols on demand.</Description>
     <Icon>Resources\Icon.png</Icon>
   </Metadata>
   <Installation>

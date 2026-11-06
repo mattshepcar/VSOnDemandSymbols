@@ -1,7 +1,8 @@
 {
   "categories": {
     "debugging.symbols.onDemandLoading": {
-      "title": "On Demand Loading"
+      "title": "On Demand Loading",
+      "description": "This settings page is provided by On-Demand Symbols, a custom extension for Unreal Engine.\n\nView real-time status and diagnostics in the Output window (Show output from: \"On-Demand Symbols\")."
     }
   },
   "properties": {
@@ -23,4 +24,3 @@
     }
   }
 }
-

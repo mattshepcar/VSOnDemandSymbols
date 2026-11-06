@@ -163,3 +163,4 @@ VSOnDemandSymbols/
 2. **Never Break Debugging (Golden Rule #2):** All debugger event handlers are wrapped in `try / catch`. Failures log a warning and let Visual Studio proceed normally.
 3. **No Private IDE Assemblies:** Zero references to internal Visual Studio DLLs outside of official NuGet packages (`Microsoft.VisualStudio.SDK 17.14.40265`). Zero custom compiler targets (`.vsdconfig`).
 4. **Sandboxed Build Safe:** Respect `/p:UseSharedCompilation=false /nr:false` and run unit tests via in-process runner.
+

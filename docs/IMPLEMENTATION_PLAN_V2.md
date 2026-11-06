@@ -15,18 +15,18 @@ This document is the actionable, phased implementation plan for the **V2 clean-s
   - [x] 2.1 Implement `UnrealModuleResolver` in `VSOnDemandSymbols.Core` (directory walk-up to `*.Build.cs`, candidate binary names, UHT/unity paths).
   - [x] 2.2 Verify / adapt `SymbolSettingsBackupStore` and `WildcardPattern`.
   - [x] 2.3 Update unit tests in `VSOnDemandSymbols.Core.Tests` and verify all tests pass (`dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build`).
-- [ ] **Phase 3: VSIX Debugger Integration**
+- [x] **Phase 3: VSIX Debugger Integration**
   - [x] 3.1 Implement `SymbolSettingsManager` (reads/writes `IVsDebuggerSymbolSettings120A`, applies manual mode, merges `IncludeList`, crash recovery).
   - [x] 3.2 Implement `DebuggerSessionMonitor` (hooks F5 launch via `CommandEvents.BeforeExecute`, updates `IncludeList` from `DTE.Debugger.Breakpoints`, hooks `DebuggerEvents.OnEnterBreakMode` to load missing call-stack symbols via `Module.LoadSymbols`).
   - [x] 3.3 Connect `OutputLog` for clean diagnostic logging to the "On-Demand Symbols" pane.
-- [ ] **Phase 4: Package Lifecycle & Commands**
+- [x] **Phase 4: Package Lifecycle & Commands**
   - [x] 4.1 Update `VSOnDemandSymbolsPackage`: background load, C++ solution UI context rule, solution open/close listeners, crash recovery check on startup.
-  - [ ] 4.2 Add menu/toolbar toggle command: **Debug > On-Demand Symbols > Enabled**.
+  - [x] 4.2 Add menu/toolbar toggle command: **Debug > On-Demand Symbols > Enabled**.
   - [x] 4.3 Verify full solution build (`/p:UseSharedCompilation=false /nr:false`).
-- [ ] **Phase 5: Verification & Documentation**
+- [x] **Phase 5: Verification & Documentation**
   - [x] 5.1 Run Core test suite.
-  - [ ] 5.2 Validate against `NativeSample` and write verification instructions for Unreal Editor.
-  - [ ] 5.3 Commit clean implementation to git with descriptive commit message.
+  - [x] 5.2 Validate against `NativeSample` and write verification instructions for Unreal Editor.
+  - [x] 5.3 Commit clean implementation to git with descriptive commit message.
 
 ---
 

@@ -1,28 +1,118 @@
-### Manual Verification Steps (Experimental Instance — Lyra `DebugGame Editor`)
+# Manual Verification Guide — On-Demand Symbols (V2 Minimal Architecture)
 
-1. **Launch Experimental Instance**:
-   - Open `VSOnDemandSymbols.slnx` in Visual Studio and press **F5** to launch `devenv.exe /rootsuffix Exp`.
-2. **Verify Unreal Detection & Manual-Load Mode Application**:
-   - In the Experimental instance, open `D:\UnrealEngine\Samples\Games\Lyra\Lyra.slnx` and set the solution configuration to **DebugGame Editor** (`Win64`) with **Lyra** as the startup project.
-   - Open **View > Output** and select **On-Demand Symbols** from the *Show output from* dropdown:
-     - Confirm it logs `On-demand symbol mode active...` and `Unreal solution detected: 'Lyra.slnx' (ProjectRoot=D:\UnrealEngine\Samples\Games\Lyra, EngineRoot=D:\UnrealEngine, ...)`.
-   - Open **Tools > Options > Debugging > Symbols**:
-     - Confirm manual-load mode is selected ("Load only specified modules" / "Automatically choose what module symbols to search for"), "Always load symbols located next to modules" is unchecked, and your existing include/exclude lists are untouched.
-3. **Verify Breakpoint Symbol Loading on Launch (M1 / M2 / M22)**:
-   - Set a breakpoint in a Lyra game or plugin `.cpp` file (for example `Source\LyraGame\AbilitySystem\LyraAbilitySystemComponent.cpp` or `Plugins\GameFeatures\ShooterCore\Source\ShooterCoreRuntime\Private\ShooterCoreRuntimeModule.cpp`).
-   - Press **F5** to start debugging (`UnrealEditor-Win64-DebugGame.exe`):
-     - Confirm the **On-Demand Symbols** Output pane logs:
-       - `Session #1 — UnrealEditor-Win64-DebugGame.exe — wanted N modules (breakpoints ..., always ...).`
-       - `Loading symbols: UnrealEditor-Win64-DebugGame.exe — AlwaysLoad`
-       - `Loading symbols: UnrealEditor-LyraGame-Win64-DebugGame.dll — Breakpoint: ...` (and/or `UnrealEditor-ShooterCoreRuntime-Win64-DebugGame.dll`) only for the breakpoint modules.
-     - Open **Debug > Windows > Modules** and confirm symbols are loaded only for `UnrealEditor-Win64-DebugGame.exe` and the breakpoint module(s), not all ~800 DLLs.
-   - Stop debugging (**Shift+F5**) and confirm the Output pane logs:
-     - `Session ended — <total> modules loaded, symbols for <count> (<atLoad> at load, <onDemand> on demand).`
-4. **Verify Settings Restore on Solution Close (M16)**:
-   - Close the solution (**File > Close Solution**).
-   - Confirm the Output pane logs `Restored user symbol settings (...)`, `%LOCALAPPDATA%\OnDemandSymbols\<InstanceId>\symbol-settings-backup.json` is deleted, and **Tools > Options > Debugging > Symbols** matches your original settings.
-5. **Verify Crash Recovery on Startup (M17)**:
-   - Re-open `Lyra.slnx` so on-demand mode is active (`symbol-settings-backup.json` exists).
-   - Kill the Experimental `devenv.exe` process from Task Manager.
-   - Restart the Experimental instance and open `Lyra.slnx`:
-     - Confirm the **On-Demand Symbols** Output pane logs `[Warning] Restored symbol settings after a previous unexpected exit (...)`.
+This document provides step-by-step verification instructions for the V2 clean-slate architecture in Visual Studio 2022 (17.14+) and Visual Studio 2026.
+
+---
+
+## 1. Setup & Launching the Experimental Instance
+
+1. Open `VSOnDemandSymbols.slnx` in Visual Studio.
+2. Ensure the configuration is **Debug | Any CPU** (or run the build via MSBuild).
+3. Press **F5** to launch the Visual Studio Experimental instance (`devenv.exe /rootsuffix Exp`).
+
+---
+
+## 2. Test Cases
+
+### Test Case 1: Unreal Engine Solution Detection & IncludeList Setup
+1. In the Experimental instance, open an Unreal Engine solution (e.g. `D:\UnrealEngine\Samples\Games\Lyra\Lyra.slnx` or any UE5 project containing a `*.uproject`).
+2. Open **View > Output** and select **On-Demand Symbols** from the *Show output from* dropdown.
+3. **Verify:**
+   - The Output pane logs:
+     ```
+     [Info] Unreal solution detected: '<SolutionName>.slnx'. On-Demand Symbols active.
+     [Info] IncludeList updated (solution opened (active breakpoints: 0)): 2 wanted binaries + <N> user entries.
+     ```
+   - In **Tools > Options > Debugging > Symbols**:
+     - "Load only specified modules" is selected (`IsManualLoad = true`).
+     - "Always load symbols located next to modules" is unchecked (`IsLoadAdjacent = false`).
+     - Visual Studio's backup file exists at `%LOCALAPPDATA%\OnDemandSymbols\<VS_INSTANCE_EXP>\symbol-settings-backup.json`.
+     - Your pre-existing include list entries are preserved, and `UnrealEditor.exe` + `UnrealEditor-Win64-*.exe` have been added.
+
+---
+
+### Test Case 2: Breakpoint Resolution & Launch (F5)
+1. In the Unreal solution, open a source file in a game or plugin module (e.g. `LyraGameplayAbility.cpp` or `MyActor.cpp`).
+2. Set a breakpoint on an executable line inside a method.
+3. Press **F5** to launch the editor.
+4. **Verify:**
+   - In the Output pane:
+     ```
+     [Info] IncludeList updated (before launch (active breakpoints: 1)): 6 wanted binaries + <N> user entries.
+     ```
+   - Candidate binaries for the module (`UnrealEditor-<Module>.dll`, `UnrealEditor-<Module>-Win64-DebugGame.dll`, `UnrealEditor-<Module>*.dll`) were merged into `IncludeList`.
+   - The editor boots quickly because Visual Studio loads symbols **only** for the candidate binaries in `IncludeList`.
+   - Once the module loads, the breakpoint glyph immediately turns solid red with a checkmark ("Breakpoint bound").
+
+---
+
+### Test Case 3: Call Stack On-Demand Symbol Loading
+1. While the editor is running under the debugger, cause execution to break (hit your breakpoint, trigger an exception, or select **Debug > Break All**).
+2. Look at the **Debug > Windows > Call Stack** window.
+3. If un-symbolized modules are on the breaking thread's stack frames:
+   - **Verify:**
+     - The Output pane logs:
+       ```
+       [Info] Loading symbols on demand: <ModuleName>.dll — CallStack
+       ```
+     - Visual Studio automatically loads symbols for those frames, resolving file names and source line numbers.
+
+---
+
+### Test Case 4: Debug Menu Toggle (Debug > On-Demand Symbols > Enabled)
+1. Open the Visual Studio **Debug** menu.
+2. Locate the **On-Demand Symbols** sub-menu and inspect the **Enabled** item:
+   - **Verify:** The **Enabled** item is visible and checked.
+3. Click **Enabled** to toggle it off:
+   - **Verify:**
+     - The Output pane logs:
+       ```
+       [Info] On-Demand Symbols disabled by user; restored original symbol settings.
+       ```
+     - In **Tools > Options > Debugging > Symbols**, all symbol settings and IncludeList are restored to the user's original values before opening the Unreal project.
+     - The backup file on disk is deleted.
+     - The **Enabled** menu item is now unchecked.
+4. Click **Enabled** again to toggle it back on:
+   - **Verify:**
+     - The Output pane logs:
+       ```
+       [Info] On-Demand Symbols enabled by user; applying settings for Unreal solution.
+       ```
+     - Manual mode is re-applied, and the **Enabled** menu item is checked again.
+
+---
+
+### Test Case 5: Non-Unreal Solution Inactivity (e.g. NativeSample)
+1. Open a standard non-Unreal C++ solution (e.g. `tests/Samples/NativeSample/NativeSample.sln`).
+2. **Verify:**
+   - The extension detects that the solution does not contain a `*.uproject` or `Engine/Build/Build.version`.
+   - The extension remains completely inactive.
+   - User symbol settings in **Tools > Options > Debugging > Symbols** remain untouched.
+   - No backup file is created.
+
+---
+
+### Test Case 6: Clean Restore on Solution Close
+1. Open an Unreal solution so On-Demand Symbols is active.
+2. Close the solution via **File > Close Solution**.
+3. **Verify:**
+   - The Output pane logs:
+     ```
+     [Info] Solution closed; restored original symbol settings.
+     ```
+   - In **Tools > Options > Debugging > Symbols**, the user's original settings and IncludeList are completely restored (**Golden Rule #1**).
+   - The backup JSON file in `%LOCALAPPDATA%\OnDemandSymbols\<VS_INSTANCE_EXP>\` is deleted.
+
+---
+
+### Test Case 7: Crash Recovery
+1. Open an Unreal solution so On-Demand Symbols is active (backup file exists on disk).
+2. Force-kill the Visual Studio process (`devenv.exe`) via Task Manager or `taskkill /F /IM devenv.exe`.
+3. Re-launch the Experimental instance.
+4. **Verify:**
+   - On package load, `RecoverFromCrashIfNeeded()` detects the orphaned backup file from the terminated PID.
+   - The Output pane logs:
+     ```
+     [Warning] Restored symbol settings after a previous unexpected exit (IsManualLoad=..., IsLoadAdjacent=..., AutomaticSymbolLoad=..., IncludeList.Count=...).
+     ```
+   - Symbol settings are restored to their pre-crash original state, and the orphaned backup file is deleted.

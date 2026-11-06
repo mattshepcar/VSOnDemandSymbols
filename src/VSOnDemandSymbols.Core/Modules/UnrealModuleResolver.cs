@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using VSOnDemandSymbols.Core.Abstractions;
 
@@ -93,6 +94,43 @@ public sealed class UnrealModuleResolver
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Checks whether the specified solution directory belongs to an Unreal Engine project or engine source.
+    /// </summary>
+    public bool IsUnrealSolution(string solutionDir)
+    {
+        if (string.IsNullOrWhiteSpace(solutionDir))
+        {
+            return false;
+        }
+
+        try
+        {
+            string? current = solutionDir;
+            while (!string.IsNullOrEmpty(current))
+            {
+                if (_fileSystem.EnumerateFiles(current, "*.uproject", SearchOption.TopDirectoryOnly).Any() ||
+                    _fileSystem.FileExists(Path.Combine(current, "Engine", "Build", "Build.version")))
+                {
+                    return true;
+                }
+
+                string? parent = Path.GetDirectoryName(current);
+                if (string.Equals(parent, current, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+                current = parent;
+            }
+        }
+        catch
+        {
+            // Ignore file lookup errors
+        }
+
+        return false;
     }
 
     /// <summary>

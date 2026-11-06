@@ -59,4 +59,30 @@ public sealed class UnrealModuleResolverTests
         Assert.Contains("UnrealEditor-MyGame-Win64-DebugGame.dll", candidates);
         Assert.Contains("UnrealEditor-MyGame*.dll", candidates);
     }
+
+    [Fact]
+    public void IsUnrealSolution_UprojectAtRoot_ReturnsTrue()
+    {
+        Assert.True(_resolver.IsUnrealSolution(@"C:\Dev\MyGame"));
+    }
+
+    [Fact]
+    public void IsUnrealSolution_NestedIntermediateDirectory_ReturnsTrue()
+    {
+        Assert.True(_resolver.IsUnrealSolution(@"C:\Dev\MyGame\Intermediate\ProjectFiles"));
+    }
+
+    [Fact]
+    public void IsUnrealSolution_EngineSourceRoot_ReturnsTrue()
+    {
+        _fileSystem.WriteAllText(@"C:\UnrealEngine\Engine\Build\Build.version", "{}");
+        Assert.True(_resolver.IsUnrealSolution(@"C:\UnrealEngine"));
+    }
+
+    [Fact]
+    public void IsUnrealSolution_StandardNativeNonUnrealSolution_ReturnsFalse()
+    {
+        _fileSystem.WriteAllText(@"C:\Dev\NativeSample\NativeSample.sln", "...");
+        Assert.False(_resolver.IsUnrealSolution(@"C:\Dev\NativeSample"));
+    }
 }

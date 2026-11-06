@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <Extern href="stdidcmd.h"/>
+  <Extern href="vsshlids.h"/>
+
+  <Commands package="guidVSOnDemandSymbolsPackage">
+    <Menus>
+      <!-- Sub-menu in the Debug menu: Debug > On-Demand Symbols -->
+      <Menu guid="guidVSOnDemandSymbolsPackageCmdSet" id="OnDemandSymbolsMenu" priority="0x0800" type="Menu">
+        <Parent guid="guidVSOnDemandSymbolsPackageCmdSet" id="TopDebugMenuGroup" />
+        <Strings>
+          <ButtonText>On-Demand Symbols</ButtonText>
+          <CommandName>On-Demand Symbols</CommandName>
+        </Strings>
+      </Menu>
+    </Menus>
+
+    <Groups>
+      <!-- Group inside Debug menu to host our sub-menu -->
+      <Group guid="guidVSOnDemandSymbolsPackageCmdSet" id="TopDebugMenuGroup" priority="0x0800">
+        <Parent guid="guidVSDebugGroup" id="IDM_DEBUG_MENU" />
+      </Group>
+
+      <!-- Group inside On-Demand Symbols sub-menu to host our toggle button -->
+      <Group guid="guidVSOnDemandSymbolsPackageCmdSet" id="OnDemandSymbolsMenuGroup" priority="0x0100">
+        <Parent guid="guidVSOnDemandSymbolsPackageCmdSet" id="OnDemandSymbolsMenu" />
+      </Group>
+    </Groups>
+
+    <Buttons>
+      <!-- The Enabled toggle button: Debug > On-Demand Symbols > Enabled -->
+      <Button guid="guidVSOnDemandSymbolsPackageCmdSet" id="cmdidToggleEnabled" priority="0x0100" type="Button">
+        <Parent guid="guidVSOnDemandSymbolsPackageCmdSet" id="OnDemandSymbolsMenuGroup" />
+        <Strings>
+          <ButtonText>Enabled</ButtonText>
+          <CommandName>Toggle On-Demand Symbols</CommandName>
+        </Strings>
+      </Button>
+    </Buttons>
+  </Commands>
+
+  <Symbols>
+    <GuidSymbol name="guidVSOnDemandSymbolsPackage" value="{3214abc4-2e97-4c16-8583-86beddfd1d3b}" />
+
+    <GuidSymbol name="guidVSOnDemandSymbolsPackageCmdSet" value="{a8435d64-e4c1-4b10-86c4-118809ff4ef0}">
+      <IDSymbol name="TopDebugMenuGroup" value="0x1020" />
+      <IDSymbol name="OnDemandSymbolsMenu" value="0x1030" />
+      <IDSymbol name="OnDemandSymbolsMenuGroup" value="0x1040" />
+      <IDSymbol name="cmdidToggleEnabled" value="0x0100" />
+    </GuidSymbol>
+
+    <GuidSymbol name="guidVSDebugGroup" value="{c9dd4a58-47fb-11d2-83e7-00c04f9902c1}">
+      <IDSymbol name="IDM_DEBUG_MENU" value="0x0401" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>

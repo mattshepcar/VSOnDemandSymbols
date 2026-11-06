@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.Design;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -32,11 +33,14 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectCapability:VisualC",
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
+[ProvideMenuResource("Menus.ctmenu", 1)]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {
     public const string PackageGuidString = "3214abc4-2e97-4c16-8583-86beddfd1d3b";
     public const string CppSolutionUiContextGuidString = "4f8d2b19-6a34-4e52-9c71-83b4a1e0c512";
+    public static readonly Guid CommandSetGuid = new("a8435d64-e4c1-4b10-86c4-118809ff4ef0");
+    public const int CmdIdToggleEnabled = 0x0100;
 
     private OutputLog? _logger;
     private SymbolSettingsManager? _symbolSettingsManager;
@@ -47,6 +51,9 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
     private DTE2? _dte;
     private uint _solutionEventsCookie;
     private bool _isUnrealSolutionOpen;
+    private bool _isEnabled = true;
+
+    public bool IsEnabled => _isEnabled;
 
     protected override async Task InitializeAsync(
         CancellationToken cancellationToken,
@@ -91,6 +98,15 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
             _sessionMonitor = new DebuggerSessionMonitor(_dte, _symbolSettingsManager, _resolver, _logger);
 
+            // Register Debug > On-Demand Symbols > Enabled command
+            if (await GetServiceAsync(typeof(IMenuCommandService)) is OleMenuCommandService commandService)
+            {
+                var menuCommandId = new CommandID(CommandSetGuid, CmdIdToggleEnabled);
+                var menuItem = new OleMenuCommand(ExecuteToggleCommand, menuCommandId);
+                menuItem.BeforeQueryStatus += OnBeforeQueryStatusToggleCommand;
+                commandService.AddCommand(menuItem);
+            }
+
             _vsSolution.AdviseSolutionEvents(this, out _solutionEventsCookie);
 
             // Check currently open solution
@@ -116,13 +132,20 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             }
 
             string? solutionDir = Path.GetDirectoryName(solutionPath);
-            bool isUnreal = !string.IsNullOrEmpty(solutionDir) && IsUnrealSolution(solutionDir!);
+            bool isUnreal = !string.IsNullOrEmpty(solutionDir) && (_resolver?.IsUnrealSolution(solutionDir!) ?? false);
 
             if (isUnreal)
             {
                 _isUnrealSolutionOpen = true;
-                _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}'. On-Demand Symbols active.");
-                _sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened");
+                if (_isEnabled)
+                {
+                    _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}'. On-Demand Symbols active.");
+                    _sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened");
+                }
+                else
+                {
+                    _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}', but On-Demand Symbols is currently disabled.");
+                }
             }
             else
             {
@@ -135,41 +158,6 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
         }
     }
 
-    private static bool IsUnrealSolution(string solutionDir)
-    {
-        try
-        {
-            if (Directory.GetFiles(solutionDir, "*.uproject", SearchOption.TopDirectoryOnly).Length > 0)
-            {
-                return true;
-            }
-
-            if (File.Exists(Path.Combine(solutionDir, "Engine", "Build", "Build.version")))
-            {
-                return true;
-            }
-
-            // Check parent directories in case solution is nested under Intermediate/ProjectFiles
-            string? current = solutionDir;
-            while (!string.IsNullOrEmpty(current))
-            {
-                if (Directory.GetFiles(current, "*.uproject", SearchOption.TopDirectoryOnly).Length > 0 ||
-                    File.Exists(Path.Combine(current, "Engine", "Build", "Build.version")))
-                {
-                    return true;
-                }
-
-                current = Path.GetDirectoryName(current);
-            }
-        }
-        catch
-        {
-            // Ignore file lookup errors
-        }
-
-        return false;
-    }
-
     private void HandleSolutionClosed()
     {
         ThreadHelper.ThrowIfNotOnUIThread();
@@ -179,6 +167,45 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             _isUnrealSolutionOpen = false;
             _symbolSettingsManager?.RestoreOriginalSettings();
             _logger?.Info("Solution closed; restored original symbol settings.");
+        }
+    }
+
+    private void OnBeforeQueryStatusToggleCommand(object sender, EventArgs e)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        if (sender is OleMenuCommand command)
+        {
+            command.Checked = _isEnabled;
+            command.Enabled = true;
+        }
+    }
+
+    private void ExecuteToggleCommand(object sender, EventArgs e)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        _isEnabled = !_isEnabled;
+        if (_sessionMonitor != null)
+        {
+            _sessionMonitor.IsEnabled = _isEnabled;
+        }
+
+        if (!_isEnabled)
+        {
+            _symbolSettingsManager?.RestoreOriginalSettings();
+            _logger?.Info("On-Demand Symbols disabled by user; restored original symbol settings.");
+        }
+        else
+        {
+            if (_isUnrealSolutionOpen)
+            {
+                _logger?.Info("On-Demand Symbols enabled by user; applying settings for Unreal solution.");
+                _sessionMonitor?.UpdateIncludeListFromBreakpoints("user enabled");
+            }
+            else
+            {
+                _logger?.Info("On-Demand Symbols enabled by user.");
+            }
         }
     }
 

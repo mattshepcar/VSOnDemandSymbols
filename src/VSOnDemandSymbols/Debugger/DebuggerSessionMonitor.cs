@@ -27,6 +27,8 @@ public sealed class DebuggerSessionMonitor : IDisposable
     private readonly DebuggerEvents _debuggerEvents;
     private bool _disposed;
 
+    public bool IsEnabled { get; set; } = true;
+
     public DebuggerSessionMonitor(
         DTE2 dte,
         SymbolSettingsManager settings,
@@ -53,6 +55,11 @@ public sealed class DebuggerSessionMonitor : IDisposable
     public void UpdateIncludeListFromBreakpoints(string reason = "before launch")
     {
         ThreadHelper.ThrowIfNotOnUIThread();
+
+        if (!IsEnabled)
+        {
+            return;
+        }
 
         try
         {
@@ -95,12 +102,21 @@ public sealed class DebuggerSessionMonitor : IDisposable
     private void OnBeforeLaunch(string guid, int id, object customIn, object customOut, ref bool cancelDefault)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
+        if (!IsEnabled)
+        {
+            return;
+        }
+
         UpdateIncludeListFromBreakpoints("before launch");
     }
 
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
+        if (!IsEnabled)
+        {
+            return;
+        }
 
         try
         {

@@ -21,8 +21,6 @@ namespace VSOnDemandSymbols.Debugger;
 /// </summary>
 public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 {
-    private static readonly Guid BreakpointErrorEventGuid = typeof(IDebugBreakpointErrorEvent2).GUID;
-
     private readonly DTE2 _dte;
     private readonly IVsDebugger _vsDebugger;
     private readonly JoinableTaskFactory _joinableTaskFactory;
@@ -153,7 +151,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 return VSConstants.S_OK;
             }
 
-            if ((riidEvent == BreakpointErrorEventGuid || pEvent is IDebugBreakpointErrorEvent2) &&
+            if (riidEvent == typeof(IDebugBreakpointErrorEvent2).GUID &&
                 Interlocked.CompareExchange(ref _rescanPending, 1, 0) == 0)
             {
                 // Coalesce bursts of error events into a single rescan on the UI thread

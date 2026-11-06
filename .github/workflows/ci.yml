@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master", "v2-minimal" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore NuGet packages
+        run: msbuild VSOnDemandSymbols.slnx /t:Restore /p:Configuration=Release /v:minimal
+
+      - name: Build solution
+        run: msbuild VSOnDemandSymbols.slnx /p:Configuration=Release /p:UseSharedCompilation=false /nr:false /v:minimal
+
+      - name: Run unit tests
+        run: dotnet run --project tests/VSOnDemandSymbols.Core.Tests --configuration Release --no-build

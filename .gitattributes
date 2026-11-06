@@ -1,0 +1,41 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Visual Studio, C#, C++, and project files
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.slnx text eol=crlf
+*.sln text eol=crlf
+*.props text eol=crlf
+*.targets text eol=crlf
+*.vcxproj text eol=crlf
+*.vsixmanifest text eol=crlf
+*.json text eol=crlf
+*.xml text eol=crlf
+*.cpp text eol=crlf
+*.h text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Markdown and text
+*.md text
+*.txt text
+
+# Unreal Engine project files
+*.uproject text
+*.uplugin text
+
+# Graphic and binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.vsix binary
+*.dll binary
+*.exe binary
+*.pdb binary

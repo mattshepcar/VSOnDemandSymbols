@@ -1,0 +1,26 @@
+{
+  "categories": {
+    "onDemandSymbols": {
+      "title": "On-Demand Symbols",
+      "legacyOptionPageId": "2071180e-2267-4023-aa18-5217b3f50219"
+    }
+  },
+  "properties": {
+    "onDemandSymbols.breakSymbolLoadMode": {
+      "type": "string",
+      "title": "Break Symbol Loading",
+      "description": "Controls symbol loading when execution breaks or context changes.",
+      "default": "LocalOnly",
+      "enum": [
+        "LocalOnly",
+        "Off",
+        "All"
+      ],
+      "enumItemLabels": [
+        "LocalOnly (Adjacent, local paths, and local cache)",
+        "Off (Do not automatically load symbols on break)",
+        "All (Query remote symbol servers if needed)"
+      ]
+    }
+  }
+}

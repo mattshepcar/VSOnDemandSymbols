@@ -36,17 +36,19 @@ namespace VSOnDemandSymbols;
 [ProvideOptionPage(
     typeof(OnDemandSymbolsOptionPage),
     "On-Demand Symbols",
-    "General",
+    "On-Demand Symbols",
     0,
     0,
-    true)]
+    true,
+    IsInUnifiedSettings = true)]
 [ProvideProfile(
     typeof(OnDemandSymbolsOptionPage),
     "On-Demand Symbols",
-    "General",
+    "On-Demand Symbols",
     0,
     0,
     true)]
+[ProvideSettingsManifest(PackageRelativeManifestFile = @"UnifiedSettings\registration.json")]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {

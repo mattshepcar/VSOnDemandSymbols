@@ -67,8 +67,8 @@ This document provides step-by-step verification instructions for Visual Studio 
 
 ---
 
-### Test Case 5: Non-Unreal Solution Inactivity (e.g. NativeSample)
-1. Open a standard non-Unreal C++ solution (e.g. `tests/Samples/NativeSample/NativeSample.sln`).
+### Test Case 5: Non-Unreal Solution Inactivity
+1. Open any standard non-Unreal C++ solution.
 2. **Verify:**
    - The extension detects that the solution does not contain a `*.uproject` or `Engine/Build/Build.version`.
    - The extension remains completely inactive.

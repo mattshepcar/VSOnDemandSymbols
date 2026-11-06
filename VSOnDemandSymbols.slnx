@@ -1,10 +1,12 @@
 <Solution>
-  <File Path=".editorconfig" />
-  <File Path=".gitattributes" />
-  <File Path=".gitignore" />
-  <File Path="AGENTS.md" />
-  <File Path="LICENSE" />
-  <File Path="README.md" />
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
   <Folder Name="/docs/">
     <File Path="docs/ARCHITECTURE.md" />
     <File Path="docs/DECISIONS.md" />

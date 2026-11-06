@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Product** | Visual Studio Extension (VSIX) "On-Demand Symbols" |
-| **Status** | Approved Clean-Slate Minimal Architecture Specification |
+| **Status** | Approved Architecture Specification |
 | **Targets** | Visual Studio 2022 17.14+ and Visual Studio 2026 (x64), native C++ debugging |
 | **Primary Use Case** | Debugging Unreal Engine 5.x editor builds (`UnrealEditor.exe` with ~800 `UnrealEditor-*.dll` modules) |
 

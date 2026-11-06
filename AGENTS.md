@@ -6,13 +6,13 @@
 - modules with breakpoints (populated into the debugger's `IncludeList` before launch so breakpoints bind immediately)
 - modules on the call stack when execution breaks (loaded on demand via DTE)
 
-**Read [docs/SPEC.md](docs/SPEC.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before writing any code.** They are the source of truth for the clean-slate minimal architecture.
+**Read [docs/SPEC.md](docs/SPEC.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before writing any code.** They are the source of truth for the system architecture.
 
 ## Documentation map
 
 | Doc | Use it for |
 |---|---|
-| [docs/SPEC.md](docs/SPEC.md) | **Primary specification** for the clean-slate minimal architecture |
+| [docs/SPEC.md](docs/SPEC.md) | **Primary specification** for the extension |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **System architecture**, component responsibilities, and **learnings on why Concord, MSBuild, and MRU were eliminated** |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | **Architecture Decision Records (ADRs)** and key design rationale |
 | [docs/MODULE_RESOLUTION.md](docs/MODULE_RESOLUTION.md) | **Unreal module naming rules** and confirmed UBT source citations |
@@ -20,7 +20,6 @@
 
 ## Current status
 
-- The project runs on the **clean-slate minimal architecture** on branch `v2-minimal`.
 - The Unreal Engine source is at `D:\UnrealEngine`. It is read-only reference material outside the workspace.
 
 ## Golden rules

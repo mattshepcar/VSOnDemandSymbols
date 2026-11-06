@@ -1,6 +1,6 @@
-# Manual Verification Guide — On-Demand Symbols (V2 Minimal Architecture)
+# Manual Verification Guide — On-Demand Symbols
 
-This document provides step-by-step verification instructions for the V2 clean-slate architecture in Visual Studio 2022 (17.14+) and Visual Studio 2026.
+This document provides step-by-step verification instructions for Visual Studio 2022 (17.14+) and Visual Studio 2026.
 
 ---
 

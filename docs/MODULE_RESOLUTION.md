@@ -50,7 +50,7 @@ loop:
 - Cache `directory → Build.cs path` (including negative results) in a `ConcurrentDictionary`. Invalidate the cache when `*.Build.cs` files are created or deleted (a `FileSystemWatcher` on the solution's source roots, filtered to `*.Build.cs`), or when the solution reloads.
 - Parsing the `.Build.cs` contents is **not** required to get the name: UBT requires the class name to equal the file name. `ShortName` in `ModuleRules` only affects intermediate directories (not the binary output DLL name). `BinariesSubFolder` places the output DLL into a subfolder of `Binaries/<Platform>/` (e.g. `Binaries/Win64/<SubFolder>/`), but the DLL name itself still adheres to the standard binary naming rule.
 - Ignore `*.Target.cs` (those are targets, not modules).
-- `ThirdParty` external modules (`Type = ModuleType.External`) have no DLL of their own. In v1 they resolve to their folder's module key, which never matches a loaded DLL, so they're simply inert.
+- `ThirdParty` external modules (`Type = ModuleType.External`) have no DLL of their own and are inert.
 
 ### 2.3 Module owner (root) detection
 

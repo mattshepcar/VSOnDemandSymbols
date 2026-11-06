@@ -46,12 +46,12 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 ## Phase 3 — Debugger integration core (Concord + Manual-Load Settings)
 
-- [ ] `SymbolSettingsController`: backup, apply (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`), restore, crash recovery, leaving the user's `IncludeList` and `ExcludeList` untouched (D-15).
-- [ ] Solution event handling: Unreal detection (SPEC §7.2), apply/restore on open/close.
-- [ ] Concord component (`VSOnDemandSymbols.vsdconfigxml` → `.vsdconfig` asset in `.vsixmanifest`): `ConcordSymbolMonitor`, `ConcordSymbolBridge`, `SessionTracker`, `LoadedModuleRegistry` (`DkmModuleInstance`).
-- [ ] `SymbolLoader` (`DkmModuleInstance.TryLoadSymbols()`) with de-duplicating queue and logging.
-- [ ] Before-launch hook (per S5): prune the MRU, compute the wanted set, publish immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
-- [ ] Output pane logger.
+- [x] `SymbolSettingsController`: backup, apply (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`), restore, crash recovery, leaving the user's `IncludeList` and `ExcludeList` untouched (D-15).
+- [x] Solution event handling: Unreal detection (SPEC §7.2), apply/restore on open/close.
+- [x] Concord component (`VSOnDemandSymbols.vsdconfigxml` → `.vsdconfig` asset in `.vsixmanifest`): `ConcordSymbolMonitor`, `ConcordSymbolBridge`, `SessionTracker`, `LoadedModuleRegistry` (`DkmModuleInstance`).
+- [x] `SymbolLoader` (`DkmModuleInstance.TryLoadSymbols()`) with de-duplicating queue and logging.
+- [x] Before-launch hook (per S5): prune the MRU, compute the wanted set, publish immutable `WantedSet` snapshot to `ConcordSymbolBridge`.
+- [x] Output pane logger.
 
 **Accept when:** launching the UE editor with an MRU containing `MyGame` loads symbols only for the wanted set via `ConcordSymbolMonitor.OnModuleInstanceLoad`. Session start and end are logged. Settings are restored when the solution closes, and after killing devenv.exe and restarting.
 

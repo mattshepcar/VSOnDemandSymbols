@@ -1,9 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
     <Nullable>enable</Nullable>
     <LangVersion>14</LangVersion>
+
+    <!-- Disable VBCSCompiler named-pipe server so sandboxed builds do not hang -->
+    <UseSharedCompilation>false</UseSharedCompilation>
 
     <!-- VSIX settings -->
     <VSSDKBuildToolsAutoSetup>true</VSSDKBuildToolsAutoSetup>
@@ -15,9 +20,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Resources\Icon.png">
+    <Content Include="Resources\Icon.png">
       <IncludeInVSIX>true</IncludeInVSIX>
-    </None>
+    </Content>
+    <VsdConfigXmlFiles Include="VSOnDemandSymbols.vsdconfigxml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -39,5 +45,20 @@
       <IncludeOutputGroupsInVSIXLocalOnly>DebugSymbolsProjectOutputGroup%3b</IncludeOutputGroupsInVSIXLocalOnly>
     </ProjectReference>
   </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <Import Project="$(VsInstallRoot)\VSSDK\VisualStudioIntegration\Tools\Bin\Microsoft.VSSDK.Debugger.VSDConfigTool.targets"
+          Condition="Exists('$(VsInstallRoot)\VSSDK\VisualStudioIntegration\Tools\Bin\Microsoft.VSSDK.Debugger.VSDConfigTool.targets')" />
+
+  <Target Name="IncludeVsdConfigInVsix"
+          AfterTargets="CreateVsdbgConfigFile"
+          BeforeTargets="GetVsixSourceItems"
+          DependsOnTargets="CreateVsdbgConfigFile"
+          Condition="'$(VsdConfigFile)' != '' and Exists('$(VsdConfigFile)')">
+    <ItemGroup>
+      <VSIXSourceItem Include="$(VsdConfigFile)" />
+    </ItemGroup>
+  </Target>
 
 </Project>

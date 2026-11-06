@@ -105,4 +105,22 @@ public class StateRepositoryTests
         Assert.Equal(1, entry.TriggerCount);
         Assert.Contains("UnrealEditor-Engine.dll", entry.Binaries);
     }
+
+    [Fact]
+    public void GetSolutionStateFilePath_ReturnsExpectedVsFolderLocation()
+    {
+        string path = StateRepository.GetSolutionStateFilePath(@"D:\MyProject\MyGame.sln");
+        Assert.Equal(@"D:\MyProject\.vs\MyGame\OnDemandSymbols\state.json", path);
+    }
+
+    [Fact]
+    public void GetNoSolutionStateFilePath_ReturnsConsistentHashedLocation()
+    {
+        string path1 = StateRepository.GetNoSolutionStateFilePath(@"C:\LocalAppData", @"D:\UE\Engine\Binaries\Win64\UnrealEditor.exe");
+        string path2 = StateRepository.GetNoSolutionStateFilePath(@"C:\LocalAppData", @"d:\ue\engine\binaries\win64\unrealeditor.exe");
+
+        Assert.Equal(path1, path2);
+        Assert.StartsWith(@"C:\LocalAppData\OnDemandSymbols\nosolution\", path1);
+        Assert.EndsWith(@"\state.json", path1);
+    }
 }

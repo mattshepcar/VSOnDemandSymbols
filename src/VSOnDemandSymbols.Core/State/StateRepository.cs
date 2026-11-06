@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using Newtonsoft.Json;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
@@ -15,11 +17,62 @@ public sealed class StateRepository
     private readonly ILogger _logger;
 
     public const int CurrentSchemaVersion = 1;
+    public const string StateFileName = "state.json";
 
     public StateRepository(IFileSystem fileSystem, ILogger logger)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Computes the per-solution state file path (SPEC §9.1):
+    /// <c>&lt;SolutionDir&gt;/.vs/&lt;SolutionName&gt;/OnDemandSymbols/state.json</c>.
+    /// </summary>
+    public static string GetSolutionStateFilePath(string solutionFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(solutionFilePath))
+        {
+            throw new ArgumentException("Solution file path cannot be null or empty.", nameof(solutionFilePath));
+        }
+
+        string? solutionDir = Path.GetDirectoryName(solutionFilePath);
+        string solutionName = Path.GetFileNameWithoutExtension(solutionFilePath);
+        if (string.IsNullOrEmpty(solutionDir) || string.IsNullOrEmpty(solutionName))
+        {
+            throw new ArgumentException($"Invalid solution file path '{solutionFilePath}'.", nameof(solutionFilePath));
+        }
+
+        return Path.Combine(solutionDir!, ".vs", solutionName, "OnDemandSymbols", StateFileName);
+    }
+
+    /// <summary>
+    /// Computes the no-solution fallback state file path (SPEC §9.1):
+    /// <c>%LOCALAPPDATA%/OnDemandSymbols/nosolution/&lt;hash of exe path&gt;/state.json</c>.
+    /// </summary>
+    public static string GetNoSolutionStateFilePath(string localAppDataDirectory, string exePath)
+    {
+        if (string.IsNullOrWhiteSpace(localAppDataDirectory))
+        {
+            throw new ArgumentException("LocalAppData directory cannot be null or empty.", nameof(localAppDataDirectory));
+        }
+
+        string normalizedExe = (exePath ?? string.Empty).Trim().ToUpperInvariant();
+        string hashHex;
+        using (var sha = SHA256.Create())
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(normalizedExe);
+            byte[] hash = sha.ComputeHash(bytes);
+            var sb = new StringBuilder(16);
+            for (int i = 0; i < 8; i++)
+            {
+                sb.Append(hash[i].ToString("x2"));
+            }
+
+            hashHex = sb.ToString();
+        }
+
+        return Path.Combine(localAppDataDirectory, "OnDemandSymbols", "nosolution", hashHex, StateFileName);
     }
 
     public SolutionState Load(string filePath)

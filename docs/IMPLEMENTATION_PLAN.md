@@ -1,85 +1,135 @@
-# Implementation Plan
+# Implementation Plan (Clean-Slate Minimal Architecture)
 
-Work through the phases in order. Each phase ends with its acceptance criteria met, the build green, and the docs updated. Tick the boxes as items are completed. Agents: keep this file current, because it is the shared progress tracker.
+This document is the actionable, phased implementation plan for the clean-slate architecture specified in [**`docs/SPEC.md`**](SPEC.md).
 
 ---
 
-## Phase 0 — Spikes and baseline (de-risk the VS APIs)
+## Progress Tracker
 
-Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §6 before building the real thing. Spike code is throwaway. Put it in `spikes/` or on a branch, not in `src/`.
+- [x] **Phase 1: Project & Build Simplification (Strip Concord & MSBuild)**
+  - [x] 1.1 Update `VSOnDemandSymbols.csproj`: remove `.vsdconfig` build targets, remove `.vsdconfigxml`, remove `Microsoft.VisualStudio.Debugger.Engine` assembly reference.
+  - [x] 1.2 Update `source.extension.vsixmanifest`: remove `DebuggerEngineExtension` asset.
+  - [x] 1.3 Remove obsolete files from `src/VSOnDemandSymbols/` and `src/VSOnDemandSymbols.Core/`.
+  - [x] 1.4 Verify clean build with MSBuild.
+- [x] **Phase 2: Core Engine & Unit Tests**
+  - [x] 2.1 Implement `UnrealModuleResolver` in `VSOnDemandSymbols.Core` (directory walk-up to `*.Build.cs`, candidate binary names, UHT/unity paths, Unreal solution detection).
+  - [x] 2.2 Verify / adapt `SymbolSettingsBackupStore` and `WildcardPattern`.
+  - [x] 2.3 Update unit tests in `VSOnDemandSymbols.Core.Tests` and verify all tests pass (`dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build`).
+- [x] **Phase 3: VSIX Debugger Integration**
+  - [x] 3.1 Implement `SymbolSettingsManager` (reads/writes `IVsDebuggerSymbolSettings120A`, applies manual mode, merges `IncludeList`, crash recovery).
+  - [x] 3.2 Implement `DebuggerSessionMonitor` (hooks F5 launch via `CommandEvents.BeforeExecute`, updates `IncludeList` from `DTE.Debugger.Breakpoints`, hooks `DebuggerEvents.OnEnterBreakMode` to load missing call-stack symbols via `Module.LoadSymbols`).
+  - [x] 3.3 Connect `OutputLog` for clean diagnostic logging to the "On-Demand Symbols" pane.
+- [x] **Phase 4: Package Lifecycle & Commands**
+  - [x] 4.1 Update `VSOnDemandSymbolsPackage`: background load, C++ solution UI context rule, solution open/close listeners, crash recovery check on startup.
+  - [x] 4.2 Add menu/toolbar toggle command: **Debug > On-Demand Symbols > Enabled**.
+  - [x] 4.3 Verify full solution build (`/p:UseSharedCompilation=false /nr:false`).
+- [x] **Phase 5: Verification & Documentation**
+  - [x] 5.1 Run Core test suite.
+  - [x] 5.2 Validate against `NativeSample` and write verification instructions for Unreal Editor.
+  - [x] 5.3 Commit clean implementation to git with descriptive commit message.
 
-- [x] S1 Symbol settings API round-trip (verified `IVsDebuggerSymbolSettingsManager120A` + `IVsDebuggerSymbolSettings170.AutomaticSymbolLoad` toggling manual-load mode without modifying `IncludeList`; documented in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.1; harness in [`spikes/Phase0SpikeRunner.cs`](../spikes/Phase0SpikeRunner.cs))
-- [x] S2 Programmatic `LoadSymbols` + breakpoint binding + call stack refresh (verified Concord `DkmModuleInstance.TryLoadSymbols()` and `BMFileLineBreakpointCollection.OnModuleSymbolsLoaded` auto-binding in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.2)
-- [x] S3 Module-load event timing & Concord `.vsdconfig` compilation (verified Concord `IDkmModuleInstanceLoadNotification` suspends the target process on the Concord engine thread at `ComponentLevel = 210000`, allowing synchronous `TryLoadSymbols()` before `DllMain`/`StartupModule()`; verified `.vsdconfigxml` → `.vsdconfig` compilation with `vsdconfigtool.exe` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.3)
-- [x] S4 Breakpoint change detection (verified Concord `IDkmBreakpointManagerNotification` with strongly typed `DkmPendingFileLineBreakpoint` / `DkmPendingFunctionBreakpoint` + Strategy B `CommandEvents.AfterExecute` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.4)
-- [x] S5 Before-launch hook (verified D-9/D-15 always-applied manual-load mode + `CommandEvents.BeforeExecute` on `StandardCommandSet97` and `guidVSDebugCommand` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.5)
-- [ ] S6 Baseline startup timings → [`docs/BENCHMARKS.md`](BENCHMARKS.md) (protocol and table ready; interactive UE5 Editor timing numbers pending user run on `D:\UnrealEngine`)
-- [x] S7 Detecting user-initiated symbol loads (verified Concord `IDkmModuleSymbolsLoadedNotification` in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7.7)
-- [x] Record results in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTEGRATION.md) §7. Update [SPEC.md](SPEC.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [DECISIONS.md](DECISIONS.md) (D-12, D-13, D-15) where the results change the design.
+---
 
-**Accept when:** every spike has a documented outcome, and there is a confirmed mechanism for (a) limiting automatic loads, (b) loading on demand, and (c) detecting breakpoints.
+## Detailed Phase Breakdown
 
-## Phase 1 — Project structure and Core library
+### Phase 1: Project & Build Simplification
 
-- [x] Move the VSIX project to `src/VSOnDemandSymbols/`. Update the `.slnx`. Fix the manifest metadata (display name "On-Demand Symbols", description, icon placeholder).
-- [x] Create `src/VSOnDemandSymbols.Core` (netstandard2.0, nullable enabled) and `tests/VSOnDemandSymbols.Core.Tests` (xUnit).
-- [x] Abstractions: `IClock`, `IFileSystem`, `ILogger`, `IProjectModelProvider`.
-- [x] `ModuleKey`, `WildcardPattern` (including the `ue:` prefix), `TriggerReason`.
-- [x] ~~`MruStore`~~ *(removed per [DECISIONS.md](DECISIONS.md) D-20; MRU tracking eliminated)*
-- [x] ~~`StateRepository`~~ *(MRU state persistence removed per [DECISIONS.md](DECISIONS.md) D-20)*
-- [x] `LoadPolicy` (SPEC §5.7) updated for breakpoint modules + AlwaysLoad − NeverLoad (D-20).
-- [x] ~~`RecentlyBuiltScanner`~~ *(removed per [DECISIONS.md](DECISIONS.md) D-16)*
-- [x] Unreal resolver skeleton: Build.cs walk-up, Intermediate path special case, owner detection, manifest reader, DLL name parser, all using the *provisional* rules. Fixture trees under `tests/.../Fixtures/`.
+**Goal:** Strip out all Concord tooling, unmanaged IDE assembly references, and obsolete files so the solution builds as a pure, standard VS SDK extension.
 
-**Accept when:** Core builds, all unit tests pass, the VSIX still builds and loads in the Experimental instance.
+1. **`src/VSOnDemandSymbols/VSOnDemandSymbols.csproj`:**
+   - Remove `<VsdConfigXmlFiles Include="VSOnDemandSymbols.vsdconfigxml" />`.
+   - Remove `<Reference Include="Microsoft.VisualStudio.Debugger.Engine">`.
+   - Remove `<Import Project="$(VsInstallRoot)\VSSDK\VisualStudioIntegration\Tools\Bin\Microsoft.VSSDK.Debugger.VSDConfigTool.targets" ... />`.
+   - Remove the `IncludeVsdConfigInVsix` target.
+   - Keep only standard SDK packages (`Microsoft.VisualStudio.SDK 17.14.40265`, `Microsoft.VSSDK.BuildTools 18.9.820`, `Newtonsoft.Json 13.0.3`).
+2. **`src/VSOnDemandSymbols/source.extension.vsixmanifest`:**
+   - Remove `<Asset Type="DebuggerEngineExtension" Path="VSOnDemandSymbols.vsdconfig" />`.
+   - Retain `<Asset Type="Microsoft.VisualStudio.VsPackage" ... />`.
+3. **Delete Obsolete Files:**
+   - Delete `src/VSOnDemandSymbols/VSOnDemandSymbols.vsdconfigxml`.
+   - Delete Concord classes: `ConcordSymbolMonitor.cs`, `ConcordSymbolBridge.cs`, `LoadedModuleRegistry.cs`, `LoadedModuleInfo.cs`, `WantedSetSnapshot.cs`.
+   - Delete MSBuild classes: `MsBuildResolver.cs`, `MsBuildProjectGraph.cs`, `MsBuildProjectInfo.cs`, `MsBuildConfigurationType.cs`, `ProjectModelProvider.cs`.
+   - Delete obsolete `CompositeResolver.cs`, `Ad7BreakpointEventListener.cs`, `SessionTracker.cs`, `SymbolLoader.cs`.
+4. **Verification:**
+   - Run MSBuild. Ensure solution compiles cleanly.
 
-## Phase 2 — UBT analysis (needs `D:\UnrealEngine`)
+---
 
-> **AI Quota Optimization Plan:** Follow [`docs/PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md) to delegate all `D:\UnrealEngine` file discovery, UBT code extraction, and binary directory scans to **Gemini Flash** (`flash_lite` / `flash`) subagents (`Tasks F1–F4`), keeping raw engine files out of the primary context window.
+### Phase 2: Core Engine & Unit Tests
 
-- [x] Work through the checklist in [MODULE_RESOLUTION.md](MODULE_RESOLUTION.md) §4 (via Flash subagent Tasks F1–F3 in [`PHASE2_FLASH_DELEGATION_PLAN.md`](PHASE2_FLASH_DELEGATION_PLAN.md)).
-- [x] Record findings, with source references, in MODULE_RESOLUTION.md §8. Update §4 and §5 to "confirmed".
-- [x] Update the naming and parsing code and the golden tests.
-- [x] Validate against a real build: list every DLL in `Engine/Binaries/Win64` and all plugin binaries folders, and check that the parser maps 100% of `UnrealEditor-*.dll` to a module that has a matching `.Build.cs`. Write this as an opt-in integration test, skipped when the engine path isn't present (env var `ODS_UE_ROOT`).
+**Goal:** Ensure the pure .NET Core library handles Unreal source $\to$ module $\to$ binary resolution and backup persistence with 100% test coverage.
 
-**Accept when:** the reverse map and forward map round-trip for every module in a real engine build.
+1. **`UnrealModuleResolver.cs` in `VSOnDemandSymbols.Core/Modules/`:**
+   - Implement `ResolveModuleFromSource(string sourceFilePath)`:
+     - Check regex / path substrings for `Intermediate/Build/.../Inc/{Module}/...` and unity files (`Module.{Module}.*.cpp`).
+     - Walk up parent directories to locate `{Module}.Build.cs`. Stop at boundaries (`*.uproject`, `Engine/Source`, drive root). Cache results.
+   - Implement `GetCandidateBinaries(string moduleName)`:
+     - Returns candidate binary patterns: `UnrealEditor-{moduleName}.dll`, `UnrealEditor-{moduleName}-Win64-DebugGame.dll`, `UnrealEditor-{moduleName}-Win64-Development.dll`, `UnrealEditor-{moduleName}*.dll`.
+   - Implement `IsUnrealSolution(string solutionDir)`:
+     - Checks for `*.uproject` or `Engine/Build/Build.version`.
+2. **`SymbolSettingsBackupStore.cs` & `WildcardPattern.cs`:**
+   - Verify implementations in `VSOnDemandSymbols.Core`. Retain JSON serialization and PID crash recovery logic.
+3. **Tests in `tests/VSOnDemandSymbols.Core.Tests/`:**
+   - Keep and adapt tests for `UnrealModuleResolver`, `SymbolSettingsBackupStore`, and `WildcardPattern`.
+   - Run tests: `dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build`.
 
-## Phase 3 — Debugger integration core (Concord + Manual-Load Settings)
+---
 
-- [x] `SymbolSettingsController`: backup, apply (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`), restore, crash recovery, managing `IncludeList` with user original backup preserved (D-15, D-17, D-18, D-20).
-- [x] Solution event handling: Unreal detection (SPEC §7.2), apply/restore on open/close.
-- [x] Concord component (`VSOnDemandSymbols.vsdconfigxml` → `.vsdconfig` asset in `.vsixmanifest`): `ConcordSymbolMonitor`, `ConcordSymbolBridge`, `SessionTracker`, `LoadedModuleRegistry` (`DkmModuleInstance`).
-- [x] `SymbolLoader` (`DkmModuleInstance.TryLoadSymbols()`) with de-duplicating queue and logging.
-- [x] Before-launch hook (per S5 / D-18): resolve breakpoints to module DLL names, populate `IncludeList` with user backup preserved.
-- [x] Output pane logger.
+### Phase 3: VSIX Debugger Integration
 
-**Accept when:** launching the UE editor with a breakpoint in `MyGame` loads symbols for `MyGame` via `IncludeList`. Session start and end are logged. Settings are restored when the solution closes, and after killing devenv.exe and restarting.
+**Goal:** Implement the lean debugger integration components using standard Visual Studio SDK APIs.
 
-## Phase 4 — Triggers
+1. **`SymbolSettingsManager.cs` in `VSOnDemandSymbols/Debugger/`:**
+   - Accepts `IVsDebuggerSymbolSettingsManager120A`.
+   - `ApplyManualMode(IEnumerable<string> wantedBinaries)`:
+     - Saves disk backup if none exists.
+     - Sets `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`.
+     - Preserves user's original `IncludeList` and appends `wantedBinaries`.
+     - Calls `SaveSymbolSettings(settings, loadSymbolsNow: false)`.
+   - `RestoreOriginalSettings()`:
+     - Restores original flags and `IncludeList` from backup.
+     - Deletes backup file from disk.
+   - `RecoverFromCrashIfNeeded()`:
+     - Invokes `SymbolSettingsBackupStore.CheckCrashRecovery()`. If found, restores settings and logs.
+2. **`DebuggerSessionMonitor.cs` in `VSOnDemandSymbols/Debugger/`:**
+   - Constructor subscribes to:
+     - `DTE.Events.CommandEvents["{5efc7975-14bc-11cf-9b2b-00aa00573819}", 295]` (F5 Launch).
+     - `DTE.Events.DebuggerEvents.OnEnterBreakMode`.
+   - On before launch:
+     - Queries `DTE.Debugger.Breakpoints`.
+     - Resolves each enabled breakpoint's `.File` via `UnrealModuleResolver`.
+     - Collects `UnrealEditor.exe`, `UnrealEditor-Win64-*.exe`, and candidate DLLs.
+     - Calls `SymbolSettingsManager.ApplyManualMode(wantedBinaries)`.
+   - On enter break mode:
+     - Inspects `DTE.Debugger.CurrentThread.StackFrames`.
+     - For frames without symbols (`.ModuleName` ends in `.dll`), iterates `DTE.Debugger.DebuggedProcesses` and calls `EnvDTE90.Module.LoadSymbols("")`.
+     - Logs symbol load to `OutputLog`.
+3. **`OutputLog.cs`:**
+   - Writes to the "On-Demand Symbols" Output pane using `IVsOutputWindowPane`.
 
-- [x] Breakpoints: before launch (BP-1), live (BP-2), disabled (BP-3), qualified function breakpoints (BP-4), unresolved warnings (BP-6), plus design-mode command/margin hooks (`CommandEvents.AfterExecute` & `SelectionEvents.OnChange`) updating `IncludeList` before F5.
-- [x] Call stack modes (CS-1 to CS-6): `CallStackMode` (`None`, `CurrentThread`, `CurrentThreadAllThreadsOnException`, `AllThreads`), `CallStackMaxFrames` (128), `CallStackIncludeExternalModules`, asynchronous AD7/DTE stack evaluation on `IDebugBreakEvent2` / `IDebugExceptionEvent2` / `IDebugBreakpointEvent2` / `IDebugStepCompleteEvent2` / `OnEnterBreakMode`.
-- [x] Frame activation (FA-1, FA-2): `DebuggerEvents.OnContextChanged` + break-mode selection listener loading symbols for activated frames and examining unexamined thread stacks.
-- [x] Manual-load detection (ML-1): `ConcordSymbolMonitor.OnModuleSymbolsLoaded` recording `TriggerReason.Manual`.
-- [x] ~~MRU hit recording for all triggers; run bookkeeping at session end~~ *(removed per [DECISIONS.md](DECISIONS.md) D-20)*
-- [x] MSBuild resolver (`MsBuildResolver`, `MsBuildProjectGraph`, `MsBuildProjectInfo`, `CompositeResolver`) through `ProjectModelProvider` (needed for `AllNative` scope), tested on `tests/Samples/NativeSample`.
+---
 
-**Accept when:** every scenario in [TESTING.md](TESTING.md) §3 passes manually.
+### Phase 4: Package Lifecycle & Commands
 
-## Phase 5 — UI (Simplified per D-20)
+**Goal:** Package initialization, auto-load rules, and the user-facing enable/disable toggle.
 
-- [ ] `.vsct`: Debug > On-Demand Symbols submenu, toolbar, toggle command with checked state.
-- [ ] Options `DialogPage` with settings in SPEC §8.5 (Scope, Breakpoint, CallStack, AlwaysLoad/NeverLoad patterns, Logging; MRU options removed per D-20).
-- [ ] Context menu command (SPEC §8.4): "Load Symbols for '{Module}' Now" while debugging. (Pinning command removed per D-20).
-- [ ] Optional diagnostics/status tool window (SPEC §8.3): lightweight display of active breakpoint modules in `IncludeList` and session load counters (MRU/pinned actions removed per D-20).
+1. **`VSOnDemandSymbolsPackage.cs`:**
+   - Register package with background loading and C++ solution UI context rule (`ProvideUIContextRule`).
+   - In `InitializeAsync`:
+     - Query debugger services (`IVsDebuggerSymbolSettingsManager120A`, `DTE2`, `IVsSolution`).
+     - Check and run `SymbolSettingsManager.RecoverFromCrashIfNeeded()`.
+     - Instantiate `UnrealModuleResolver`, `SymbolSettingsManager`, `DebuggerSessionMonitor`.
+     - Register `OleMenuCommand` for `Debug > On-Demand Symbols > Enabled`.
+     - Subscribe to `IVsSolutionEvents` (`OnAfterOpenSolution`, `OnBeforeCloseSolution`).
+   - Solution open: check if solution contains `*.uproject` or `Engine/Build/Build.version`. If so, prepare session.
+   - Solution close / Package dispose: call `SymbolSettingsManager.RestoreOriginalSettings()`.
+2. **Menu Toggle (`VSCommandTable.vsct`):**
+   - Provide toggle command: **Debug > On-Demand Symbols > Enabled**. When disabled, restore original symbol settings immediately.
 
-**Accept when:** toggle command, options page, and context menu work in both light and dark themes, and in VS 2022 17.14 and VS 2026.
+---
 
-## Phase 6 — Hardening and release
+### Phase 5: Verification & Done Criteria
 
-- [ ] Performance pass against NF-1 and NF-2, using the Diagnostic log timings. Record the final numbers in `docs/BENCHMARKS.md`.
-- [ ] Fault-injection review: every handler is wrapped; an exception never leaves the user's settings modified.
-- [ ] README.md for users (install, how it works, limitations from SPEC §11).
-- [ ] VSIX manifest: version, tags, icon, license, release notes. Confirm install on VS 2022 17.14 and VS 2026.
-- [ ] CHANGELOG.md.
-
+1. **Build:** Run MSBuild from repo root. Must produce `VSOnDemandSymbols.vsix` with 0 warnings and 0 errors.
+2. **Unit Tests:** Run `dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build`. Must pass 100%.
+3. **Safety Guarantee:** Confirm that closing a solution or crashing cleanly restores the user's symbol settings.

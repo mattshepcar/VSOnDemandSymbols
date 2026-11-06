@@ -11,7 +11,7 @@ namespace VSOnDemandSymbols.Debugger;
 
 /// <summary>
 /// Monitors debugger launch (F5) and break events to maintain <c>IncludeList</c>
-/// and trigger on-demand symbol loading (SPEC_V2.md §4.1).
+/// and trigger on-demand symbol loading (SPEC.md §4.1).
 /// </summary>
 public sealed class DebuggerSessionMonitor : IDisposable
 {

@@ -1,36 +1,31 @@
-# Module Resolution
+# Unreal Module Resolution
 
-How a source file (for example the file a breakpoint is in) is mapped to a **module key**, how a key is mapped to **DLL file names**, and how a **loaded DLL** is mapped back to a key.
+How a source file (for example the file a breakpoint is in) is mapped to an Unreal Engine module name, how a module name is mapped to candidate DLL file names, and how solutions are detected.
 
 > [!NOTE]
-> The Unreal naming rules were **confirmed in Phase 2** against Unreal Engine 5.8.4 at `D:\UnrealEngine`. See §8 for full code citations.
+> The Unreal naming rules were **confirmed in Phase 2** against Unreal Engine 5.8.4 at `D:\UnrealEngine`. See §7 for full code citations.
 
 ---
 
-## 1. Interfaces (Core library, no VS dependencies)
+## 1. Engine Component: `UnrealModuleResolver` (Core library)
+
+Located in `VSOnDemandSymbols.Core.Modules`:
 
 ```csharp
-public enum ModuleKind { Unreal, MsBuild, External }
-
-public readonly record struct ModuleKey(ModuleKind Kind, string Name); // Name compared case-insensitively
-
-public interface ISourceToModuleResolver
+public sealed class UnrealModuleResolver
 {
-    // Returns zero or more keys. Empty result = unresolved.
-    IReadOnlyList<ModuleKey> Resolve(string sourceFilePath);
-}
+    // Resolves a C++ source file path (including intermediate UHT and unity files) to its owning module name
+    public string? ResolveModuleFromSource(string sourceFilePath);
 
-public interface IModuleBinaryNaming
-{
-    // Exact file names the key may appear as (used for the VS include list).
-    IReadOnlyList<string> GetCandidateFileNames(ModuleKey key);
+    // Returns candidate binary names (e.g. UnrealEditor-MyGame.dll, UnrealEditor-MyGame-Win64-DebugGame.dll, UnrealEditor-MyGame*.dll)
+    public IReadOnlyList<string> GetCandidateBinaries(string moduleName);
 
-    // Reverse map from a loaded module's full path. Null if it's not one of ours.
-    ModuleKey? TryParseLoadedModule(string modulePath);
+    // Checks whether a directory is an Unreal Engine solution (contains *.uproject or Engine/Build/Build.version)
+    public bool IsUnrealSolution(string solutionDir);
 }
 ```
 
-A `CompositeResolver` tries the `UnrealResolver` first, when the solution is Unreal, then the `MsBuildResolver`. All resolvers cache their results and are thread-safe.
+This resolver is thread-safe, caches directory walk-up results, and has zero Visual Studio dependencies.
 
 ---
 
@@ -160,20 +155,7 @@ Confirmed regex / parser logic, matched against the file name (case-insensitive)
 
 ---
 
-## 6. MSBuild (non-Unreal) resolution
-
-1. `DTE.Solution.FindProjectItem(path)` → `ContainingProject`. Also check other projects, because a file can be shared. Using `IVsSolution` and `IVsProject.IsDocumentInProject` over all C++ projects is the robust route.
-2. For each project, read `TargetPath` for the active configuration and platform through `IVsBuildPropertyStorage.GetPropertyValue("TargetPath", configName, PersistStorageType.PST_PROJECT_FILE)`, or `VCConfiguration.Evaluate("$(TargetPath)")` (VCProjectEngine).
-3. If `ConfigurationType == StaticLibrary`: find the projects that reference it (`ProjectReference` items, through VCProjectEngine `VCReferences`) transitively, and use their outputs.
-4. Ignore **Makefile/NMake projects** here. Unreal's generated projects are NMake, and their output is the editor EXE. Unreal solutions must go through the Unreal resolver.
-5. Cache per (project, configuration). Invalidate on solution, project or configuration change events.
-6. Keys: `ModuleKey(MsBuild, Path.GetFileName(TargetPath))`. Reverse mapping: a loaded module whose file name equals a known key.
-
-All of this needs the UI thread and VS services. Implement it behind an `IProjectModelProvider` interface in the VSIX project, so the Core logic stays unit-testable.
-
----
-
-## 7. Golden test cases (confirmed in Phase 2)
+## 6. Golden test cases (confirmed in Phase 2)
 
 | Input | Expected |
 |---|---|
@@ -201,7 +183,7 @@ All of this needs the UI thread and VS services. Implement it behind an `IProjec
 
 ---
 
-## 8. Confirmed UBT findings
+## 7. Confirmed UBT findings
 
 Verified against Unreal Engine 5.8.4 (`D:\UnrealEngine\Engine\Build\Build.version`: `MajorVersion: 5`, `MinorVersion: 8`, `PatchVersion: 4`, `CompatibleChangelist: 55116800`, `BranchName: "UE5"`).
 

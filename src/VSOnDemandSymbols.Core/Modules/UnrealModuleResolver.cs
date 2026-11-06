@@ -10,7 +10,7 @@ namespace VSOnDemandSymbols.Core.Modules;
 
 /// <summary>
 /// Resolves C++ source files to Unreal Engine module names and candidate binary file names
-/// (SPEC_V2.md §4.1).
+/// (SPEC.md §4.1).
 /// </summary>
 public sealed class UnrealModuleResolver
 {

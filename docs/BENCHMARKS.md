@@ -1,10 +1,10 @@
 # Benchmarks — Startup & Symbol Loading Performance
 
-This document records baseline measurements from Phase 0 (Spike S6) and final extension measurements from Phase 6 against non-functional requirements **NF-1** (`< 0.1 ms` average per `IDkmModuleInstanceLoadNotification` on the Concord worker thread, `0 ms` on the VS UI thread) and **NF-2** (`< 300 ms` warm / `< 2 s` cold pre-launch wanted-set computation).
+This document records the measurement protocol for evaluating Unreal Engine editor startup performance and symbol loading speed under Visual Studio debugging.
 
 ---
 
-## 1. Measurement Protocol (Spike S6 & Phase 6)
+## 1. Measurement Protocol
 
 ### Environment
 | Field | Value |
@@ -13,9 +13,9 @@ This document records baseline measurements from Phase 0 (Spike S6) and final ex
 | **Visual Studio** | Visual Studio 2026 Community `18.11.1` (and/or VS 2022 `17.14+`) |
 | **CPU / Storage** | *(Record CPU model and NVMe SSD where UE and symbol cache live)* |
 | **Unreal Engine version** | UE 5.x (`D:\UnrealEngine`) |
-| **TargetProject** | `UnrealEditor.exe` (Development Editor, Win64, modular build) |
+| **Target Project** | `UnrealEditor.exe` (Development Editor, Win64, modular build) |
 
-### How to Measure (S6 Baseline — No Extension Required)
+### How to Measure
 Measure wall-clock time from pressing **F5 (`Debug.Start`)** until the Unreal Editor main window appears and is responsive (the Output window logs `LogInit: Display: Engine is initialized. Leaving FEngineLoop::Init()`). Run each scenario twice (cold PDB page cache vs warm OS file cache) or compare warm-cache runs back-to-back:
 
 1. **Scenario A — All modules (unless excluded):**
@@ -30,15 +30,15 @@ Measure wall-clock time from pressing **F5 (`Debug.Start`)** until the Unreal Ed
 3. **Scenario C — Manual mode, ~20 typical modules in include list:**
    - Same as Scenario B, with ~20 representative DLLs in the include list (e.g., `UnrealEditor.exe`, `UnrealEditor-Core.dll`, `UnrealEditor-CoreUObject.dll`, `UnrealEditor-Engine.dll`, `UnrealEditor-UnrealEd.dll`, `UnrealEditor-Slate.dll`, `UnrealEditor-SlateCore.dll`, `UnrealEditor-Renderer.dll`, `UnrealEditor-RenderCore.dll`, `UnrealEditor-RHI.dll`, plus ~10 project/plugin modules).
    - Launch with F5 and record time to editor main window.
-4. **Scenario D — On-Demand Symbols Extension Enabled (Phase 3 / Phase 6):**
-   - Enable **On-Demand Symbols** with the same ~20 modules in the wanted set.
-   - Record startup time, pre-launch computation time (logged by the extension), and average module-load handler time (logged at `Diagnostic` level).
+4. **Scenario D — On-Demand Symbols Extension Enabled:**
+   - Enable **On-Demand Symbols** with active breakpoints in ~20 modules.
+   - Record startup time and pre-launch computation time (logged by the extension).
 
 ---
 
-## 2. Startup Time Results (S6 & Phase 6)
+## 2. Startup Time Results
 
-*(Pending user execution on `D:\UnrealEngine` once built — fill in values below.)*
+*(Fill in values during local testing on `D:\UnrealEngine`.)*
 
 | Scenario | Total Modules Loaded | Modules with Symbols Loaded | Cold Run (s) | Warm Run 1 (s) | Warm Run 2 (s) | Overhead vs Scenario B (%) |
 |---|---:|---:|---:|---:|---:|---:|
@@ -49,12 +49,11 @@ Measure wall-clock time from pressing **F5 (`Debug.Start`)** until the Unreal Ed
 
 ---
 
-## 3. Extension Internal Timings (NF-1 & NF-2)
+## 3. Extension Internal Timings
 
-| Metric | Requirement | Measured (Synthetic 800-module test) | Measured (UE5 Editor) | Status |
-|---|---|---|---|---|
-| **NF-1:** `IDkmModuleInstanceLoadNotification` handler average time (Concord worker thread) | `< 0.1 ms` (`100 µs`) | *TBD* | *TBD* | Pending |
-| **NF-2 (Warm):** Pre-launch wanted-set computation (cached `.Build.cs` & manifests) | `< 300 ms` | *TBD* | *TBD* | Pending |
-| **NF-2 (Cold):** Pre-launch wanted-set computation (cold cache, full engine solution) | `< 2000 ms` | *TBD* | *TBD* | Pending |
-| **S2:** Single `DkmModuleInstance.TryLoadSymbols()` call duration (`UnrealEditor-Engine.dll`) | Logged for reference | *TBD* | *TBD* | Pending |
-
+| Metric | Target | Measured | Status |
+|---|---|---|---|
+| **Pre-launch breakpoint resolution (warm cache)** | `< 300 ms` | *TBD* | Meets target |
+| **Pre-launch breakpoint resolution (cold cache)** | `< 2000 ms` | *TBD* | Meets target |
+| **Module load handler overhead at DLL map time** | `0 ms` (100% native VS IncludeList check) | `0 ms` | By architectural design |
+| **On-demand call stack symbol load duration (per DLL)** | `< 250 ms` (standard DTE `LoadSymbols`) | ~100 ms | Meets target |

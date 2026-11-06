@@ -1,4 +1,13 @@
 <Solution>
+  <Folder Name="/docs/">
+    <File Path="docs/ARCHITECTURE.md" />
+    <File Path="docs/BENCHMARKS.md" />
+    <File Path="docs/DECISIONS.md" />
+    <File Path="docs/IMPLEMENTATION_PLAN.md" />
+    <File Path="docs/MANUAL_VERIFICATION.md" />
+    <File Path="docs/MODULE_RESOLUTION.md" />
+    <File Path="docs/SPEC.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/VSOnDemandSymbols/VSOnDemandSymbols.csproj">
       <Deploy />

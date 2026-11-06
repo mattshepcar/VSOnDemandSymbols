@@ -13,7 +13,7 @@ using VSOnDemandSymbols.Core.State;
 namespace VSOnDemandSymbols.Debugger;
 
 /// <summary>
-/// Single owner of all writes to Visual Studio's symbol settings (SPEC_V2.md §4.1).
+/// Single owner of all writes to Visual Studio's symbol settings (SPEC.md §4.1).
 /// Backs up the user's original settings first to disk.
 /// Manages manual-load mode (<c>IsManualLoad=true, IsLoadAdjacent=false, AutomaticSymbolLoad=false</c>)
 /// and populates <c>IncludeList</c> with wanted binary patterns.

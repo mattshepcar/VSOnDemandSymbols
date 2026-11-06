@@ -18,7 +18,7 @@ using VSOnDemandSymbols.Logging;
 namespace VSOnDemandSymbols;
 
 /// <summary>
-/// Async VSIX package for On-Demand Symbols V2 (SPEC_V2.md §4.1).
+/// Async VSIX package for On-Demand Symbols (SPEC.md §4.1).
 /// Auto-loads in the background when a solution containing C++ projects is opened.
 /// </summary>
 [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
@@ -92,7 +92,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
                 _logger,
                 backupFilePath);
 
-            // SPEC_V2.md §1.2: If a backup file exists from a previous crash, restore it immediately.
+            // SPEC.md §1.2: If a backup file exists from a previous crash, restore it immediately.
             _symbolSettingsManager.RecoverFromCrashIfNeeded();
 
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);

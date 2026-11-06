@@ -1,151 +1,198 @@
-# Architecture
+# Architecture — On-Demand Symbols
 
-## 1. Solution layout (target)
+## 1. Solution Overview
+
+**On-Demand Symbols** is a lightweight, zero-maintenance Visual Studio extension designed specifically to speed up debugging large native Unreal Engine 5 applications (~800 DLLs).
+
+The solution contains two projects and only **6 core source files**:
 
 ```
 VSOnDemandSymbols/
-├─ AGENTS.md
-├─ VSOnDemandSymbols.slnx
-├─ docs/                                  # spec and design docs (this folder)
-├─ src/
-│  ├─ VSOnDemandSymbols/                  # VSIX package + Concord IDE component (net472).
-│  │  ├─ VSOnDemandSymbolsPackage.cs
-│  │  ├─ VSOnDemandSymbols.vsdconfigxml   # Concord component configuration → compiled to .vsdconfig
-│  │  ├─ source.extension.vsixmanifest    # Registers Package + DebuggerEngineExtension asset
-│  │  ├─ VSOnDemandSymbols.vsct           # commands, menus, toolbar
-│  │  ├─ Commands/                        # Toggle, LoadNow, ShowToolWindow
-│  │  ├─ Debugger/                        # Concord component + SymbolSettingsController + DTE hooks (§3)
-│  │  ├─ Projects/                        # IProjectModelProvider implementation (DTE/VCProjectEngine)
-│  │  ├─ Options/                         # DialogPage
-│  │  ├─ ToolWindow/                      # WPF tool window + view model (Diagnostics / Status)
-│  │  └─ Logging/                         # Output window pane logger
-│  └─ VSOnDemandSymbols.Core/             # netstandard2.0. NO Visual Studio references.
-│     ├─ Modules/                         # ModuleKey, resolvers, Unreal naming, manifests, DLL parser
-│     ├─ Policy/                          # LoadPolicy, TriggerReason, WildcardPattern
-│     └─ Abstractions/                    # IClock, IFileSystem, ILogger, IProjectModelProvider
-└─ tests/
-   ├─ VSOnDemandSymbols.Core.Tests/       # xUnit (net8.0 + net472), fixture trees, golden tests
-   └─ Samples/NativeSample/               # small exe + dll + static lib solution for manual testing
+├── AGENTS.md                               # AI agent guide and build conventions
+├── VSOnDemandSymbols.slnx                  # Solution file
+├── docs/                                   # Architectural and design documentation
+│   ├── ARCHITECTURE.md                     # This document (system architecture & design rationale)
+│   ├── BENCHMARKS.md                       # Startup performance benchmarking protocol
+│   ├── DECISIONS.md                        # Append-only decision log (D-1 to D-21)
+│   ├── IMPLEMENTATION_PLAN.md              # Phased implementation plan and progress tracker
+│   ├── MANUAL_VERIFICATION.md              # Manual test procedures in Experimental instance
+│   ├── MODULE_RESOLUTION.md                # Unreal module naming and resolution reference
+│   └── SPEC.md                             # Architectural and functional specification
+│
+├── src/
+│   ├── VSOnDemandSymbols.Core/             # netstandard2.0 (Pure .NET, zero VS dependencies)
+│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock
+│   │   ├── Modules/
+│   │   │   └── UnrealModuleResolver.cs     # *.Build.cs directory walk-up & candidate DLL generator
+│   │   ├── Policy/
+│   │   │   └── WildcardPattern.cs          # Path sanitization & wildcard matching
+│   │   └── State/
+│   │       ├── SymbolSettingsBackupDto.cs  # Backup DTO schema
+│   │       └── SymbolSettingsBackupStore.cs# JSON persistence & PID crash recovery
+│   │
+│   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, standard NuGet references)
+│       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context auto-load, lifecycle
+│       ├── VSCommandTable.vsct             # Debug > On-Demand Symbols > Enabled command
+│       ├── Debugger/
+│       │   ├── IVsDebuggerSymbolSettings170.cs # COM interop for AutomaticSymbolLoad
+│       │   ├── SymbolSettingsManager.cs    # Reads/writes IVsDebuggerSymbolSettings120A & disk backup
+│       │   └── DebuggerSessionMonitor.cs   # BeforeExecute (F5) hook, Breakpoints, OnEnterBreakMode
+│       └── Logging/
+│           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
+│
+└── tests/
+    └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with FakeUnrealProject
 ```
 
-The existing blank project currently sits at the repo root. Phase 1 moves it to `src/VSOnDemandSymbols/` and updates the `.slnx`.
+---
 
-**Rule:** anything that can be unit-tested without VS goes in Core. The VSIX project is a thin adapter.
-
-## 2. Component diagram
+## 2. Component Diagram & Responsibilities
 
 ```mermaid
 flowchart TD
-    subgraph VSIX["VSIX + Concord Component (VS-specific)"]
-        PKG["VSOnDemandSymbolsPackage"]
-        SSC["SymbolSettingsController (manual-load flags & IncludeList)"]
-        CSM["ConcordSymbolMonitor (IDkmModuleInstanceLoad / SymbolsLoaded)"]
-        ST["SessionTracker"]
-        MR["LoadedModuleRegistry (DkmModuleInstance)"]
-        SL["SymbolLoader (DTE Module.LoadSymbols)"]
-        BW["BreakpointWatcher / Ad7BreakpointEventListener"]
-        CST["CallStackTrigger"]
-        FAT["FrameActivationTrigger"]
-        PMP["ProjectModelProvider"]
-        UI["Commands / Options / OutputLog"]
+    subgraph VS_IDE["Visual Studio IDE / VSIX Package"]
+        PKG["VSOnDemandSymbolsPackage<br/>(AsyncPackage & Solution Events)"]
+        VSCT["VSCommandTable.vsct<br/>(Debug > On-Demand Symbols > Enabled)"]
+        SSM["SymbolSettingsManager<br/>(IVsDebuggerSymbolSettings120A)"]
+        DSM["DebuggerSessionMonitor<br/>(DTE CommandEvents & DebuggerEvents)"]
+        OUT["OutputLog<br/>(On-Demand Symbols Pane)"]
     end
-    subgraph CORE["Core (pure .NET)"]
-        RES["CompositeResolver (Unreal + MsBuild)"]
-        NAM["UnrealBinaryNaming + ManifestReader + DllNameParser"]
-        POL["LoadPolicy"]
+
+    subgraph CORE_LIB["VSOnDemandSymbols.Core (netstandard2.0)"]
+        UMR["UnrealModuleResolver<br/>(*.Build.cs walk-up & candidate binaries)"]
+        STORE["SymbolSettingsBackupStore<br/>(JSON disk backup & PID crash recovery)"]
     end
-    PKG --> SSC
-    PKG --> ST
-    CSM --> MR
-    CSM --> POL
-    BW --> RES
-    BW --> POL
-    POL --> SSC
-    CST --> MR
-    FAT --> MR
-    CST --> POL
-    FAT --> POL
-    POL --> SL
-    SL --> MR
-    RES --> NAM
-    RES --> PMP
-    UI --> POL
-    UI --> SSC
+
+    PKG --> SSM
+    PKG --> DSM
+    PKG --> OUT
+    VSCT --> PKG
+
+    DSM --> UMR
+    DSM --> SSM
+    DSM --> OUT
+
+    SSM --> STORE
+    SSM --> OUT
 ```
 
-## 3. Components
+### Component Responsibilities
 
-| Component | Responsibility | Thread |
-|---|---|---|
-| `VSOnDemandSymbolsPackage` | Async background load; builds the object graph; subscribes to solution events; crash-recovery restore at startup. | Background, then UI for service access |
-| `SymbolSettingsController` | Back up, apply and restore VS symbol settings boolean flags (`IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`) and manages `IncludeList` dynamically by merging active breakpoint modules with the user's backed-up original list (D-15, D-17, D-18, D-20). Single owner of symbol settings writes. Idempotent. | UI |
-| `ConcordSymbolMonitor` | IDE-side Concord component (`ComponentLevel = 210000`, in-process in `devenv.exe`). Implements `IDkmModuleInstanceLoadNotification`, `IDkmModuleInstanceUnloadNotification`, `IDkmModuleSymbolsLoadedNotification`, and `IDkmProcessExitNotification`. Maintains `LoadedModuleRegistry`. | Concord engine worker thread (off UI thread) |
-| `ConcordSymbolBridge` | Thread-safe in-process bridge holding current wanted-set snapshot and routing notifications. | Any (lock-free / concurrent) |
-| `SessionTracker` | Session start/end, qualification (SPEC §7.3), session summary logging. No MRU bookkeeping. | UI / Engine |
-| `LoadedModuleRegistry` | For each process: loaded modules → (`DkmModuleInstance`, path, `ModuleKey?`, symbol state). Reverse-maps each module to a key once, at load. | Any (`ConcurrentDictionary`) |
-| `SymbolLoader` | De-duplicating queue of mid-session load requests (key + reason). Loads symbols via DTE `Module.LoadSymbols()`, tracks the result, and logs. | Background / UI |
-| `BreakpointWatcher` / `Ad7BreakpointEventListener` | Observes breakpoint events (`IDebugBreakpointErrorEvent2`, design-time changes), resolves files to keys, updates `IncludeList`, and triggers on-demand loads. | UI for DTE, background for resolution |
-| `CallStackTrigger` / `FrameActivationTrigger` | SPEC §5.2 and §5.3. Examines frames on break / frame activation and queues `SymbolLoader` for modules without symbols. | UI / background |
-| `LoadPolicy` (Core) | Computes `IncludeList` set (SPEC §5.7) from breakpoint keys and `AlwaysLoadPatterns`; evaluates whether on-demand module loads are permitted against `NeverLoadPatterns`. | Any (immutable snapshots) |
-| `CompositeResolver` (Core) | Source file → keys (MODULE_RESOLUTION.md). Cached. | Background |
-| `ProjectModelProvider` (VSIX) | Exposes solution/project info (TargetPath, project membership, static-lib references) to Core through `IProjectModelProvider`. Snapshots are built on the UI thread and then used from any thread. | UI to build, any to read |
-| `OutputLog` | `ILogger` implementation that writes to the "On-Demand Symbols" output pane; level filter. | Any (`OutputStringThreadSafe`) |
+| Component | Project | Responsibility | Primary APIs Used |
+|---|---|---|---|
+| **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener, enable/disable toggle. | `AsyncPackage`, `IVsSolutionEvents`, `OleMenuCommand` |
+| **`SymbolSettingsManager`** | VSIX | Single point of contact for symbol settings. Backs up original settings before any modification; applies manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`); merges active breakpoint binaries into `IncludeList`; cleanly restores original settings on close, disable, or crash recovery. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
+| **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints and update `IncludeList`. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `EnvDTE90.Module` |
+| **`UnrealModuleResolver`** | Core | Resolves source files to module names by walking up the directory tree to find `{Module}.Build.cs` (handling intermediate UHT and unity paths). Generates candidate DLL names (`UnrealEditor-{Module}*.dll`). Detects Unreal solutions (`*.uproject` or `Engine/Build/Build.version`). | `IFileSystem`, `ConcurrentDictionary` cache |
+| **`SymbolSettingsBackupStore`** | Core | Serializes symbol settings backups to `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`. Checks PID on startup to detect and recover from previous Visual Studio crashes. | `Newtonsoft.Json`, `IFileSystem` |
+| **`OutputLog`** | VSIX | Thread-safe logger outputting to the dedicated "On-Demand Symbols" pane in the Visual Studio Output window. | `IVsOutputWindowPane` |
 
-## 4. Key sequences
+---
 
-### 4.1 Launch (F5)
+## 3. Why Concord, MSBuild, and MRU Were Eliminated
+
+During initial exploration (Phases 0–4), three complex subsystems were evaluated and subsequently removed. Their elimination is documented in [DECISIONS.md](DECISIONS.md) (D-15 through D-21).
+
+### 3.1 Why Concord Was Eliminated (D-17, D-19, D-21)
+* **The Premise:** Concord (`Microsoft.VisualStudio.Debugger.Engine`) was initially considered to intercept DLL loads via `IDkmModuleInstanceLoadNotification` and call `moduleInstance.TryLoadSymbols()` synchronously off the UI thread without touching `IncludeList`.
+* **The Reality:**
+  1. **`TryLoadSymbols` is unsupported for native C++:** In Visual Studio, `DkmModuleInstance.TryLoadSymbols()` throws `NotImplementedException` (`0x80004001` / `E_NOTIMPL`) for native C++ modules. Visual Studio's native debug engine (`CppDebug.dll`) does not implement `IDkmSymbolLocator`.
+  2. **Breakpoint glyph corruption:** Implementing Concord's `IDkmBreakpointManagerNotification` interfered with the AD7 event pipeline, causing breakpoint glyphs in the editor margin to remain hollow ("symbols not loaded") even when symbols had been successfully loaded.
+  3. **Build & packaging overhead:** Concord required private IDE assembly references (`Microsoft.VisualStudio.Debugger.Engine.dll`), custom MSBuild targets (`Microsoft.VSSDK.Debugger.VSDConfigTool.targets`), `vsdconfigtool.exe`, `.vsdconfigxml` configuration files, and `DebuggerEngineExtension` VSIX assets.
+* **The Solution:** Visual Studio's native debug engine automatically checks `IVsDebuggerSymbolSettings120A.IncludeList` during module mapping when manual mode is active. Mid-session loads are handled directly via standard DTE `Module.LoadSymbols("")`. Concord was completely stripped.
+
+### 3.2 Why MSBuild Project Crawling Was Eliminated (D-21)
+* **The Premise:** An MSBuild project crawler (`MsBuildResolver`, `ProjectModelProvider`, `VCProjectEngine`) was initially built to support generic non-Unreal C++ solutions (`Scope = AllNative`).
+* **The Reality:** Standard non-Unreal C++ solutions typically contain only a handful of DLLs and do not suffer from the 800-DLL startup problem. Crawling MSBuild project dependency graphs introduced ~700 lines of complex COM interop, potential UI-thread deadlocks, and solution evaluation overhead.
+* **The Solution:** Non-Unreal solutions are declared out of scope. When a non-Unreal solution is opened, the extension remains completely inert. For Unreal solutions, directory walk-up to `*.Build.cs` resolves modules in `< 1 ms`.
+
+### 3.3 Why MRU, Pinning, and Persistent State Were Eliminated (D-20)
+* **The Premise:** An MRU (Most Recently Used) cache and module pinning list were proposed to persist previously symbolized modules across debugging runs into `.vs/state.json`.
+* **The Reality:** On-demand symbol loading during break mode is fast (~100 ms). Carrying forward modules across sessions caused the `IncludeList` to bloat over time, steadily eroding the startup speedup that the extension exists to provide.
+* **The Solution:** The `IncludeList` is populated before launch solely for modules with active breakpoints (plus `UnrealEditor.exe` and `UnrealEditor-Win64-*.exe`). No session history or per-solution state files are maintained.
+
+---
+
+## 4. Key Execution Sequences
+
+### 4.1 Launch (F5) with Breakpoints
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant VS as VS Shell
-    participant H as BeforeLaunch hook / BreakpointWatcher
-    participant P as LoadPolicy
-    participant S as SymbolSettingsController
-    participant D as VS Debug Engine
-    U->>VS: F5
-    VS->>H: Debug.Start BeforeExecute
-    H->>P: Resolve active breakpoints
-    P-->>H: Breakpoint modules (DLL names)
-    H->>S: Update IncludeList (breakpoints + AlwaysLoad + user original)
-    S-->>VS: SaveSymbolSettings(IncludeList)
-    VS->>D: Launch UnrealEditor.exe (manual-load mode active)
-    loop For each native DLL loaded at startup
-        D->>D: Is DLL in IncludeList?
-        alt In IncludeList
-            D->>D: VS loads symbols natively; breakpoints bind immediately
-        else Not in IncludeList
-            D->>D: Symbols skipped; fast startup
+    participant User
+    participant VS as Visual Studio
+    participant DSM as DebuggerSessionMonitor
+    participant UMR as UnrealModuleResolver
+    participant SSM as SymbolSettingsManager
+    participant Dbg as Native Debug Engine
+
+    User->>VS: Press F5 (Launch)
+    VS->>DSM: CommandEvents.BeforeExecute (cmdidStart)
+    DSM->>VS: Query active breakpoints (DTE.Debugger.Breakpoints)
+    loop For each breakpoint
+        DSM->>UMR: ResolveModuleFromSource(bp.File)
+        UMR-->>DSM: Return module name (e.g. MyGame)
+        DSM->>UMR: GetCandidateBinaries("MyGame")
+        UMR-->>DSM: UnrealEditor-MyGame*.dll
+    end
+    DSM->>SSM: ApplyManualMode(wantedBinaries)
+    SSM->>VS: Write to IncludeList & SaveSymbolSettings()
+    VS->>Dbg: Launch UnrealEditor.exe
+    loop For each of ~800 DLLs mapped
+        Dbg->>Dbg: Is DLL name in IncludeList?
+        alt Yes (Breakpoint module / EXE)
+            Dbg->>Dbg: Load PDB synchronously; breakpoint binds immediately
+        else No
+            Dbg->>Dbg: Skip PDB; startup proceeds at maximum speed
         end
     end
 ```
 
-### 4.2 Breakpoint set while running
+### 4.2 Break Mode On-Demand Symbol Loading
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant BW as BreakpointWatcher / Ad7BreakpointEventListener
-    participant R as Resolver
-    participant S as SymbolSettingsController
-    participant L as SymbolLoader
-    participant M as LoadedModuleRegistry
-    U->>BW: Sets breakpoint in MyActor.cpp
-    BW->>R: Resolve file
-    R-->>BW: Unreal:MyGame -> UnrealEditor-MyGame.dll
-    BW->>S: Add to IncludeList
-    BW->>M: Is MyGame loaded?
-    alt loaded without symbols
-        BW->>L: Load symbols now (Module.LoadSymbols)
-        L-->>U: Breakpoint binds automatically
-    else not loaded yet
-        Note over BW,S: VS will load symbols when mapped via IncludeList
+    participant Dbg as Debuggee
+    participant VS as Visual Studio
+    participant DSM as DebuggerSessionMonitor
+    participant Log as OutputLog
+
+    Dbg->>VS: Execution breaks (Exception / Breakpoint / Step)
+    VS->>DSM: DebuggerEvents.OnEnterBreakMode
+    DSM->>VS: Inspect CurrentThread.StackFrames
+    loop For each un-symbolized frame (.dll)
+        DSM->>VS: Locate EnvDTE90.Module
+        DSM->>VS: Call mod.LoadSymbols("")
+        DSM->>Log: Log "Loading symbols on demand: Module.dll — CallStack"
     end
+    VS->>User: Call Stack window resolves with function names and line numbers
 ```
 
-## 5. Cross-cutting rules
+### 4.3 Extension Toggle (Debug > On-Demand Symbols > Enabled)
 
-- **Threading:** follow the VS threading rules. Use `JoinableTaskFactory`, `ThreadHelper.ThrowIfNotOnUIThread()` in every method that touches COM/DTE, and no `.Result` / `.Wait()`. Concord callbacks (`ConcordSymbolMonitor`) run on Concord worker threads and must never block on the VS UI thread. Do file I/O on background threads through `TaskScheduler.Default`.
-- **Fault isolation:** wrap every event handler and Concord notification in try/catch → log. A failure in a trigger must never stop other triggers or the debug session (NF-5).
-- **Testability:** time through `IClock`, the file system through an `IFileSystem` abstraction, logging through `ILogger`. No static state in Core.
-- **Dependencies:** prefer what VS already ships (`Newtonsoft.Json`, `Microsoft.VisualStudio.Threading`, `Microsoft.VisualStudio.Debugger.Engine`). Don't bundle assemblies VS provides (`<Private>false</Private>`). Core references only netstandard2.0-compatible packages.
+```mermaid
+sequenceDiagram
+    participant User
+    participant Menu as OleMenuCommand
+    participant Pkg as VSOnDemandSymbolsPackage
+    participant SSM as SymbolSettingsManager
+    participant Log as OutputLog
+
+    User->>Menu: Click "Enabled" (Toggle Off)
+    Menu->>Pkg: ExecuteToggleCommand()
+    Pkg->>SSM: RestoreOriginalSettings()
+    SSM->>SSM: Restore user flags & IncludeList from disk backup
+    SSM->>SSM: Delete symbol-settings-backup.json
+    Pkg->>Log: Log "On-Demand Symbols disabled by user; restored original settings."
+    Menu-->>User: Menu item unchecked; VS returned to original state
+```
+
+---
+
+## 5. Golden Rules & Thread Safety
+
+1. **Golden Rule #1 (Settings Safety):** All modifications to Visual Studio symbol settings go strictly through `SymbolSettingsManager`. Settings are backed up to disk before any modification and restored on solution close, extension disable, VS exit, or startup crash recovery. Symbol search paths, cache directory, and symbol servers are never modified.
+2. **Golden Rule #2 (Never Break Debugging):** Every debugger event handler is wrapped in `try / catch`. Any unexpected error logs a diagnostic message and allows Visual Studio to continue uninterrupted.
+3. **Threading Guidelines:**
+   - Always call `await JoinableTaskFactory.SwitchToMainThreadAsync()` before interacting with DTE, COM, or Visual Studio shell services.
+   - Core library (`VSOnDemandSymbols.Core`) remains 100% free of Visual Studio dependencies and runs safely on any thread.

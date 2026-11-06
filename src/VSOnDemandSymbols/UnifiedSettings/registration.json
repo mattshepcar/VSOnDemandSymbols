@@ -1,12 +1,11 @@
 {
   "categories": {
-    "onDemandSymbols": {
-      "title": "On-Demand Symbols",
-      "legacyOptionPageId": "2071180e-2267-4023-aa18-5217b3f50219"
+    "debugging.symbols.onDemandLoading": {
+      "title": "On Demand Loading"
     }
   },
   "properties": {
-    "onDemandSymbols.breakSymbolLoadMode": {
+    "debugging.symbols.onDemandLoading.breakSymbolLoadMode": {
       "type": "string",
       "title": "Break Symbol Loading",
       "description": "Controls symbol loading when execution breaks or context changes.",
@@ -24,3 +23,4 @@
     }
   }
 }
+

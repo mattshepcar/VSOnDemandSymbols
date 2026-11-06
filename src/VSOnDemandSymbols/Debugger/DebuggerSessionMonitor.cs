@@ -43,10 +43,15 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     public bool IsEnabled { get; set; }
 
     /// <summary>
-    /// Gets or sets the symbol loading policy when execution breaks or context changes.
-    /// Defaults to the <c>ODS_BREAK_SYMBOL_LOAD_MODE</c> environment variable if set, otherwise <see cref="BreakSymbolLoadMode.LocalOnly"/>.
+    /// Gets or sets the delegate providing the current <see cref="BreakSymbolLoadMode"/>.
+    /// Defaults to reading the <c>ODS_BREAK_SYMBOL_LOAD_MODE</c> environment variable or <see cref="BreakSymbolLoadMode.LocalOnly"/>.
     /// </summary>
-    public BreakSymbolLoadMode BreakSymbolLoadMode { get; set; } = BreakSymbolLoadModeExtensions.FromEnvironment();
+    public Func<BreakSymbolLoadMode> BreakSymbolLoadModeProvider { get; set; } = () => BreakSymbolLoadModeExtensions.FromEnvironment();
+
+    /// <summary>
+    /// Current break-mode symbol loading mode, evaluated on demand from <see cref="BreakSymbolLoadModeProvider"/>.
+    /// </summary>
+    public BreakSymbolLoadMode BreakSymbolLoadMode => BreakSymbolLoadModeProvider();
 
     public DebuggerSessionMonitor(
         DTE2 dte,

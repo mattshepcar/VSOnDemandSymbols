@@ -8,12 +8,13 @@ using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Utilities.UnifiedSettings;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
+using VSOnDemandSymbols.Core.Policy;
 using VSOnDemandSymbols.Core.State;
 using VSOnDemandSymbols.Debugger;
 using VSOnDemandSymbols.Logging;
-using VSOnDemandSymbols.Options;
 
 namespace VSOnDemandSymbols;
 
@@ -33,27 +34,14 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectCapability:VisualC",
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
-[ProvideOptionPage(
-    typeof(OnDemandSymbolsOptionPage),
-    "On-Demand Symbols",
-    "On-Demand Symbols",
-    0,
-    0,
-    true,
-    IsInUnifiedSettings = true)]
-[ProvideProfile(
-    typeof(OnDemandSymbolsOptionPage),
-    "On-Demand Symbols",
-    "On-Demand Symbols",
-    0,
-    0,
-    true)]
 [ProvideSettingsManifest(PackageRelativeManifestFile = @"UnifiedSettings\registration.json")]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {
     public const string PackageGuidString = "3214abc4-2e97-4c16-8583-86beddfd1d3b";
     public const string CppSolutionUiContextGuidString = "4f8d2b19-6a34-4e52-9c71-83b4a1e0c512";
+
+    private const string BreakSymbolLoadModeMoniker = "debugging.symbols.onDemandLoading.breakSymbolLoadMode";
 
     private OutputLog? _logger;
     private SymbolSettingsManager? _symbolSettingsManager;
@@ -109,14 +97,13 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
             _sessionMonitor = new DebuggerSessionMonitor(_dte, vsDebugger, JoinableTaskFactory, _symbolSettingsManager, _resolver, _logger);
 
-            var optionPage = (OnDemandSymbolsOptionPage)GetDialogPage(typeof(OnDemandSymbolsOptionPage));
-            if (optionPage != null)
+            var settingsReader = await GetServiceAsync(typeof(ISettingsReader)) as ISettingsReader;
+            if (settingsReader != null)
             {
-                _sessionMonitor.BreakSymbolLoadMode = optionPage.BreakSymbolLoadMode;
-                optionPage.Applied += () =>
+                _sessionMonitor.BreakSymbolLoadModeProvider = () =>
                 {
-                    _sessionMonitor.BreakSymbolLoadMode = optionPage.BreakSymbolLoadMode;
-                    _logger?.Info($"Break-mode symbol loading mode set to: {optionPage.BreakSymbolLoadMode}");
+                    var result = settingsReader.GetValue<string>(BreakSymbolLoadModeMoniker);
+                    return BreakSymbolLoadModeExtensions.ParseOrDefault(result.Value);
                 };
             }
 

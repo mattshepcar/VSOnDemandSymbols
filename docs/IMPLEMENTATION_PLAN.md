@@ -44,9 +44,9 @@ This document is the actionable, phased implementation plan for the clean-slate 
     - [x] 6.2.3 Add environment variable override (`ODS_BREAK_SYMBOL_LOAD_MODE`) for immediate testing and verification without UI.
     - [x] 6.2.4 Add unit tests for configuration parsing and enum validation in `VSOnDemandSymbols.Core.Tests`.
   - [x] **Step 6.3: Expose Configuration in Visual Studio Extension Settings**
-    - [x] 6.3.1 Implement `OnDemandSymbolsOptionPage : DialogPage` in `VSOnDemandSymbols/Options/` exposing `BreakSymbolLoadMode` in `Tools -> Options -> On-Demand Symbols -> General`.
-    - [x] 6.3.2 Register `[ProvideOptionPage]` on `VSOnDemandSymbolsPackage`.
-    - [x] 6.3.3 Connect settings synchronization from `OnDemandSymbolsOptionPage` to `DebuggerSessionMonitor`.
+    - [x] 6.3.1 Register settings via modern Unified Settings manifest `registration.json` nested under `Debugging -> Symbols -> On Demand Loading` (`debugging.symbols.onDemandLoading`).
+    - [x] 6.3.2 Register `[ProvideSettingsManifest]` on `VSOnDemandSymbolsPackage` (omitting legacy `[ProvideOptionPage]` and `legacyOptionPageId`).
+    - [x] 6.3.3 Connect settings retrieval via `ISettingsReader` to `DebuggerSessionMonitor`.
 
 ---
 
@@ -206,13 +206,12 @@ This document is the actionable, phased implementation plan for the clean-slate 
    - Add unit tests verifying enum parsing, defaults, and backup store serialization in `VSOnDemandSymbols.Core.Tests`.
 
 #### Step 6.3: Expose Configuration in Visual Studio Extension Settings
-1. **Tools -> Options Integration:**
-   - Implement `OnDemandSymbolsOptionPage : DialogPage` under `VSOnDemandSymbols/Options/`.
-   - Expose `[Category("Break Mode")]`, `[DisplayName("Break Symbol Loading")]`, `[Description(...)]` with `BreakSymbolLoadMode`.
-   - Visual Studio automatically renders a native combo box and persists values to the user profile registry without custom UI code.
+1. **Unified Settings Manifest:**
+   - Define settings declaratively in `UnifiedSettings/registration.json` with a single top-level category `"On-Demand Symbols"`.
+   - Expose property `onDemandSymbols.breakSymbolLoadMode` as an enum (`LocalOnly`, `Off`, `All`) with user-friendly item labels.
+   - Omit `legacyOptionPageId` so Visual Studio renders modern native UI controls directly without legacy migration warnings.
 2. **Package Registration:**
-   - Decorate `VSOnDemandSymbolsPackage` with:
-     `[ProvideOptionPage(typeof(OnDemandSymbolsOptionPage), "On-Demand Symbols", "General", 0, 0, true)]`.
-3. **Option Synchronization:**
-   - On package initialization, pass the option page instance to `DebuggerSessionMonitor`.
-   - Handle property updates so changing the option in `Tools -> Options` applies immediately to active debug sessions.
+   - Decorate `VSOnDemandSymbolsPackage` with `[ProvideSettingsManifest(PackageRelativeManifestFile = @"UnifiedSettings\registration.json")]`.
+3. **Settings Synchronization:**
+   - On package initialization, acquire `ISettingsReader` from `Microsoft.VisualStudio.Utilities.UnifiedSettings`.
+   - Read initial setting and subscribe to changes via `SubscribeToChanges`, updating `DebuggerSessionMonitor.BreakSymbolLoadMode` dynamically.

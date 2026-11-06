@@ -33,18 +33,11 @@ public sealed class SymbolSettingsManager
     public bool IsApplied => _isApplied;
 
     /// <summary>
-    /// Resolves the per-VS-instance backup file path:
-    /// <c>%LOCALAPPDATA%/OnDemandSymbols/&lt;VS instance id&gt;[_&lt;root suffix&gt;]/symbol-settings-backup.json</c>.
+    /// Resolves the current Visual Studio instance identifier (e.g. "18.0_1a2b3c4d_Exp").
     /// </summary>
-    public static string ResolveDefaultBackupFilePath(IVsShell? vsShell = null)
+    public static string ResolveInstanceId(IVsShell? vsShell = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-
-        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(localAppData))
-        {
-            localAppData = Path.GetTempPath();
-        }
 
         string instanceId = "Default";
         try
@@ -74,6 +67,24 @@ public sealed class SymbolSettingsManager
             // Fall back to Default instance folder
         }
 
+        return instanceId;
+    }
+
+    /// <summary>
+    /// Resolves the per-VS-instance backup file path:
+    /// <c>%LOCALAPPDATA%/OnDemandSymbols/&lt;VS instance id&gt;[_&lt;root suffix&gt;]/symbol-settings-backup.json</c>.
+    /// </summary>
+    public static string ResolveDefaultBackupFilePath(IVsShell? vsShell = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            localAppData = Path.GetTempPath();
+        }
+
+        string instanceId = ResolveInstanceId(vsShell);
         return SymbolSettingsBackupStore.GetBackupFilePath(localAppData, instanceId);
     }
 

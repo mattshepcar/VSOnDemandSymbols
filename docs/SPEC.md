@@ -97,16 +97,21 @@ VSOnDemandSymbols/
 │   │   ├── Policy/
 │   │   │   ├── BreakSymbolLoadMode.cs      # Off, LocalOnly (default), All
 │   │   │   └── WildcardPattern.cs          # Wildcard pattern matcher (*, ?)
-│   │   └── State/
-│   │       └── SymbolSettingsBackupStore.cs# JSON backup read/write & PID crash recovery
+│   │   ├── State/
+│   │   │   └── SymbolSettingsBackupStore.cs# JSON backup read/write & PID crash recovery
+│   │   └── Statistics/
+│   │       ├── StartupStatistics.cs        # Stats model, calculation & time formatting
+│   │       └── StartupStatisticsStore.cs   # JSON persistence (%LOCALAPPDATA%/OnDemandSymbols/startup-stats.json)
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, pure NuGet references)
 │       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context rule, lifecycle
 │       ├── Debugger/
 │       │   ├── SymbolSettingsManager.cs    # Reads/writes IVsDebuggerSymbolSettings120A & backup
 │       │   └── DebuggerSessionMonitor.cs   # BeforeExecute (F5) hook, Breakpoints, OnEnterBreakMode
-│       └── Logging/
-│           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
+│       ├── Logging/
+│       │   └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
+│       └── Statistics/
+│           └── StartupStatisticsManager.cs # Syncs stats to Output window & Unified Settings
 │
 └── tests/
     └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with InMemoryFileSystem
@@ -166,6 +171,15 @@ VSOnDemandSymbols/
 * Detects Unreal solutions (contains `*.uproject` or `Engine/Build/Build.version`).
 * Handles crash recovery on startup.
 * Operates transparently in the background with zero custom UI commands; diagnostics and status are logged to the "On-Demand Symbols" Output pane.
+
+#### 6. `StartupStatistics` & `StartupStatisticsStore` (Core) / `StartupStatisticsManager` (VSIX)
+* Tracks editor boot acceleration:
+  * Number of PDBs skipped at launch: $\max(0, \text{TotalModules} - \text{IncludeListModules})$.
+  * Estimated developer time saved per boot and cumulatively across sessions (based on empirical measurement that symbol loading accounts for ~50% of un-optimized editor boot time: $T_{\text{saved}} \approx T_{\text{boot}}$).
+* Persisted safely via `StartupStatisticsStore` to `%LOCALAPPDATA%/OnDemandSymbols/startup-stats.json`.
+* Reported to developer:
+  * In the **Output Window** ("On-Demand Symbols" pane) when editor startup completes.
+  * In the **Unified Settings Page** (`Tools > Options > Debugging > Symbols > On Demand Loading`) via properties synchronized by `StartupStatisticsManager`.
 
 ---
 

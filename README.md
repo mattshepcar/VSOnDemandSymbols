@@ -19,6 +19,7 @@
 ## What It Does
 
 * **Fast Debugger Startup:** Configures Visual Studio into "load only specified modules" mode, bypassing upfront symbol loading for roughly ~1,000 Unreal Engine DLLs so editor boot times with the debugger attached become comparable to launching without the debugger.
+* **Startup Savings & Statistics:** Automatically calculates how many unnecessary PDB symbol loads were avoided when booting up the editor and estimates developer time saved (both per launch and lifetime), displayed in the Output window and on the settings page.
 * **Breakpoint Preloading:** Automatically resolves source files to their Unreal modules and preloads symbols into the debugger's `IncludeList` before launch so breakpoints bind immediately at process startup.
 * **Runtime Breakpoint Binding:** Detects newly placed or enabled breakpoints while running mid-session and loads module symbols immediately without requiring a debug restart.
 * **On-Demand Break Symbols:** Automatically resolves and loads symbols for active call stack frames and background thread locations when execution stops (breakpoint, crash, assertion, or thread switch).
@@ -31,21 +32,24 @@
 
 ## Output and Diagnostics
 
-Real-time status, module resolutions, and symbol-loading events are reported directly to Visual Studio's **Output** window:
+Real-time status, startup time savings, module resolutions, and symbol-loading events are reported directly to Visual Studio's **Output** window:
 
 * Open **View &gt; Output** (or press `Ctrl+Alt+O`).
 * In the **Show output from** dropdown, select **"On-Demand Symbols"**.
+* When the editor boots, view the startup acceleration summary (e.g. `Startup symbol acceleration: avoided loading 948 PDBs (estimated ~25s saved this launch)`).
 
 ---
 
 ## How to Use
 
 1. **Zero Configuration:** Simply open any Unreal Engine 5 solution (`.sln` / `.slnx`) and start debugging (`F5`). The extension activates automatically.
-2. **Break Symbol Loading Mode:** Customize symbol resolution behavior when execution breaks by navigating to:
+2. **Settings & Lifetime Savings:** View cumulative statistics (PDBs avoided, estimated time saved) and customize break symbol behavior under:
    * **Tools &gt; Options &gt; Debugging &gt; Symbols &gt; On Demand Loading**
-   * **LocalOnly (Default):** Loads adjacent and locally cached PDBs while masking remote servers to prevent background network latency.
-   * **All:** Queries configured remote symbol servers if symbols are missing locally.
-   * **Off:** Disables automatic symbol loading on break (startup breakpoint preloading remains active).
+   * **Startup Acceleration Stats:** Displays lifetime PDBs avoided and estimated time saved.
+   * **Break Symbol Loading Mode:**
+     * **LocalOnly (Default):** Loads adjacent and locally cached PDBs while masking remote servers to prevent background network latency.
+     * **All:** Queries configured remote symbol servers if symbols are missing locally.
+     * **Off:** Disables automatic symbol loading on break (startup breakpoint preloading remains active).
 
 ---
 

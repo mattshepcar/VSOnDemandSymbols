@@ -134,3 +134,29 @@ This document provides step-by-step verification instructions for Visual Studio 
 5. **Verify:**
    - Because symbols are already loaded in the process, the breakpoint activates and binds immediately without any delay (glyph becomes solid red).
    - When execution reaches the line, the breakpoint hits successfully.
+
+---
+
+### Test Case 10: Startup Acceleration Statistics & Settings Page (ADR-11)
+1. In the Experimental instance with an Unreal solution open, press **F5** to launch the editor.
+2. Wait for the editor to boot and display its main window.
+3. Open **View > Output** and select **On-Demand Symbols** from the *Show output from* dropdown.
+4. **Verify:**
+   - The Output pane logs:
+     ```
+     [Info] Startup symbol acceleration: avoided loading ~950 PDBs (estimated ~25s saved this launch). Lifetime: 950 PDBs avoided (~25s saved) across 1 launch.
+     ```
+5. Open **Tools > Options > Debugging > Symbols > On Demand Loading**.
+6. **Verify:**
+   - The settings page displays the updated statistics:
+     - **Startup Acceleration Stats:** `~950 PDBs avoided across 1 launch (~25s saved)`
+     - **Lifetime PDBs Avoided:** `950`
+     - **Estimated Time Saved:** `~25s`
+     - **Last Launch Savings:** `~950 PDBs avoided (~25s saved)`
+7. Close the solution (**File > Close Solution**) and re-open it.
+8. **Verify:**
+   - The Output pane logs the lifetime notice upon solution detection:
+     ```
+     [Info] Unreal solution detected: '<SolutionName>.slnx'. On-Demand Symbols active. (Lifetime startup savings: 950 PDBs avoided, ~25s saved across 1 launch)
+     ```
+   - Statistics file persists at `%LOCALAPPDATA%\OnDemandSymbols\<VS_INSTANCE_EXP>\startup-stats.json`.

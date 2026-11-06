@@ -12,6 +12,7 @@ using Microsoft.VisualStudio.Threading;
 using VSOnDemandSymbols.Core.Abstractions;
 using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.Policy;
+using VSOnDemandSymbols.Statistics;
 
 namespace VSOnDemandSymbols.Debugger;
 
@@ -27,6 +28,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private readonly SymbolSettingsManager _settings;
     private readonly UnrealModuleResolver _resolver;
     private readonly ILogger _logger;
+    private readonly StartupStatisticsManager? _statsManager;
 
     private readonly CommandEvents _launchCommandEvents;
     private readonly DebuggerEvents _debuggerEvents;
@@ -35,6 +37,11 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private int _rescanPending;
     private bool _advised;
     private bool _disposed;
+
+    private System.Diagnostics.Stopwatch? _launchStopwatch;
+    private int _launchBreakpointModuleCount;
+    private int _launchPending;
+    private CancellationTokenSource? _launchWatcherCts;
 
     /// <summary>
     /// Gets or sets whether session monitoring and symbol management are currently active.
@@ -59,7 +66,8 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         JoinableTaskFactory joinableTaskFactory,
         SymbolSettingsManager settings,
         UnrealModuleResolver resolver,
-        ILogger logger)
+        ILogger logger,
+        StartupStatisticsManager? statsManager = null)
     {
         _dte = dte ?? throw new ArgumentNullException(nameof(dte));
         _vsDebugger = vsDebugger ?? throw new ArgumentNullException(nameof(vsDebugger));
@@ -67,6 +75,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _statsManager = statsManager;
 
         ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -267,12 +276,171 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             return;
         }
 
-        UpdateIncludeListFromBreakpoints("before launch");
+        var candidatePatterns = UpdateIncludeListFromBreakpoints("before launch");
+
+        if (_statsManager != null)
+        {
+            _launchBreakpointModuleCount = candidatePatterns.Count;
+            _launchStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            Interlocked.Exchange(ref _launchPending, 1);
+
+            _launchWatcherCts?.Cancel();
+            _launchWatcherCts?.Dispose();
+            _launchWatcherCts = new CancellationTokenSource();
+
+            var token = _launchWatcherCts.Token;
+            _ = _joinableTaskFactory.RunAsync(() => WatchForEditorStartupAsync(token));
+        }
+    }
+
+    private async Task WatchForEditorStartupAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Give the debugger time to start and attach to the process
+            await Task.Delay(2000, cancellationToken);
+
+            int targetPid = 0;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            while (!cancellationToken.IsCancellationRequested &&
+                   Volatile.Read(ref _launchPending) == 1 &&
+                   sw.Elapsed.TotalSeconds < 60.0)
+            {
+                if (targetPid == 0)
+                {
+                    await _joinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+                    if (!IsEnabled || _dte.Debugger?.CurrentMode == dbgDebugMode.dbgDesignMode)
+                    {
+                        break;
+                    }
+
+                    if (_dte.Debugger?.DebuggedProcesses != null)
+                    {
+                        foreach (Process proc in _dte.Debugger.DebuggedProcesses)
+                        {
+                            string procName = WildcardPattern.ExtractFileNameSafe(proc.Name);
+                            if (procName.StartsWith("UnrealEditor", StringComparison.OrdinalIgnoreCase))
+                            {
+                                targetPid = proc.ProcessID;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (targetPid != 0)
+                {
+                    bool isReady = false;
+                    bool hasExited = false;
+                    int moduleCount = 0;
+
+                    await TaskScheduler.Default;
+
+                    try
+                    {
+                        using var sysProc = System.Diagnostics.Process.GetProcessById(targetPid);
+                        hasExited = sysProc.HasExited;
+                        if (!hasExited)
+                        {
+                            // Unreal Editor has completed boot once its Slate main window is created
+                            if (sysProc.MainWindowHandle != IntPtr.Zero || sw.Elapsed.TotalSeconds >= 45.0)
+                            {
+                                isReady = true;
+                                try
+                                {
+                                    moduleCount = sysProc.Modules.Count;
+                                }
+                                catch
+                                {
+                                    // Process.Modules may throw on access restrictions
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Process may have exited or cannot be inspected
+                    }
+
+                    if (hasExited)
+                    {
+                        break;
+                    }
+
+                    if (isReady)
+                    {
+                        CompleteLaunch(moduleCount);
+                        break;
+                    }
+                }
+
+                await Task.Delay(1000, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when debug session ends or breakpoints trigger early
+        }
+        catch (Exception ex)
+        {
+            _logger.Diagnostic($"Error in editor startup watcher: {ex.Message}");
+        }
+    }
+
+    private void CompleteLaunch(int moduleCount)
+    {
+        if (Interlocked.CompareExchange(ref _launchPending, 0, 1) == 1)
+        {
+            var duration = _launchStopwatch?.Elapsed ?? TimeSpan.Zero;
+            _statsManager?.RecordLaunch(moduleCount, _launchBreakpointModuleCount + 1, duration);
+
+            try
+            {
+                _launchWatcherCts?.Cancel();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    private static int GetModuleCountSafe(int processId)
+    {
+        if (processId <= 0)
+        {
+            return 0;
+        }
+
+        try
+        {
+            using var sysProc = System.Diagnostics.Process.GetProcessById(processId);
+            return sysProc.Modules.Count;
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
+
+        if (Volatile.Read(ref _launchPending) == 1)
+        {
+            int moduleCount = 0;
+            try
+            {
+                int pid = _dte.Debugger?.CurrentProcess?.ProcessID ?? 0;
+                moduleCount = GetModuleCountSafe(pid);
+            }
+            catch
+            {
+            }
+            CompleteLaunch(moduleCount);
+        }
+
         if (!IsEnabled || BreakSymbolLoadMode == BreakSymbolLoadMode.Off)
         {
             return;
@@ -480,6 +648,26 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         _loadedModulesThisSession.Clear();
+
+        if (Volatile.Read(ref _launchPending) == 1)
+        {
+            if (_launchStopwatch != null && _launchStopwatch.Elapsed.TotalSeconds >= 5.0)
+            {
+                CompleteLaunch(0);
+            }
+            else
+            {
+                Interlocked.Exchange(ref _launchPending, 0);
+            }
+        }
+
+        try
+        {
+            _launchWatcherCts?.Cancel();
+        }
+        catch
+        {
+        }
     }
 
     public void Dispose()
@@ -492,6 +680,16 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         }
 
         _disposed = true;
+
+        try
+        {
+            _launchWatcherCts?.Cancel();
+            _launchWatcherCts?.Dispose();
+            _launchWatcherCts = null;
+        }
+        catch
+        {
+        }
 
         try
         {

@@ -56,6 +56,11 @@ This document records the active architectural decisions governing the **On-Dema
 * **Decision:** Zero custom menu commands, tool windows, or status bar indicators. The extension activates automatically for Unreal solutions and restores original settings on solution close. Status and diagnostics are reported to the "On-Demand Symbols" Output pane.
 * **Rationale:** Reduces UI maintenance overhead and provides a seamless, invisible user experience.
 
+### ADR-11: Startup Acceleration Statistics and Time Savings Tracking
+* **Context:** Developers want tangible insight into the performance benefits delivered by the extension—specifically how many PDB symbol loads were avoided when booting up the Unreal Editor and an estimate of developer time saved.
+* **Decision:** Track startup PDB loads avoided ($\max(0, \text{TotalModules} - \text{IncludeListModules})$) and calculate estimated time saved based on the empirical rule of thumb that symbol loading accounts for ~50% of un-optimized editor boot time ($T_{\text{saved}} \approx T_{\text{boot}}$). Persist lifetime totals in `%LOCALAPPDATA%/OnDemandSymbols/startup-stats.json`. Surface statistics in the Output window ("On-Demand Symbols" pane) on launch and in the modern Unified Settings page (`Tools > Options > Debugging > Symbols > On Demand Loading`).
+* **Rationale:** Provides motivating, transparent metrics with zero debugger runtime overhead. Keeps the Core logic 100% testable without Visual Studio COM dependencies, while utilizing modern Unified Settings properties and Output window logging to avoid IDE UI clutter.
+
 ---
 
 ## Historical Explorations & Retired Approaches

@@ -1,5 +1,5 @@
 <Solution>
-  <Folder Name="/root/">
+  <Folder Name="/_Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />

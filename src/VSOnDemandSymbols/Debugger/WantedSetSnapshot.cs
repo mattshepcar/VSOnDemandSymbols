@@ -162,7 +162,7 @@ public sealed class WantedSetSnapshot
             }
         }
 
-        if (key.Kind == ModuleKind.MsBuild)
+        if (key.Kind == ModuleKind.MsBuild || key.Kind == ModuleKind.External)
         {
             newWantedFiles.Add(key.Name);
         }

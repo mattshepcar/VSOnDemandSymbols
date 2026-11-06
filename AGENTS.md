@@ -23,8 +23,8 @@
 
 ## Current status
 
-- Phases 0–3 are complete (`VSOnDemandSymbols.Core`, `VSOnDemandSymbols` VSIX + Concord `.vsdconfig` component, `SymbolSettingsController`, `SessionTracker`, `SymbolLoader`, and unit tests).
-- Next step: **Phase 4 — Triggers** (see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)).
+- Phases 0–4 are complete (`VSOnDemandSymbols.Core`, `VSOnDemandSymbols` VSIX + Concord `.vsdconfig` component, `SymbolSettingsController`, `SessionTracker`, `SymbolLoader`, `Ad7BreakpointEventListener`, `CallStackEvaluator`, `MsBuildResolver`, `CompositeResolver`, `ProjectModelProvider`, `NativeSample`, and unit tests).
+- Next step: **Phase 5 — UI** (see [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)).
 - The Unreal Engine source is at `D:\UnrealEngine`. It's outside the workspace, so reading it may need the user's permission.
 
 ## Golden rules

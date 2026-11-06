@@ -112,7 +112,9 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage
                     vsDebugger,
                     JoinableTaskFactory,
                     () => tracker.OnBreakpointBindErrorReported(),
-                    _logger);
+                    _logger,
+                    (program, thread, isException, isHardBreak) =>
+                        tracker.OnAd7BreakEvent(program, thread, isException, isHardBreak));
                 _breakpointListener.Advise();
             }
         }

@@ -57,12 +57,12 @@ Goal: answer the open questions in [VS_DEBUGGER_INTEGRATION.md](VS_DEBUGGER_INTE
 
 ## Phase 4 — Triggers
 
-- [ ] Breakpoints: before launch (BP-1), live (BP-2), disabled (BP-3), qualified function breakpoints (BP-4), unresolved warnings (BP-6).
-- [ ] Call stack modes (CS-1 to CS-6).
-- [ ] Frame activation (FA-1, FA-2).
-- [ ] Manual-load detection (ML-1).
-- [ ] MRU hit recording for all triggers; run bookkeeping at session end.
-- [ ] MSBuild resolver through `ProjectModelProvider` (needed for `AllNative` scope), tested on `tests/Samples/NativeSample`.
+- [x] Breakpoints: before launch (BP-1), live (BP-2), disabled (BP-3), qualified function breakpoints (BP-4), unresolved warnings (BP-6), plus design-mode command/margin hooks (`CommandEvents.AfterExecute` & `SelectionEvents.OnChange`) updating `IncludeList` before F5.
+- [x] Call stack modes (CS-1 to CS-6): `CallStackMode` (`None`, `CurrentThread`, `CurrentThreadAllThreadsOnException`, `AllThreads`), `CallStackMaxFrames` (128), `CallStackIncludeExternalModules`, asynchronous AD7/DTE stack evaluation on `IDebugBreakEvent2` / `IDebugExceptionEvent2` / `IDebugBreakpointEvent2` / `IDebugStepCompleteEvent2` / `OnEnterBreakMode`.
+- [x] Frame activation (FA-1, FA-2): `DebuggerEvents.OnContextChanged` + break-mode selection listener loading symbols for activated frames and examining unexamined thread stacks.
+- [x] Manual-load detection (ML-1): `ConcordSymbolMonitor.OnModuleSymbolsLoaded` recording `TriggerReason.Manual`.
+- [x] MRU hit recording for all triggers; run bookkeeping at session end.
+- [x] MSBuild resolver (`MsBuildResolver`, `MsBuildProjectGraph`, `MsBuildProjectInfo`, `CompositeResolver`) through `ProjectModelProvider` (needed for `AllNative` scope), tested on `tests/Samples/NativeSample`.
 
 **Accept when:** every scenario in [TESTING.md](TESTING.md) §3 passes manually.
 

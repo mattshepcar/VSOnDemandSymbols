@@ -10,8 +10,7 @@ using EnvDTE;
 using EnvDTE80;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Debugger;
-using Microsoft.VisualStudio.Debugger.Breakpoints;
-using Microsoft.VisualStudio.Debugger.Symbols;
+using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Threading;
@@ -20,12 +19,14 @@ using VSOnDemandSymbols.Core.Modules;
 using VSOnDemandSymbols.Core.Mru;
 using VSOnDemandSymbols.Core.Policy;
 using VSOnDemandSymbols.Core.State;
+using VSOnDemandSymbols.Projects;
 
 namespace VSOnDemandSymbols.Debugger;
 
 /// <summary>
 /// Coordinates solution qualification (SPEC §7.1–§7.3), before-launch wanted-set computation (S5),
-/// session start/end logging (SPEC §8.2), and MRU persistence (SPEC §5.6, §9.1).
+/// breakpoint triggers (BP-1–BP-7), call-stack triggers (CS-1–CS-6), frame-activation triggers (FA-1–FA-2),
+/// manual-load recording (ML-1), session start/end logging (SPEC §8.2), and MRU persistence (SPEC §5.6, §9.1).
 /// </summary>
 public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 {
@@ -33,6 +34,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
     private static readonly Guid Std97CmdSetGuid = new("5efc7975-14bc-11cf-9b2b-00aa00573819");
     private static readonly Guid VsDebugCmdSetGuid = new("C9DD4A59-47FB-11D2-83E7-00C04F9902C1");
+
+    private const int CmdIdBreakAll = 246;
 
     private readonly AsyncPackage _package;
     private readonly JoinableTaskFactory _joinableTaskFactory;
@@ -50,9 +53,13 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private readonly UnrealManifestReader _manifestReader;
     private readonly UnrealDllNameParser _dllParser;
     private readonly UnrealResolver _unrealResolver;
+    private readonly ProjectModelProvider _projectModelProvider;
+    private readonly MsBuildResolver _msBuildResolver;
+    private readonly CompositeResolver _compositeResolver;
     private readonly UnrealSolutionDetector _solutionDetector;
     private readonly MruStore _mruStore;
     private readonly LoadPolicy _loadPolicy;
+    private readonly CallStackEvaluator _callStackEvaluator;
 
     private readonly object _sessionLock = new();
     private readonly List<CommandEvents> _commandEventSubscriptions = new();
@@ -60,8 +67,11 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private readonly ConcurrentDictionary<Guid, string> _processExeNameCache = new();
     private readonly ConcurrentDictionary<Guid, string> _activeQualifyingProcesses = new();
     private readonly HashSet<string> _warnedUnresolvedBreakpointFiles = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<uint> _examinedThreadIdsThisBreak = new();
+    private HashSet<string> _lastDesignModeBreakpointSignature = new(StringComparer.OrdinalIgnoreCase);
 
     private DebuggerEvents? _debuggerEvents;
+    private SelectionEvents? _selectionEvents;
     private uint _solutionEventsCookie;
 
     private UnrealSolutionInfo _currentSolutionInfo = UnrealSolutionInfo.NotUnreal;
@@ -70,6 +80,15 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     private string? _currentStateFilePath;
     private DateTime _lastKnownStateWriteUtc;
 
+    private IDebugProgram2? _activeBreakProgram;
+    private IDebugThread2? _activeBreakThread;
+    private dbgEventReason _lastDteBreakReason = dbgEventReason.dbgEventReasonNone;
+    private bool _userBreakRequested;
+    private bool _ignoreInitialBreakContextChange;
+    private bool _breakEvaluatedThisPause;
+    private int _lastSeenDesignModeBpCount = -1;
+
+    private SymbolScope _scope = SymbolScope.UnrealOnly;
     private bool _isEnabled = true;
     private bool _isQualifyingSolutionOpen;
     private bool _sessionPreparedForLaunch;
@@ -82,11 +101,24 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         set => Volatile.Write(ref _isEnabled, value);
     }
 
+    public SymbolScope Scope
+    {
+        get => _scope;
+        set
+        {
+            _scope = value;
+            _compositeResolver.Scope = value;
+        }
+    }
+
     public bool IsQualifyingSolutionOpen => Volatile.Read(ref _isQualifyingSolutionOpen);
     public UnrealSolutionInfo CurrentSolutionInfo => _currentSolutionInfo;
     public MruStore MruStore => _mruStore;
     public LoadPolicy LoadPolicy => _loadPolicy;
     public UnrealResolver UnrealResolver => _unrealResolver;
+    public MsBuildResolver MsBuildResolver => _msBuildResolver;
+    public CompositeResolver CompositeResolver => _compositeResolver;
+    public ProjectModelProvider ProjectModelProvider => _projectModelProvider;
 
     public SessionTracker(
         AsyncPackage package,
@@ -115,9 +147,16 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         _manifestReader = new UnrealManifestReader(_fileSystem, _logger);
         _dllParser = new UnrealDllNameParser();
         _unrealResolver = new UnrealResolver(_fileSystem, _logger, _ownerDetector, _manifestReader, _dllParser);
+        _projectModelProvider = new ProjectModelProvider(_fileSystem, _logger);
+        _msBuildResolver = new MsBuildResolver(_projectModelProvider);
+        _compositeResolver = new CompositeResolver(_unrealResolver, _msBuildResolver)
+        {
+            Scope = _scope
+        };
         _solutionDetector = new UnrealSolutionDetector(_fileSystem, _ownerDetector);
         _mruStore = new MruStore(_clock);
         _loadPolicy = new LoadPolicy(WildcardPattern.ParseMultiple(DefaultAlwaysLoadPatterns));
+        _callStackEvaluator = new CallStackEvaluator(_loadPolicy);
     }
 
     public void Initialize()
@@ -131,7 +170,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     }
 
     /// <summary>
-    /// Evaluates whether the currently open solution qualifies as an Unreal solution (SPEC §7.2)
+    /// Evaluates whether the currently open solution qualifies under <see cref="Scope"/> (SPEC §7.1, §7.2)
     /// and applies or restores VS symbol settings accordingly (SPEC §7.4).
     /// </summary>
     public void EvaluateOpenSolution()
@@ -171,7 +210,17 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 _dllParser.RegisterAppPrefix(projName);
             }
 
-            bool qualifies = IsEnabled && _currentSolutionInfo.IsUnreal;
+            var msBuildGraph = _projectModelProvider.RebuildSnapshot(_dte);
+            _msBuildResolver.InvalidateCache();
+
+            _compositeResolver.IsUnrealSolution = _currentSolutionInfo.IsUnreal;
+            _compositeResolver.Scope = _scope;
+
+            bool qualifies = IsEnabled &&
+                _scope != SymbolScope.Off &&
+                (_currentSolutionInfo.IsUnreal ||
+                 (_scope == SymbolScope.AllNative && (msBuildGraph.Projects.Count > 0 || projectPaths.Count > 0)));
+
             if (qualifies)
             {
                 bool newlyQualified = !_isQualifyingSolutionOpen || !isSameSolution;
@@ -187,13 +236,16 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
                 if (newlyQualified)
                 {
+                    string modeLabel = _currentSolutionInfo.IsUnreal ? "Unreal" : "Native C++";
                     _logger.Info(
-                        $"Unreal solution detected: '{Path.GetFileName(solutionFullName)}' " +
+                        $"{modeLabel} solution detected: '{Path.GetFileName(solutionFullName)}' " +
                         $"(ProjectRoot={_currentSolutionInfo.ProjectRoot ?? "none"}, " +
                         $"EngineRoot={_currentSolutionInfo.EngineRoot ?? "none"}, " +
                         $"MRU entries={_mruStore.GetEntries().Count}).");
 
                     PublishWantedSetSnapshot(pruneMru: false);
+                    _lastDesignModeBreakpointSignature = CaptureCurrentBreakpointSignature();
+                    _lastSeenDesignModeBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
                     _symbolSettingsController.ApplyWantedSetToIncludeList(_bridge.CurrentSnapshot.WantedFileNames, "solution opened");
                 }
             }
@@ -230,6 +282,12 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             // Reload state.json if it was modified on disk outside the extension (e.g. manual test setup).
             ReloadStateIfModifiedExternally();
 
+            if (_scope == SymbolScope.AllNative)
+            {
+                _projectModelProvider.RebuildSnapshot(_dte);
+                _msBuildResolver.InvalidateCache();
+            }
+
             _symbolSettingsController.ApplyManualLoadMode();
 
             lock (_sessionLock)
@@ -238,6 +296,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 _processExeNameCache.Clear();
                 _activeQualifyingProcesses.Clear();
                 _warnedUnresolvedBreakpointFiles.Clear();
+                ResetBreakState();
                 _bridge.ResetForNewSession();
                 _symbolLoader.ResetForNewSession();
 
@@ -265,7 +324,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     /// </summary>
     public bool IsQualifyingProcess(DkmProcess? process, DkmModuleInstance? candidateModule = null)
     {
-        if (process == null || !IsQualifyingSolutionOpen || !IsEnabled)
+        if (process == null || !IsQualifyingSolutionOpen || !IsEnabled || _scope == SymbolScope.Off)
         {
             return false;
         }
@@ -276,8 +335,17 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         }
 
         string exeName = GetProcessExecutableName(process, candidateModule);
-        string? projectName = _currentSolutionInfo.ProjectName;
-        bool qualifies = UnrealSolutionDetector.IsQualifyingUnrealProcess(exeName, null, projectName);
+        bool qualifies;
+        if (_scope == SymbolScope.AllNative && !_currentSolutionInfo.IsUnreal)
+        {
+            qualifies = !string.IsNullOrWhiteSpace(exeName);
+        }
+        else
+        {
+            string? projectName = _currentSolutionInfo.ProjectName;
+            qualifies = UnrealSolutionDetector.IsQualifyingUnrealProcess(exeName, null, projectName) ||
+                        (_scope == SymbolScope.AllNative && !string.IsNullOrWhiteSpace(exeName));
+        }
 
         if (qualifies || exeName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
@@ -393,7 +461,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         string exeName = GetProcessExecutableName(process, candidateModule);
         if (string.IsNullOrWhiteSpace(exeName) || !exeName!.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
-            exeName = "UnrealEditor.exe";
+            exeName = _currentSolutionInfo.IsUnreal ? "UnrealEditor.exe" : "NativeTarget.exe";
         }
 
         if (!_activeQualifyingProcesses.TryAdd(process.UniqueId, exeName))
@@ -437,7 +505,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                     foreach (var wantedKey in snapshot.WantedKeys)
                     {
                         string reason = snapshot.KeyReasons.TryGetValue(wantedKey, out string? r) ? r : "WantedSet";
-                        var candidates = _unrealResolver.GetCandidateFileNames(wantedKey);
+                        var candidates = _compositeResolver.GetCandidateFileNames(wantedKey);
                         string binariesDesc = candidates.Count > 0
                             ? $" [{string.Join(", ", candidates.Take(3))}]"
                             : string.Empty;
@@ -486,14 +554,14 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
     /// <summary>
     /// Called (coalesced, on the UI thread) when the debugger reports a breakpoint that could not bind
-    /// during a live session (BP-2, D-19). Re-resolves the DTE breakpoints and queues on-demand loads
-    /// for their modules; modules whose symbols are already loaded are skipped cheaply by <see cref="SymbolLoader"/>.
+    /// during a live session or when a breakpoint command executes while debugging (BP-2, D-19).
+    /// Re-resolves the DTE breakpoints and queues on-demand loads for their modules.
     /// </summary>
     public void OnBreakpointBindErrorReported()
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        if (!IsQualifyingSolutionOpen || !IsEnabled)
+        if (!IsQualifyingSolutionOpen || !IsEnabled || !_loadPolicy.LoadOnBreakpoints)
         {
             return;
         }
@@ -513,7 +581,65 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             string? detail = reasons.TryGetValue(key, out string? r) && r.StartsWith(prefix, StringComparison.Ordinal)
                 ? r.Substring(prefix.Length)
                 : null;
-            _symbolLoader.EnqueueLoad(key, TriggerReason.Breakpoint, detail, _unrealResolver.GetCandidateFileNames(key));
+            _symbolLoader.EnqueueLoad(key, TriggerReason.Breakpoint, detail, _compositeResolver.GetCandidateFileNames(key));
+        }
+    }
+
+    /// <summary>
+    /// Called asynchronously on the UI thread by <see cref="Ad7BreakpointEventListener"/> when execution stops
+    /// on a break, exception, breakpoint, or step event (SPEC §5.2 CS-1–CS-6).
+    /// </summary>
+    public void OnAd7BreakEvent(
+        IDebugProgram2? program,
+        IDebugThread2? thread,
+        bool isExceptionEvent,
+        bool isHardBreakCandidate)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            if (!IsQualifyingSolutionOpen || !IsEnabled)
+            {
+                return;
+            }
+
+            lock (_sessionLock)
+            {
+                if (!_sessionStartedLogged)
+                {
+                    return;
+                }
+            }
+
+            if (program == null && thread != null)
+            {
+                thread.GetProgram(out program);
+            }
+
+            _activeBreakProgram = program;
+            _activeBreakThread = thread;
+            _ignoreInitialBreakContextChange = false;
+
+            bool isDteException =
+                _lastDteBreakReason == dbgEventReason.dbgEventReasonExceptionThrown ||
+                _lastDteBreakReason == dbgEventReason.dbgEventReasonExceptionNotHandled;
+
+            bool isUserOrNormalDteBreak =
+                _userBreakRequested ||
+                _lastDteBreakReason == dbgEventReason.dbgEventReasonUserBreak ||
+                _lastDteBreakReason == dbgEventReason.dbgEventReasonBreakpoint ||
+                _lastDteBreakReason == dbgEventReason.dbgEventReasonStep;
+
+            bool isExceptionOrHardBreak = isExceptionEvent || isDteException || (isHardBreakCandidate && !isUserOrNormalDteBreak);
+            _userBreakRequested = false;
+            _breakEvaluatedThisPause = true;
+
+            EvaluateCallStacksOnBreakCore(program, thread, isExceptionOrHardBreak);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to evaluate call stack on break.", ex);
         }
     }
 
@@ -525,6 +651,11 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         if (!IsQualifyingSolutionOpen || string.IsNullOrEmpty(_currentSolutionInfo.EngineRoot))
         {
             EvaluateOpenSolution();
+        }
+        else if (_scope == SymbolScope.AllNative)
+        {
+            _projectModelProvider.RebuildSnapshot(_dte);
+            _msBuildResolver.InvalidateCache();
         }
 
         return VSConstants.S_OK;
@@ -580,6 +711,19 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                 _solutionEventsCookie = 0;
             }
 
+            if (_debuggerEvents != null)
+            {
+                _debuggerEvents.OnEnterDesignMode -= OnDebuggerEnterDesignMode;
+                _debuggerEvents.OnEnterBreakMode -= OnDebuggerEnterBreakMode;
+                _debuggerEvents.OnEnterRunMode -= OnDebuggerEnterRunMode;
+                _debuggerEvents.OnContextChanged -= OnDebuggerContextChanged;
+            }
+
+            if (_selectionEvents != null)
+            {
+                _selectionEvents.OnChange -= OnSelectionChanged;
+            }
+
             HandleSolutionClosed();
         }
         catch
@@ -589,6 +733,299 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
         _commandEventSubscriptions.Clear();
         _debuggerEvents = null;
+        _selectionEvents = null;
+    }
+
+    private void EvaluateCallStacksOnBreakCore(
+        IDebugProgram2? program,
+        IDebugThread2? breakingThread,
+        bool isExceptionOrHardBreak)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        if (!_loadPolicy.ShouldExamineCallStackOnBreak())
+        {
+            return;
+        }
+
+        bool examineAllThreads = _loadPolicy.ShouldExamineAllThreadsOnBreak(isExceptionOrHardBreak);
+        int maxFrames = Math.Max(1, _loadPolicy.CallStackMaxFrames);
+
+        var threadInputs = CollectAd7CallStackThreads(program, breakingThread, examineAllThreads, maxFrames);
+        if (threadInputs.Count == 0)
+        {
+            threadInputs = CollectDteCallStackThreads(examineAllThreads, maxFrames);
+        }
+
+        if (threadInputs.Count == 0)
+        {
+            return;
+        }
+
+        var snapshot = _bridge.CurrentSnapshot;
+        var decisions = _callStackEvaluator.EvaluateBreak(
+            threadInputs,
+            isExceptionOrHardBreak,
+            _examinedThreadIdsThisBreak,
+            fileName => snapshot.TryResolveLoadedModule(fileName),
+            key => _compositeResolver.GetCandidateFileNames(key));
+
+        foreach (var decision in decisions)
+        {
+            _mruStore.RecordHit(decision.Key, TriggerReason.CallStack, decision.Detail, decision.CandidateFileNames);
+            _symbolLoader.EnqueueLoad(decision.Key, TriggerReason.CallStack, decision.Detail, decision.CandidateFileNames);
+        }
+    }
+
+    private IReadOnlyList<CallStackThreadInput> CollectAd7CallStackThreads(
+        IDebugProgram2? program,
+        IDebugThread2? breakingThread,
+        bool examineAllThreads,
+        int maxFrames)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        var results = new List<CallStackThreadInput>();
+        uint breakingThreadId = 0;
+        if (breakingThread != null)
+        {
+            breakingThread.GetThreadId(out breakingThreadId);
+        }
+
+        if (!examineAllThreads)
+        {
+            if (breakingThread != null)
+            {
+                var frames = ReadAd7ThreadFrames(breakingThread, maxFrames);
+                results.Add(new CallStackThreadInput(breakingThreadId, isCurrentThread: true, frames));
+            }
+
+            return results;
+        }
+
+        // Examine all threads in the program
+        if (program != null &&
+            ErrorHandler.Succeeded(program.EnumThreads(out IEnumDebugThreads2? enumThreads)) &&
+            enumThreads != null)
+        {
+            var threadArr = new IDebugThread2[1];
+            uint fetched = 0;
+            var seenThreadIds = new HashSet<uint>();
+
+            while (ErrorHandler.Succeeded(enumThreads.Next(1, threadArr, ref fetched)) &&
+                   fetched == 1 &&
+                   threadArr[0] != null)
+            {
+                IDebugThread2 t = threadArr[0];
+                t.GetThreadId(out uint tid);
+                if (!seenThreadIds.Add(tid))
+                {
+                    continue;
+                }
+
+                bool isCurrent = breakingThreadId != 0 && tid == breakingThreadId;
+                var frames = ReadAd7ThreadFrames(t, maxFrames);
+                results.Add(new CallStackThreadInput(tid, isCurrent, frames));
+            }
+        }
+        else if (breakingThread != null)
+        {
+            var frames = ReadAd7ThreadFrames(breakingThread, maxFrames);
+            results.Add(new CallStackThreadInput(breakingThreadId, isCurrentThread: true, frames));
+        }
+
+        return results;
+    }
+
+    private IReadOnlyList<CallStackFrameInput> ReadAd7ThreadFrames(IDebugThread2 thread, int maxFrames)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        var frames = new List<CallStackFrameInput>();
+        try
+        {
+            const enum_FRAMEINFO_FLAGS flags =
+                enum_FRAMEINFO_FLAGS.FIF_MODULE |
+                enum_FRAMEINFO_FLAGS.FIF_DEBUG_MODULEP |
+                enum_FRAMEINFO_FLAGS.FIF_FUNCNAME;
+
+            if (!ErrorHandler.Succeeded(thread.EnumFrameInfo(flags, 10, out IEnumDebugFrameInfo2? enumFrames)) ||
+                enumFrames == null)
+            {
+                return frames;
+            }
+
+            var frameArr = new FRAMEINFO[1];
+            uint fetched = 0;
+            int count = 0;
+
+            while (count < maxFrames &&
+                   ErrorHandler.Succeeded(enumFrames.Next(1, frameArr, ref fetched)) &&
+                   fetched == 1)
+            {
+                count++;
+                FRAMEINFO fi = frameArr[0];
+                string moduleName = WildcardPattern.ExtractFileNameSafe(fi.m_bstrModule);
+                string? funcName = fi.m_bstrFuncName;
+                bool hasSymbols = false;
+
+                if (fi.m_pModule != null)
+                {
+                    var modInfo = new MODULE_INFO[1];
+                    if (ErrorHandler.Succeeded(fi.m_pModule.GetInfo(
+                        enum_MODULE_INFO_FIELDS.MIF_NAME | enum_MODULE_INFO_FIELDS.MIF_FLAGS,
+                        modInfo)))
+                    {
+                        if (string.IsNullOrEmpty(moduleName))
+                        {
+                            moduleName = WildcardPattern.ExtractFileNameSafe(modInfo[0].m_bstrName);
+                        }
+
+                        hasSymbols = (modInfo[0].m_dwModuleFlags & enum_MODULE_FLAGS.MODULE_FLAG_SYMBOLS) != 0;
+                    }
+
+                    if (!string.IsNullOrEmpty(moduleName))
+                    {
+                        _symbolLoader.RegisterAd7Module(moduleName, fi.m_pModule);
+                    }
+                }
+
+                if (!hasSymbols && !string.IsNullOrEmpty(moduleName))
+                {
+                    hasSymbols = IsModuleSymbolsLoadedInRegistry(moduleName);
+                }
+
+                if (!string.IsNullOrEmpty(moduleName))
+                {
+                    frames.Add(new CallStackFrameInput(moduleName, funcName, hasSymbols));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Verbose($"Failed to enumerate AD7 stack frames: {ex.Message}");
+        }
+
+        return frames;
+    }
+
+    private IReadOnlyList<CallStackThreadInput> CollectDteCallStackThreads(bool examineAllThreads, int maxFrames)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        var results = new List<CallStackThreadInput>();
+        try
+        {
+            EnvDTE.Thread? currentThread = _dte.Debugger?.CurrentThread;
+            uint currentTid = (uint)(currentThread?.ID ?? 0);
+
+            if (!examineAllThreads)
+            {
+                if (currentThread != null)
+                {
+                    results.Add(new CallStackThreadInput(
+                        currentTid,
+                        isCurrentThread: true,
+                        ReadDteThreadFrames(currentThread, maxFrames)));
+                }
+
+                return results;
+            }
+
+            Threads? allThreads = _dte.Debugger?.CurrentProgram?.Threads;
+            if (allThreads != null)
+            {
+                foreach (EnvDTE.Thread t in allThreads)
+                {
+                    uint tid = (uint)t.ID;
+                    bool isCurrent = currentTid != 0 && tid == currentTid;
+                    results.Add(new CallStackThreadInput(tid, isCurrent, ReadDteThreadFrames(t, maxFrames)));
+                }
+            }
+            else if (currentThread != null)
+            {
+                results.Add(new CallStackThreadInput(
+                    currentTid,
+                    isCurrentThread: true,
+                    ReadDteThreadFrames(currentThread, maxFrames)));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Verbose($"Failed to enumerate DTE stack frames: {ex.Message}");
+        }
+
+        return results;
+    }
+
+    private IReadOnlyList<CallStackFrameInput> ReadDteThreadFrames(EnvDTE.Thread dteThread, int maxFrames)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        var frames = new List<CallStackFrameInput>();
+        try
+        {
+            StackFrames? stackFrames = dteThread.StackFrames;
+            if (stackFrames == null)
+            {
+                return frames;
+            }
+
+            int count = 0;
+            foreach (EnvDTE.StackFrame sf in stackFrames)
+            {
+                if (count >= maxFrames)
+                {
+                    break;
+                }
+
+                count++;
+                string modName = WildcardPattern.ExtractFileNameSafe(sf.Module);
+                if (string.IsNullOrEmpty(modName))
+                {
+                    continue;
+                }
+
+                bool hasSymbols = IsModuleSymbolsLoadedInRegistry(modName);
+                frames.Add(new CallStackFrameInput(modName, sf.FunctionName, hasSymbols));
+            }
+        }
+        catch
+        {
+            // Ignore DTE frame enumeration errors
+        }
+
+        return frames;
+    }
+
+    private bool IsModuleSymbolsLoadedInRegistry(string moduleFileName)
+    {
+        var matches = _bridge.ModuleRegistry.GetLoadedModulesByFileName(moduleFileName);
+        if (matches.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var match in matches)
+        {
+            if (match.HasSymbols)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void ResetBreakState()
+    {
+        _examinedThreadIdsThisBreak.Clear();
+        _activeBreakProgram = null;
+        _activeBreakThread = null;
+        _lastDteBreakReason = dbgEventReason.dbgEventReasonNone;
+        _userBreakRequested = false;
+        _ignoreInitialBreakContextChange = false;
+        _breakEvaluatedThisPause = false;
     }
 
     private void HandleSolutionClosed()
@@ -606,9 +1043,14 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         _currentSolutionPath = null;
         _currentStateFilePath = null;
         _currentSolutionInfo = UnrealSolutionInfo.NotUnreal;
+        _projectModelProvider.Clear();
+        _msBuildResolver.InvalidateCache();
         _processQualificationCache.Clear();
         _processExeNameCache.Clear();
         _activeQualifyingProcesses.Clear();
+        _lastDesignModeBreakpointSignature.Clear();
+        _lastSeenDesignModeBpCount = -1;
+        ResetBreakState();
 
         _bridge.Clear();
         _symbolSettingsController.RestoreOriginalSettings();
@@ -618,6 +1060,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     {
         lock (_sessionLock)
         {
+            ResetBreakState();
+
             if (!_sessionStartedLogged)
             {
                 _sessionPreparedForLaunch = false;
@@ -675,6 +1119,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             }
 
             PublishWantedSetSnapshot(pruneMru: false);
+            _lastDesignModeBreakpointSignature = CaptureCurrentBreakpointSignature();
+            _lastSeenDesignModeBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
             _symbolSettingsController.ApplyWantedSetToIncludeList(
                 _bridge.CurrentSnapshot.WantedFileNames,
                 "session ended; pre-populating for next launch");
@@ -787,11 +1233,11 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             mruKeys,
             breakpointKeys,
             sessionTriggeredKeys: null,
-            getCandidateBinaries: key => _unrealResolver.GetCandidateFileNames(key));
+            getCandidateBinaries: key => _compositeResolver.GetCandidateFileNames(key));
 
         foreach (var wantedKey in wantedKeys)
         {
-            foreach (string candidate in _unrealResolver.GetCandidateFileNames(wantedKey))
+            foreach (string candidate in _compositeResolver.GetCandidateFileNames(wantedKey))
             {
                 wantedFileNames.Add(WildcardPattern.ExtractFileNameSafe(candidate));
             }
@@ -815,7 +1261,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
             policy: _loadPolicy,
             dllParser: _dllParser,
             manifestDllToModuleMap: manifestMap,
-            isAllNativeScope: false,
+            isAllNativeScope: _scope == SymbolScope.AllNative,
             pinnedCount: pinnedKeys.Count,
             mruCount: mruKeys.Count,
             breakpointCount: breakpointKeys.Count,
@@ -831,6 +1277,11 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
+        if (!_loadPolicy.LoadOnBreakpoints)
+        {
+            return Array.Empty<ModuleKey>();
+        }
+
         var breakpointKeys = new HashSet<ModuleKey>();
         try
         {
@@ -842,7 +1293,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
 
             foreach (Breakpoint bp in bps)
             {
-                if (!bp.Enabled)
+                // BP-3: Disabled breakpoints are ignored by default unless IncludeDisabledBreakpoints is true.
+                if (!bp.Enabled && !_loadPolicy.IncludeDisabledBreakpoints)
                 {
                     continue;
                 }
@@ -855,7 +1307,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                         continue;
                     }
 
-                    var resolved = _unrealResolver.Resolve(file!);
+                    var resolved = _compositeResolver.Resolve(file!);
                     if (resolved.Count == 0)
                     {
                         WarnUnresolvedBreakpointOnce(file!);
@@ -865,7 +1317,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                     string detail = $"{WildcardPattern.ExtractFileNameSafe(file)}({bp.FileLine})";
                     foreach (var key in resolved)
                     {
-                        var candidates = _unrealResolver.GetCandidateFileNames(key);
+                        var candidates = _compositeResolver.GetCandidateFileNames(key);
                         if (!_loadPolicy.IsNeverLoad(key, candidates))
                         {
                             if (recordMruHits)
@@ -886,13 +1338,20 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
                         continue;
                     }
 
-                    if (TryExtractModuleFromQualifiedFunction(func!, out string? moduleDllName) &&
+                    if (FunctionBreakpointParser.TryExtractModuleName(func!, out string? moduleDllName) &&
                         !string.IsNullOrWhiteSpace(moduleDllName))
                     {
-                        ModuleKey? key = _unrealResolver.TryParseLoadedModule(moduleDllName!);
+                        string candidateModuleName = moduleDllName!;
+                        ModuleKey? key = _compositeResolver.TryParseLoadedModule(candidateModuleName);
+                        if (!key.HasValue && !candidateModuleName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) &&
+                            !candidateModuleName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            key = _compositeResolver.TryParseLoadedModule(candidateModuleName + ".dll");
+                        }
+
                         if (key.HasValue)
                         {
-                            var candidates = _unrealResolver.GetCandidateFileNames(key.Value);
+                            var candidates = _compositeResolver.GetCandidateFileNames(key.Value);
                             if (!_loadPolicy.IsNeverLoad(key.Value, candidates))
                             {
                                 if (recordMruHits)
@@ -914,51 +1373,20 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Warning($"Failed to inspect breakpoints before launch: {ex.Message}");
+            _logger.Warning($"Failed to inspect breakpoints: {ex.Message}");
         }
 
         return breakpointKeys.ToList();
     }
 
-    private static bool TryExtractModuleFromQualifiedFunction(string functionExpr, out string? moduleName)
-    {
-        moduleName = null;
-        string trimmed = functionExpr.Trim();
-
-        // Format 1: UnrealEditor-MyGame.dll!AMyActor::Tick
-        int bangIndex = trimmed.IndexOf('!');
-        if (bangIndex > 0)
-        {
-            string prefix = trimmed.Substring(0, bangIndex).Trim();
-            if (!prefix.StartsWith("{", StringComparison.Ordinal))
-            {
-                moduleName = prefix;
-                return true;
-            }
-        }
-
-        // Format 2: {,,UnrealEditor-MyGame.dll}AMyActor::Tick
-        if (trimmed.StartsWith("{", StringComparison.Ordinal))
-        {
-            int closeBrace = trimmed.IndexOf('}');
-            if (closeBrace > 1)
-            {
-                string inside = trimmed.Substring(1, closeBrace - 1);
-                string[] parts = inside.Split(',');
-                if (parts.Length >= 3 && !string.IsNullOrWhiteSpace(parts[2]))
-                {
-                    moduleName = parts[2].Trim();
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     private Dictionary<string, ModuleKey> BuildManifestDllToModuleMap()
     {
         var map = new Dictionary<string, ModuleKey>(StringComparer.OrdinalIgnoreCase);
+        if (!_currentSolutionInfo.IsUnreal)
+        {
+            return map;
+        }
+
         try
         {
             foreach (string dir in _unrealResolver.GetKnownBinariesDirectories())
@@ -1004,30 +1432,67 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        int[] stdLaunchCmdIds = { 295, 296, 248, 249, 251, 213 };
+        // Launch commands (BeforeExecute)
+        int[] stdLaunchCmdIds = { 295, 296, 248, 249, 251, 213, 356 };
         foreach (int id in stdLaunchCmdIds)
         {
-            SubscribeLaunchCommand(Std97CmdSetGuid, id);
+            SubscribeCommand(Std97CmdSetGuid, id, beforeLaunch: true, afterBreakpoint: false);
         }
 
         int[] dbgLaunchCmdIds = { 0xF010, 0x0156, 0x0157 };
         foreach (int id in dbgLaunchCmdIds)
         {
-            SubscribeLaunchCommand(VsDebugCmdSetGuid, id);
+            SubscribeCommand(VsDebugCmdSetGuid, id, beforeLaunch: true, afterBreakpoint: false);
+        }
+
+        // BreakAll command (BeforeExecute) to distinguish user Pause (M5) from target __debugbreak() (M6)
+        var breakCmdEvents = _dte.Events.CommandEvents[Std97CmdSetGuid.ToString("B"), CmdIdBreakAll];
+        breakCmdEvents.BeforeExecute += OnBreakAllCommandBeforeExecute;
+        _commandEventSubscriptions.Add(breakCmdEvents);
+
+        // Breakpoint toggle / add / delete / enable / disable commands (AfterExecute, Strategy B)
+        int[] stdBpCmdIds = { 255, 256, 375, 376 };
+        foreach (int id in stdBpCmdIds)
+        {
+            SubscribeCommand(Std97CmdSetGuid, id, beforeLaunch: false, afterBreakpoint: true);
+        }
+
+        int[] dbgBpCmdIds = { 0x0122, 0x0123, 0x0124, 0x0137, 0x0041, 0x1003, 0x1014, 0x1015 };
+        foreach (int id in dbgBpCmdIds)
+        {
+            SubscribeCommand(VsDebugCmdSetGuid, id, beforeLaunch: false, afterBreakpoint: true);
         }
 
         _debuggerEvents = _dte.Events.DebuggerEvents;
         if (_debuggerEvents != null)
         {
             _debuggerEvents.OnEnterDesignMode += OnDebuggerEnterDesignMode;
+            _debuggerEvents.OnEnterBreakMode += OnDebuggerEnterBreakMode;
+            _debuggerEvents.OnEnterRunMode += OnDebuggerEnterRunMode;
+            _debuggerEvents.OnContextChanged += OnDebuggerContextChanged;
+        }
+
+        _selectionEvents = _dte.Events.SelectionEvents;
+        if (_selectionEvents != null)
+        {
+            _selectionEvents.OnChange += OnSelectionChanged;
         }
     }
 
-    private void SubscribeLaunchCommand(Guid cmdSet, int cmdId)
+    private void SubscribeCommand(Guid cmdSet, int cmdId, bool beforeLaunch, bool afterBreakpoint)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         var cmdEvents = _dte.Events.CommandEvents[cmdSet.ToString("B"), cmdId];
-        cmdEvents.BeforeExecute += OnLaunchCommandBeforeExecute;
+        if (beforeLaunch)
+        {
+            cmdEvents.BeforeExecute += OnLaunchCommandBeforeExecute;
+        }
+
+        if (afterBreakpoint)
+        {
+            cmdEvents.AfterExecute += OnBreakpointCommandAfterExecute;
+        }
+
         _commandEventSubscriptions.Add(cmdEvents);
     }
 
@@ -1055,6 +1520,187 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         }
     }
 
+    private void OnBreakAllCommandBeforeExecute(string guid, int id, object customIn, object customOut, ref bool cancelDefault)
+    {
+        _userBreakRequested = true;
+    }
+
+    private void OnBreakpointCommandAfterExecute(string guid, int id, object customIn, object customOut)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            if (!IsQualifyingSolutionOpen || !IsEnabled)
+            {
+                return;
+            }
+
+            dbgDebugMode mode = _dte.Debugger?.CurrentMode ?? dbgDebugMode.dbgDesignMode;
+            if (mode == dbgDebugMode.dbgDesignMode)
+            {
+                RefreshDesignModeBreakpointsIfChanged("breakpoint command");
+            }
+            else
+            {
+                OnBreakpointBindErrorReported();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error in OnBreakpointCommandAfterExecute.", ex);
+        }
+    }
+
+    private void OnSelectionChanged()
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            if (!IsQualifyingSolutionOpen || !IsEnabled)
+            {
+                return;
+            }
+
+            dbgDebugMode mode = _dte.Debugger?.CurrentMode ?? dbgDebugMode.dbgDesignMode;
+            if (mode == dbgDebugMode.dbgDesignMode)
+            {
+                int currentBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
+                if (currentBpCount != _lastSeenDesignModeBpCount)
+                {
+                    _lastSeenDesignModeBpCount = currentBpCount;
+                    RefreshDesignModeBreakpointsIfChanged("editor margin / breakpoint list change");
+                }
+            }
+            else if (mode == dbgDebugMode.dbgBreakMode &&
+                     !_ignoreInitialBreakContextChange &&
+                     _breakEvaluatedThisPause &&
+                     _loadPolicy.LoadOnFrameActivation)
+            {
+                string? activeWindowCaption = _dte.ActiveWindow?.Caption;
+                if (!string.IsNullOrEmpty(activeWindowCaption) &&
+                    (activeWindowCaption!.IndexOf("Call Stack", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     activeWindowCaption.IndexOf("Threads", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                     activeWindowCaption.IndexOf("Parallel Stacks", StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    EvaluateDteFrameActivation(_dte.Debugger?.CurrentThread, _dte.Debugger?.CurrentStackFrame);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Verbose($"Error in OnSelectionChanged: {ex.Message}");
+        }
+    }
+
+    private void RefreshDesignModeBreakpointsIfChanged(string reasonDetail)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        var currentSignature = CaptureCurrentBreakpointSignature();
+        if (currentSignature.SetEquals(_lastDesignModeBreakpointSignature))
+        {
+            return;
+        }
+
+        _lastDesignModeBreakpointSignature = currentSignature;
+        _lastSeenDesignModeBpCount = _dte.Debugger?.Breakpoints?.Count ?? 0;
+
+        PublishWantedSetSnapshot(pruneMru: false);
+        _symbolSettingsController.ApplyWantedSetToIncludeList(
+            _bridge.CurrentSnapshot.WantedFileNames,
+            $"design-mode {reasonDetail}");
+    }
+
+    private HashSet<string> CaptureCurrentBreakpointSignature()
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        var sig = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            Breakpoints? bps = _dte.Debugger?.Breakpoints;
+            if (bps != null)
+            {
+                foreach (Breakpoint bp in bps)
+                {
+                    sig.Add($"{bp.LocationType}|{bp.File}|{bp.FileLine}|{bp.FunctionName}|{bp.Enabled}");
+                }
+            }
+        }
+        catch
+        {
+            // Ignore transient DTE breakpoint read failures
+        }
+
+        return sig;
+    }
+
+    private void OnDebuggerEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            if (!IsQualifyingSolutionOpen || !IsEnabled)
+            {
+                return;
+            }
+
+            _examinedThreadIdsThisBreak.Clear();
+            _lastDteBreakReason = reason;
+            _ignoreInitialBreakContextChange = true;
+            _breakEvaluatedThisPause = false;
+
+            if (reason == dbgEventReason.dbgEventReasonUserBreak)
+            {
+                _userBreakRequested = true;
+            }
+
+            // Fallback in case AD7 break event did not fire
+            _ = _joinableTaskFactory.RunAsync(async () =>
+            {
+                await _joinableTaskFactory.SwitchToMainThreadAsync(alwaysYield: true);
+                try
+                {
+                    if (!_breakEvaluatedThisPause &&
+                        _dte.Debugger?.CurrentMode == dbgDebugMode.dbgBreakMode)
+                    {
+                        OnAd7BreakEvent(
+                            _activeBreakProgram,
+                            _activeBreakThread,
+                            isExceptionEvent: reason == dbgEventReason.dbgEventReasonExceptionThrown ||
+                                              reason == dbgEventReason.dbgEventReasonExceptionNotHandled,
+                            isHardBreakCandidate: false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Error in fallback break-mode evaluation.", ex);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error in OnDebuggerEnterBreakMode.", ex);
+        }
+    }
+
+    private void OnDebuggerEnterRunMode(dbgEventReason reason)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            ResetBreakState();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error in OnDebuggerEnterRunMode.", ex);
+        }
+    }
+
     private void OnDebuggerEnterDesignMode(dbgEventReason reason)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
@@ -1069,6 +1715,130 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         }
     }
 
+    private void OnDebuggerContextChanged(
+        EnvDTE.Process newProcess,
+        EnvDTE.Program newProgram,
+        EnvDTE.Thread newThread,
+        EnvDTE.StackFrame newStackFrame)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            if (!IsQualifyingSolutionOpen || !IsEnabled || !_loadPolicy.LoadOnFrameActivation)
+            {
+                return;
+            }
+
+            if (_dte.Debugger?.CurrentMode != dbgDebugMode.dbgBreakMode)
+            {
+                return;
+            }
+
+            if (_ignoreInitialBreakContextChange)
+            {
+                _ignoreInitialBreakContextChange = false;
+                return;
+            }
+
+            EvaluateDteFrameActivation(newThread, newStackFrame);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Error in OnDebuggerContextChanged (FA-1/FA-2).", ex);
+        }
+    }
+
+    private void EvaluateDteFrameActivation(EnvDTE.Thread? dteThread, EnvDTE.StackFrame? dteFrame)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        CallStackFrameInput? activatedFrame = null;
+        if (dteFrame != null)
+        {
+            string modName = WildcardPattern.ExtractFileNameSafe(dteFrame.Module);
+            if (!string.IsNullOrEmpty(modName))
+            {
+                bool hasSymbols = IsModuleSymbolsLoadedInRegistry(modName);
+                activatedFrame = new CallStackFrameInput(modName, dteFrame.FunctionName, hasSymbols);
+            }
+        }
+
+        CallStackThreadInput? activatedThread = null;
+        if (dteThread != null)
+        {
+            uint tid = (uint)dteThread.ID;
+            if (!_examinedThreadIdsThisBreak.Contains(tid))
+            {
+                int maxFrames = Math.Max(1, _loadPolicy.CallStackMaxFrames);
+                IReadOnlyList<CallStackFrameInput>? ad7Frames = TryReadAd7FramesForThreadId(tid, maxFrames);
+                IReadOnlyList<CallStackFrameInput> frames = (ad7Frames != null && ad7Frames.Count > 0)
+                    ? ad7Frames
+                    : ReadDteThreadFrames(dteThread, maxFrames);
+                activatedThread = new CallStackThreadInput(tid, isCurrentThread: true, frames);
+            }
+            else
+            {
+                activatedThread = new CallStackThreadInput(tid, isCurrentThread: true, Array.Empty<CallStackFrameInput>());
+            }
+        }
+
+        if (!activatedFrame.HasValue && activatedThread == null)
+        {
+            return;
+        }
+
+        var snapshot = _bridge.CurrentSnapshot;
+        var decisions = _callStackEvaluator.EvaluateFrameActivation(
+            activatedFrame,
+            activatedThread,
+            _examinedThreadIdsThisBreak,
+            fileName => snapshot.TryResolveLoadedModule(fileName),
+            key => _compositeResolver.GetCandidateFileNames(key));
+
+        foreach (var decision in decisions)
+        {
+            _mruStore.RecordHit(decision.Key, TriggerReason.FrameActivated, decision.Detail, decision.CandidateFileNames);
+            _symbolLoader.EnqueueLoad(decision.Key, TriggerReason.FrameActivated, decision.Detail, decision.CandidateFileNames);
+        }
+    }
+
+    private IReadOnlyList<CallStackFrameInput>? TryReadAd7FramesForThreadId(uint targetThreadId, int maxFrames)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        if (_activeBreakProgram == null || targetThreadId == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (ErrorHandler.Succeeded(_activeBreakProgram.EnumThreads(out IEnumDebugThreads2? enumThreads)) &&
+                enumThreads != null)
+            {
+                var threadArr = new IDebugThread2[1];
+                uint fetched = 0;
+                while (ErrorHandler.Succeeded(enumThreads.Next(1, threadArr, ref fetched)) &&
+                       fetched == 1 &&
+                       threadArr[0] != null)
+                {
+                    threadArr[0].GetThreadId(out uint tid);
+                    if (tid == targetThreadId)
+                    {
+                        return ReadAd7ThreadFrames(threadArr[0], maxFrames);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Fall back to DTE thread frames
+        }
+
+        return null;
+    }
+
     private IReadOnlyList<string> CollectSolutionProjectPaths()
     {
         ThreadHelper.ThrowIfNotOnUIThread();
@@ -1076,7 +1846,7 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         var paths = new List<string>();
         try
         {
-            Projects? projects = _dte.Solution?.Projects;
+            EnvDTE.Projects? projects = _dte.Solution?.Projects;
             if (projects == null)
             {
                 return paths;
@@ -1186,9 +1956,8 @@ public sealed class SessionTracker : IVsSolutionEvents, IDisposable
         {
             if (_warnedUnresolvedBreakpointFiles.Add(filePath))
             {
-                _logger.Warning($"Could not resolve breakpoint file '{filePath}' to an Unreal module (BP-6).");
+                _logger.Warning($"Could not resolve breakpoint file '{filePath}' to a module (BP-6).");
             }
         }
     }
 }
-

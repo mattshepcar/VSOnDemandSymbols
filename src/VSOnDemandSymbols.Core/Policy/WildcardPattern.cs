@@ -100,8 +100,8 @@ public sealed class WildcardPattern
             }
         }
 
-        // If no candidate filenames provided or it's MsBuild, also try the key name as a filename
-        if (key.Kind == ModuleKind.MsBuild && IsMatchFileName(key.Name))
+        // If no candidate filenames provided or it's MsBuild/External, also try the key name as a filename
+        if ((key.Kind == ModuleKind.MsBuild || key.Kind == ModuleKind.External) && IsMatchFileName(key.Name))
         {
             return true;
         }

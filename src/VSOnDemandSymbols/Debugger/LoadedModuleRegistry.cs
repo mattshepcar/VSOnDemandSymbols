@@ -136,7 +136,7 @@ public sealed class LoadedModuleRegistry
                 continue;
             }
 
-            if (key.Kind == ModuleKind.MsBuild &&
+            if ((key.Kind == ModuleKind.MsBuild || key.Kind == ModuleKind.External) &&
                 string.Equals(entry.FileName, key.Name, StringComparison.OrdinalIgnoreCase))
             {
                 matches.Add(entry);

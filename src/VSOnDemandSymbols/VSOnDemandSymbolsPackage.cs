@@ -34,7 +34,7 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectCapability:VisualC",
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
-[ProvideSettingsManifest(PackageRelativeManifestFile = @"UnifiedSettings\registration.json")]
+[ProvideSettingsManifest(PackageRelativeManifestFile = @"Settings\registration.json")]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {

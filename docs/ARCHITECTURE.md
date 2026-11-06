@@ -31,7 +31,7 @@ VSOnDemandSymbols/
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, standard NuGet references)
 │       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context auto-load, lifecycle
-│       ├── UnifiedSettings/
+│       ├── Settings/
 │       │   └── registration.json           # Modern Unified Settings manifest (Debugging -> Symbols)
 │       ├── Debugger/
 │       │   ├── IVsDebuggerSymbolSettings161.cs # COM interop for UseNugetSymbolServers

@@ -30,7 +30,7 @@
     <Content Include="Resources\Icon.png">
       <IncludeInVSIX>true</IncludeInVSIX>
     </Content>
-    <Content Include="UnifiedSettings\registration.json">
+    <Content Include="Settings\registration.json">
       <IncludeInVSIX>true</IncludeInVSIX>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

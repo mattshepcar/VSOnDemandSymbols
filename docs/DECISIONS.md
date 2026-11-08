@@ -14,7 +14,7 @@ This document records the active architectural decisions governing the **On-Dema
 ### ADR-02: Standard DTE Programmatic Load for Mid-Session Break Mode
 * **Context:** When execution stops (breakpoint hit, crash, assertion, or step), call stacks may contain frames for modules that were not preloaded at startup.
 * **Decision:** Subscribe to `DTE.Events.DebuggerEvents.OnEnterBreakMode` and `OnContextChanged`. For any un-symbolized stack frame or thread location, invoke `EnvDTE90.Module.LoadSymbols("")` via DTE.
-* **Rationale:** DTE's `LoadSymbols` immediately resolves symbols for loaded modules within ~100 ms, updating the Call Stack and Threads windows without requiring custom debugger transport hooks.
+* **Rationale:** DTE's `LoadSymbols` immediately resolves symbols for loaded modules within ~100 ms, updating the Call Stack and Threads windows without requiring custom debugger transport hooks. To keep single-stepping (F10/F11) responsive, background thread stacks are inspected only during non-step breaks (breakpoint hits, exceptions, manual breaks), while single-stepping inspects only `CurrentThread`.
 
 ### ADR-03: Preloading Active and Disabled Breakpoints
 * **Context:** Users frequently disable breakpoints during development and re-enable them while the debuggee is running.

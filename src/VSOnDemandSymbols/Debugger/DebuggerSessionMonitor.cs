@@ -293,7 +293,9 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 threadsToInspect.Add(currentThread);
             }
 
-            if (debugger.CurrentProgram?.Threads != null)
+            // Only inspect background threads on non-step breaks (breakpoint hits, exceptions, manual breaks).
+            // Single-stepping (F10/F11) restricts inspection to CurrentThread to keep stepping fast and responsive.
+            if (reason != dbgEventReason.dbgEventReasonStep && debugger.CurrentProgram?.Threads != null)
             {
                 foreach (EnvDTE.Thread th in debugger.CurrentProgram.Threads)
                 {

@@ -154,7 +154,7 @@ VSOnDemandSymbols/
   * Logs symbol loads with reason `Breakpoint`.
 * Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode` and `OnContextChanged`:
   * Governed by `BreakSymbolLoadMode` (`Off`, `LocalOnly` [default], `All`), configurable via environment variable or settings.
-  * Inspects `CurrentThread.StackFrames` fully, and up to 10 frames of background threads in `CurrentProgram.Threads` (stopping at the first user-code module).
+  * Inspects `CurrentThread.StackFrames` fully, and for non-step breaks (breakpoint hits, exceptions, manual break) up to 10 frames of background threads in `CurrentProgram.Threads` (stopping at the first user-code module). Single-stepping (F10/F11) inspects only `CurrentThread`.
   * For `LocalOnly`, temporarily masks remote symbol servers so Visual Studio native loader resolves only adjacent, locally cached, or local path PDBs without network latency.
   * For `All`, resolves symbols with remote symbol servers unmasked.
   * For each frame without symbols, locates matching `EnvDTE90.Module` and calls `mod.LoadSymbols("")`.

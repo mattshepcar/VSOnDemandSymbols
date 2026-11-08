@@ -56,12 +56,12 @@ This architecture incorporates critical empirical lessons learned across develop
 
 ```mermaid
 flowchart TD
-    subgraph 1. Solution Opened (Unreal Detected)
+    subgraph S1["1. Solution Opened (Unreal Detected)"]
         SO["Unreal Solution Opened"] --> BK["Backup user symbol settings & IncludeList to disk"]
         BK --> SET["Apply IsManualLoad=true, IsLoadAdjacent=false, AutomaticSymbolLoad=false"]
     end
 
-    subgraph 2. Launch (F5) / Breakpoint Change
+    subgraph S2["2. Launch (F5) / Breakpoint Change"]
         F5["F5 / Launch Command"] --> BPS["Query DTE.Debugger.Breakpoints"]
         BPS --> RES["UnrealModuleResolver: walk up to *.Build.cs"]
         RES --> INC["Write UnrealEditor-{Module}*.dll + UnrealEditor*.exe to IncludeList"]
@@ -69,14 +69,14 @@ flowchart TD
         RUN --> VSN["VS native engine loads symbols ONLY for IncludeList DLLs"]
     end
 
-    subgraph 3. Break Mode / Call Stack
+    subgraph S3["3. Break Mode / Call Stack"]
         BRK["Execution breaks (Exception / Breakpoint / Step)"] --> DTE_BRK["DebuggerEvents.OnEnterBreakMode"]
         DTE_BRK --> FRAMES["Inspect CurrentThread.StackFrames"]
         FRAMES --> LOAD["Invoke Module.LoadSymbols('') for un-symbolized frames"]
         LOAD --> SHOW["Call Stack window resolves instantly"]
     end
 
-    subgraph 4. Solution Closed / VS Exit
+    subgraph S4["4. Solution Closed / VS Exit"]
         SC["Solution Closed / VS Exit / Crash"] --> RST["Restore user original symbol settings & IncludeList from disk backup"]
     end
 ```

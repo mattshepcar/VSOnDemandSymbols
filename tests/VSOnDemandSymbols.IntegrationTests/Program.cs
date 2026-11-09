@@ -54,6 +54,8 @@ public static class Program
                     lyraSuite.Lyra02_InSessionWarm_SecondBreakAndMidSessionBreakpointBind));
                 testMethods.Add((nameof(LyraProfilingTests.Lyra03_WarmBoot_CachedRelaunchAndComparisonReport),
                     lyraSuite.Lyra03_WarmBoot_CachedRelaunchAndComparisonReport));
+                testMethods.Add((nameof(LyraProfilingTests.Lyra04_BaselineDisabled_FullSymbolLoadAndSavingsReport),
+                    lyraSuite.Lyra04_BaselineDisabled_FullSymbolLoadAndSavingsReport));
             }
 
             foreach (var (name, run) in testMethods)

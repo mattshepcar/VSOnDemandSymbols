@@ -38,6 +38,11 @@ public sealed class LyraProfilingTests
     private int _warmSymbolizedModulesAfterBreak;
     private ParsedProfileReport? _warmProfileReport;
 
+    // Baseline (Extension Disabled / Default VS Symbol Loading) metrics
+    private long _baselineLaunchToBreakMs;
+    private int _baselineTotalModulesMapped;
+    private int _baselineSymbolizedModulesAfterBreak;
+
     public LyraProfilingTests(VisualStudioExpFixture fixture)
     {
         _fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
@@ -64,6 +69,39 @@ public sealed class LyraProfilingTests
             TimeSpan.FromSeconds(30),
             out string openLog);
         Assert.True(detected, $"Expected LyraHarness.sln to be detected as an Unreal solution, but got:\n{openLog}");
+
+        var (backupPath, backupDto) = _fixture.FindBackupFileForCurrentProcess();
+        if (backupDto != null)
+        {
+            Console.WriteLine(
+                $"  -> [Exp Backup Settings] IsManualLoad={backupDto.IsManualLoad}, " +
+                $"IsLoadAdjacent={backupDto.IsLoadAdjacent}, AutomaticSymbolLoad={backupDto.AutomaticSymbolLoad}, " +
+                $"IncludeList=[{string.Join(", ", backupDto.IncludeList.Select(x => $"{x.Name}:{x.IsEnabled}"))}]");
+
+            // If a previous crashed test session left the Exp instance's persisted user settings in manual-load mode,
+            // reset the backup DTO to Visual Studio's out-of-the-box default ("Load all modules, unless excluded")
+            // and restart the Exp instance so RecoverFromCrashIfNeeded restores clean VS defaults.
+            if (backupDto.IsManualLoad && !string.IsNullOrWhiteSpace(backupPath))
+            {
+                Console.WriteLine("  -> [Exp Backup Settings] Resetting dirty Exp symbol settings to VS defaults (Load all modules)...");
+                backupDto.IsManualLoad = false;
+                backupDto.IsLoadAdjacent = true;
+                backupDto.AutomaticSymbolLoad = true;
+                backupDto.IncludeList.Clear();
+                File.WriteAllText(backupPath, Newtonsoft.Json.JsonConvert.SerializeObject(backupDto, Newtonsoft.Json.Formatting.Indented));
+
+                _fixture.KillCurrentInstanceIfRunning();
+                _fixture.StartAndAttach();
+                dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached after restart.");
+                _fixture.ClearOnDemandSymbolsOutputPane();
+                dte.Solution.Open(_harnessSolutionPath);
+                bool redetected = _fixture.WaitUntilOutputContains(
+                    "Unreal solution detected: 'LyraHarness.sln'. On-Demand Symbols active.",
+                    TimeSpan.FromSeconds(30),
+                    out openLog);
+                Assert.True(redetected, $"Expected LyraHarness.sln to be detected after Exp reset, but got:\n{openLog}");
+            }
+        }
 
         _fixture.ClearOnDemandSymbolsOutputPane();
 
@@ -247,6 +285,50 @@ public sealed class LyraProfilingTests
         _fixture.StopDebuggingIfActive();
         _fixture.ClearAllBreakpoints();
         dte.Solution.Close(SaveFirst: false);
+    }
+
+    public void Lyra04_BaselineDisabled_FullSymbolLoadAndSavingsReport()
+    {
+        EnsureLyraAvailable();
+        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
+        var ue = _fixture.UnrealConfig;
+
+        _fixture.StopDebuggingIfActive();
+        _fixture.ClearAllBreakpoints();
+
+        // Generate a harness WITHOUT a .uproject marker so On-Demand Symbols stays completely inactive
+        // and Visual Studio uses its default symbol loading (loading all adjacent PDBs across ~1,062 modules).
+        string baselineSolutionPath = LyraHarnessGenerator.Generate(
+            ue,
+            includeUprojectMarker: false,
+            folderSuffix: "BaselineDisabled");
+
+        _fixture.ClearOnDemandSymbolsOutputPane();
+        dte.Solution.Open(baselineSolutionPath);
+        System.Threading.Thread.Sleep(500);
+
+        // Set the exact same startup breakpoint in ULyraEditorEngine::Init (line 27)
+        dte.Debugger.Breakpoints.Add(File: ue.LyraEditorEngineSourcePath, Line: 27);
+
+        Console.WriteLine("  -> [BASELINE — EXTENSION DISABLED] Launching UnrealEditor with default VS symbol loading (all adjacent PDBs)...");
+        var launchSw = Stopwatch.StartNew();
+        dte.ExecuteCommand("Debug.Start");
+
+        bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(300));
+        launchSw.Stop();
+        _baselineLaunchToBreakMs = launchSw.ElapsedMilliseconds;
+        Assert.True(hitBreak, $"Expected Baseline (extension disabled) to hit breakpoint in ULyraEditorEngine::Init within 300s (elapsed: {_baselineLaunchToBreakMs} ms).");
+
+        var (totalMods, symbolizedMods, _) = _fixture.GetDebuggedModulesSummary();
+        _baselineTotalModulesMapped = totalMods;
+        _baselineSymbolizedModulesAfterBreak = symbolizedMods;
+
+        Console.WriteLine($"  -> [BASELINE — EXTENSION DISABLED] Launch to Breakpoint Hit : {_baselineLaunchToBreakMs} ms");
+        Console.WriteLine($"  -> [BASELINE — EXTENSION DISABLED] Modules Mapped           : {_baselineTotalModulesMapped} total, {_baselineSymbolizedModulesAfterBreak} symbolized ({_baselineTotalModulesMapped - _baselineSymbolizedModulesAfterBreak} without PDB)");
+
+        _fixture.StopDebuggingIfActive();
+        _fixture.ClearAllBreakpoints();
+        dte.Solution.Close(SaveFirst: false);
 
         PrintComparisonReport();
     }
@@ -318,6 +400,28 @@ public sealed class LyraProfilingTests
                 $"  - Mid-Session Breakpoint Bind (LyraGame): {_midSessionBpBindMetric.TotalMs} ms total " +
                 $"(scan {_midSessionBpBindMetric.ModulesScanned} modules={_midSessionBpBindMetric.ModuleScanMs} ms, " +
                 $"PDB load={_midSessionLyraGamePdbLoadMs} ms)");
+        }
+
+        if (_baselineLaunchToBreakMs > 0)
+        {
+            long savedColdMs = _baselineLaunchToBreakMs - _coldLaunchToBreakMs;
+            long savedWarmMs = _baselineLaunchToBreakMs - _warmLaunchToBreakMs;
+            double speedupCold = _coldLaunchToBreakMs > 0 ? (double)_baselineLaunchToBreakMs / _coldLaunchToBreakMs : 0.0;
+            double speedupWarm = _warmLaunchToBreakMs > 0 ? (double)_baselineLaunchToBreakMs / _warmLaunchToBreakMs : 0.0;
+            double pctSavedWarm = (double)savedWarmMs / _baselineLaunchToBreakMs * 100.0;
+
+            sb.AppendLine("--------------------------------------------------------------------------------");
+            sb.AppendLine(" EXTENSION ENABLED vs. EXTENSION DISABLED (DEFAULT VS SYMBOL LOADING):");
+            sb.AppendLine($"  - Extension Disabled (Default VS)       : {_baselineLaunchToBreakMs,6} ms ({_baselineSymbolizedModulesAfterBreak}/{_baselineTotalModulesMapped} PDBs loaded at boot)");
+            if (_coldLaunchToBreakMs > 0)
+            {
+                double pctSavedCold = (double)savedColdMs / _baselineLaunchToBreakMs * 100.0;
+                sb.AppendLine($"  - Extension Enabled  (Cold Boot)        : {_coldLaunchToBreakMs,6} ms ({_coldSymbolizedModulesAfterBreak}/{_coldTotalModulesMapped} PDBs loaded) -> Saved {savedColdMs} ms ({pctSavedCold:0.0}% reduction, {speedupCold:0.00}x faster)");
+            }
+            if (_warmLaunchToBreakMs > 0)
+            {
+                sb.AppendLine($"  - Extension Enabled  (Warm Boot)        : {_warmLaunchToBreakMs,6} ms ({_warmSymbolizedModulesAfterBreak}/{_warmTotalModulesMapped} PDBs loaded) -> Saved {savedWarmMs} ms ({pctSavedWarm:0.0}% reduction, {speedupWarm:0.00}x faster)");
+            }
         }
         sb.AppendLine("================================================================================");
 

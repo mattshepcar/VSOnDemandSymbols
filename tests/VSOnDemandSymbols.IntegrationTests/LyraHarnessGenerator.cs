@@ -14,14 +14,17 @@ public static class LyraHarnessGenerator
 {
     public const string ProjectGuid = "{F0000000-0000-0000-0000-000000000001}";
 
-    public static string Generate(UnrealEnvironmentConfig config)
+    public static string Generate(UnrealEnvironmentConfig config, bool includeUprojectMarker = true, string folderSuffix = "")
     {
         if (config == null)
         {
             throw new ArgumentNullException(nameof(config));
         }
 
-        string harnessDir = Path.Combine(Path.GetTempPath(), "VSOnDemandSymbols_LyraHarness");
+        string folderName = string.IsNullOrWhiteSpace(folderSuffix)
+            ? "VSOnDemandSymbols_LyraHarness"
+            : $"VSOnDemandSymbols_LyraHarness_{folderSuffix}";
+        string harnessDir = Path.Combine(Path.GetTempPath(), folderName);
         string userDir = Path.Combine(harnessDir, "UserDir");
         string logsDir = Path.Combine(harnessDir, "Logs");
         Directory.CreateDirectory(harnessDir);
@@ -44,16 +47,23 @@ public static class LyraHarnessGenerator
         string escapedArgs = SecurityElement.Escape(arguments);
         string escapedWorkDir = SecurityElement.Escape(workingDir);
 
-        File.WriteAllText(
-            uprojectMarkerPath,
-            """
-            {
-              "FileVersion": 3,
-              "EngineAssociation": "5.5",
-              "Category": "",
-              "Description": "Zero-write profiling harness for VSOnDemandSymbols against Lyra."
-            }
-            """);
+        if (includeUprojectMarker)
+        {
+            File.WriteAllText(
+                uprojectMarkerPath,
+                """
+                {
+                  "FileVersion": 3,
+                  "EngineAssociation": "5.5",
+                  "Category": "",
+                  "Description": "Zero-write profiling harness for VSOnDemandSymbols against Lyra."
+                }
+                """);
+        }
+        else if (File.Exists(uprojectMarkerPath))
+        {
+            File.Delete(uprojectMarkerPath);
+        }
 
         File.WriteAllText(
             slnPath,

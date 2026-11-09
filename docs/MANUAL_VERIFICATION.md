@@ -19,6 +19,10 @@ Run from the repository root:
 ```powershell
 # Run all 5 integration tests (or pass a substring filter, e.g. Test03)
 tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe
+
+# Optionally override the Unreal Engine 5 root directory (also configurable via
+# $env:VSONDEMANDSYMBOLS_UE_ROOT or tests/VSOnDemandSymbols.IntegrationTests/testsettings.local.json)
+tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe --ue-root "D:\UnrealEngine"
 ```
 
 ---

@@ -102,12 +102,25 @@ public sealed class EndToEndDebuggerTests
 
         // Wait for OnEnterBreakMode on-demand symbol loading to complete
         bool loadedOnDemand = _fixture.WaitUntilOutputContains(
-            "Loading symbols on demand",
+            "[Profile] BreakMode:",
             TimeSpan.FromSeconds(15),
             out string logOutput);
 
         Console.WriteLine($"  -> Output pane after crash break:\n{logOutput.Trim()}");
-        Assert.True(loadedOnDemand, $"Expected OnEnterBreakMode to log on-demand symbol loading, but got:\n{logOutput}");
+        Assert.True(loadedOnDemand, $"Expected OnEnterBreakMode to log on-demand symbol loading and [Profile] BreakMode telemetry, but got:\n{logOutput}");
+
+        var profile = ProfileMetricsParser.Parse(logOutput);
+        Assert.NotEmpty(profile.BreakModeEvents);
+        var breakMetric = profile.BreakModeEvents[0];
+        Assert.True(breakMetric.ThreadsInspected >= 1, "Expected at least 1 thread inspected in BreakMode profile metric.");
+        Assert.True(breakMetric.ModulesScanned >= 2, "Expected at least 2 modules scanned in BreakMode profile metric.");
+        Assert.True(breakMetric.ModulesLoaded >= 2, "Expected ModuleA and ModuleB loaded in BreakMode profile metric.");
+        Console.WriteLine(
+            $"  -> Parsed BreakMode Profile: total={breakMetric.TotalMs}ms, stackWalk={breakMetric.StackWalkMs}ms " +
+            $"(threads={breakMetric.ThreadsInspected}, frames={breakMetric.FramesInspected}), " +
+            $"moduleScan={breakMetric.ModuleScanMs}ms (modules={breakMetric.ModulesScanned}), " +
+            $"symbolLoad={breakMetric.SymbolLoadMs}ms (loaded={breakMetric.ModulesLoaded}/{breakMetric.CandidateTargetModules}), " +
+            $"contextRefresh={breakMetric.ContextRefreshMs}ms");
 
         var modB = _fixture.FindDebuggedModule("UnrealEditor-ModuleB.dll");
         var modA = _fixture.FindDebuggedModule("UnrealEditor-ModuleA.dll");
@@ -180,11 +193,21 @@ public sealed class EndToEndDebuggerTests
         dte.Debugger.Breakpoints.Add(File: _fixture.ModuleBSourcePath, Line: 21);
 
         bool loadedForBp = _fixture.WaitUntilOutputContains(
-            "UnrealEditor-ModuleB.dll — Breakpoint",
+            "[Profile] BreakpointBind:",
             TimeSpan.FromSeconds(15),
             out string logOutput);
 
-        Assert.True(loadedForBp, $"Expected mid-session breakpoint to load symbols for UnrealEditor-ModuleB.dll, but got:\n{logOutput}");
+        Assert.True(loadedForBp, $"Expected mid-session breakpoint to load symbols for UnrealEditor-ModuleB.dll and emit [Profile] BreakpointBind, but got:\n{logOutput}");
+        Assert.Contains("UnrealEditor-ModuleB.dll — Breakpoint", logOutput, StringComparison.OrdinalIgnoreCase);
+
+        var profile = ProfileMetricsParser.Parse(logOutput);
+        Assert.NotEmpty(profile.BreakpointBindEvents);
+        var bpMetric = profile.BreakpointBindEvents[0];
+        Assert.True(bpMetric.ModulesLoaded >= 1, "Expected at least 1 module loaded in BreakpointBind profile metric.");
+        Console.WriteLine(
+            $"  -> Parsed BreakpointBind Profile: total={bpMetric.TotalMs}ms, includeList={bpMetric.IncludeListMs}ms, " +
+            $"moduleScan={bpMetric.ModuleScanMs}ms (modules={bpMetric.ModulesScanned}), " +
+            $"symbolLoad={bpMetric.SymbolLoadMs}ms (loaded={bpMetric.ModulesLoaded})");
 
         bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(15));
         Assert.True(hitBreak, "Expected mid-session breakpoint in ModuleB.cpp to bind and hit while running.");

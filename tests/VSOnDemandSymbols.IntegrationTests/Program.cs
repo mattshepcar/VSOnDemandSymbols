@@ -10,7 +10,7 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        string? filter = args.Length > 0 ? args[0] : null;
+        ParseArgs(args, out string? filter, out string? ueRootOverride);
         Console.WriteLine("==================================================================");
         Console.WriteLine(" VSOnDemandSymbols — Automated Experimental Instance Test Runner");
         Console.WriteLine("==================================================================");
@@ -22,7 +22,11 @@ public static class Program
 
         try
         {
-            using var fixture = new VisualStudioExpFixture();
+            using var fixture = new VisualStudioExpFixture(ueRootOverride);
+            var ueConfig = fixture.UnrealConfig;
+            Console.WriteLine($"[Config] UnrealEngineRoot : {ueConfig.UnrealEngineRoot} (via {ueConfig.ConfigurationSource})");
+            Console.WriteLine($"[Config] Lyra Available   : {(ueConfig.IsLyraAvailable ? "Yes" : $"No ({ueConfig.UnavailableReason})")}");
+
             var suite = new EndToEndDebuggerTests(fixture);
 
             var testMethods = new List<(string Name, Action Run)>
@@ -82,5 +86,27 @@ public static class Program
         Console.WriteLine("==================================================================");
         return failed == 0 ? 0 : 1;
     }
-}
 
+    private static void ParseArgs(string[] args, out string? filter, out string? ueRootOverride)
+    {
+        filter = null;
+        ueRootOverride = null;
+
+        for (int i = 0; i < args.Length; i++)
+        {
+            string arg = args[i];
+            if (string.Equals(arg, "--ue-root", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            {
+                ueRootOverride = args[++i];
+            }
+            else if (arg.StartsWith("--ue-root=", StringComparison.OrdinalIgnoreCase))
+            {
+                ueRootOverride = arg.Substring("--ue-root=".Length);
+            }
+            else if (!arg.StartsWith("-", StringComparison.Ordinal))
+            {
+                filter = arg;
+            }
+        }
+    }
+}

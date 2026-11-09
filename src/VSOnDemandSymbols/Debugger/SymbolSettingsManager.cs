@@ -149,8 +149,9 @@ public sealed class SymbolSettingsManager
 
     /// <summary>
     /// Puts Visual Studio into manual symbol load mode and merges wanted binaries into <c>IncludeList</c>.
+    /// Returns <see langword="true"/> if symbol settings were modified and saved; <see langword="false"/> if already up to date.
     /// </summary>
-    public void ApplyManualMode(IEnumerable<string> wantedBinaries, string reason = "session prepare")
+    public bool ApplyManualMode(IEnumerable<string> wantedBinaries, string reason = "session prepare")
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -171,7 +172,7 @@ public sealed class SymbolSettingsManager
 
             if (_isApplied && _appliedWantedBinaries.SetEquals(cleanWanted))
             {
-                return;
+                return false;
             }
 
             EnsureBackupExists();
@@ -221,10 +222,12 @@ public sealed class SymbolSettingsManager
             _logger.Info(
                 $"IncludeList updated ({reason}): {existingNames.Count - userCount} wanted binaries + " +
                 $"{userCount} user entries.");
+            return true;
         }
         catch (Exception ex)
         {
             _logger.Error("Failed to apply manual mode to symbol settings.", ex);
+            return false;
         }
     }
 

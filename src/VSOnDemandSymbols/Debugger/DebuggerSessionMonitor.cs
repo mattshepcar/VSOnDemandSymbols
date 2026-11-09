@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Stopwatch = System.Diagnostics.Stopwatch;
 using EnvDTE;
 using EnvDTE80;
 using EnvDTE90a;
@@ -107,6 +108,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
+            var totalSw = Stopwatch.StartNew();
             var wantedBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 "UnrealEditor*.exe"
@@ -138,7 +140,18 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 }
             }
 
-            _settings.ApplyManualMode(wantedBinaries, reason: $"{reason} (breakpoints: {breakpointCount})");
+            long resolveMs = totalSw.ElapsedMilliseconds;
+            var applySw = Stopwatch.StartNew();
+            bool applied = _settings.ApplyManualMode(wantedBinaries, reason: $"{reason} (breakpoints: {breakpointCount})");
+            long applyMs = applySw.ElapsedMilliseconds;
+            totalSw.Stop();
+
+            if (applied)
+            {
+                _logger.Info(
+                    $"[Profile] UpdateIncludeList ({reason}): total={totalSw.ElapsedMilliseconds}ms " +
+                    $"(resolve={resolveMs}ms [breakpoints={breakpointCount}], apply={applyMs}ms)");
+            }
             return candidatePatterns;
         }
         catch (Exception ex)
@@ -211,7 +224,10 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             return;
         }
 
+        var totalSw = Stopwatch.StartNew();
+        var includeListSw = Stopwatch.StartNew();
         var candidatePatterns = UpdateIncludeListFromBreakpoints("breakpoint bind error");
+        long includeListMs = includeListSw.ElapsedMilliseconds;
         if (candidatePatterns.Count == 0 || _dte.Debugger?.DebuggedProcesses == null)
         {
             return;
@@ -233,12 +249,18 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
-            foreach (Process proc in _dte.Debugger.DebuggedProcesses)
+            var scanSw = Stopwatch.StartNew();
+            long symbolLoadMs = 0;
+            int totalModulesScanned = 0;
+            int loadedCount = 0;
+
+            foreach (EnvDTE.Process proc in _dte.Debugger.DebuggedProcesses)
             {
                 if (proc is EnvDTE90.Process3 proc3 && proc3.Modules != null)
                 {
                     foreach (EnvDTE90.Module mod in proc3.Modules)
                     {
+                        totalModulesScanned++;
                         string modFileName = WildcardPattern.ExtractFileNameSafe(mod.Name);
                         if (string.IsNullOrWhiteSpace(modFileName) || _loadedModulesThisSession.Contains(modFileName))
                         {
@@ -263,19 +285,36 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
                         if (matches)
                         {
+                            var modSw = Stopwatch.StartNew();
                             try
                             {
                                 mod.LoadSymbols(string.Empty);
+                                modSw.Stop();
+                                symbolLoadMs += modSw.ElapsedMilliseconds;
+                                loadedCount++;
                                 _loadedModulesThisSession.Add(modFileName);
-                                _logger.Info($"Loading symbols on demand: {modFileName} — Breakpoint");
+                                _logger.Info($"Loading symbols on demand: {modFileName} — Breakpoint ({modSw.ElapsedMilliseconds} ms)");
                             }
                             catch (Exception ex)
                             {
+                                modSw.Stop();
+                                symbolLoadMs += modSw.ElapsedMilliseconds;
                                 _logger.Error($"Failed to load symbols for {modFileName}.", ex);
                             }
                         }
                     }
                 }
+            }
+
+            scanSw.Stop();
+            totalSw.Stop();
+            long moduleScanMs = Math.Max(0, scanSw.ElapsedMilliseconds - symbolLoadMs);
+            if (loadedCount > 0)
+            {
+                _logger.Info(
+                    $"[Profile] BreakpointBind: total={totalSw.ElapsedMilliseconds}ms " +
+                    $"(includeList={includeListMs}ms, moduleScan={moduleScanMs}ms [modules={totalModulesScanned}], " +
+                    $"symbolLoad={symbolLoadMs}ms [loaded={loadedCount}])");
             }
         }
         catch (Exception ex)
@@ -384,9 +423,13 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
+            var totalSw = Stopwatch.StartNew();
+            var stackWalkSw = Stopwatch.StartNew();
             var currentThread = debugger.CurrentThread;
             var missingModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             const int maxNonCurrentThreadFrames = 10;
+            int threadsInspected = 0;
+            int framesInspected = 0;
 
             foreach (EnvDTE.Thread th in threads)
             {
@@ -398,6 +441,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         continue;
                     }
 
+                    threadsInspected++;
                     int frameIndex = 0;
                     foreach (StackFrame frame in frames)
                     {
@@ -407,6 +451,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                             break;
                         }
 
+                        framesInspected++;
                         string? rawMod = null;
                         try
                         {
@@ -439,20 +484,26 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 }
             }
 
+            stackWalkSw.Stop();
+            long stackWalkMs = stackWalkSw.ElapsedMilliseconds;
+
             if (missingModules.Count == 0)
             {
                 return;
             }
 
+            var moduleScanSw = Stopwatch.StartNew();
             var targetModules = new List<(EnvDTE90.Module Module, string FileName, string? FullPath)>();
             var candidateBinaries = new List<string>();
+            int totalModulesScanned = 0;
 
-            foreach (Process proc in debugger.DebuggedProcesses)
+            foreach (EnvDTE.Process proc in debugger.DebuggedProcesses)
             {
                 if (proc is EnvDTE90.Process3 proc3 && proc3.Modules != null)
                 {
                     foreach (EnvDTE90.Module mod in proc3.Modules)
                     {
+                        totalModulesScanned++;
                         string modFileName = WildcardPattern.ExtractFileNameSafe(mod.Name);
                         if (string.IsNullOrWhiteSpace(modFileName) || _loadedModulesThisSession.Contains(modFileName))
                         {
@@ -474,6 +525,9 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 }
             }
 
+            moduleScanSw.Stop();
+            long moduleScanMs = moduleScanSw.ElapsedMilliseconds;
+
             if (targetModules.Count == 0)
             {
                 return;
@@ -483,6 +537,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             string modeDesc = maskServers ? " (local-only)" : string.Empty;
             var newlyLoadedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+            var symbolLoadSw = Stopwatch.StartNew();
             // Load symbols using configured server policy (masked or unmasked)
             _settings.ExecuteWithCandidateModules(candidateBinaries, maskSymbolServers: maskServers, () =>
             {
@@ -494,17 +549,20 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         continue;
                     }
 
+                    var modSw = Stopwatch.StartNew();
                     try
                     {
                         mod.LoadSymbols(string.Empty);
+                        modSw.Stop();
                         if (HasSymbolsLoaded(mod))
                         {
                             newlyLoadedModules.Add(modFileName);
                         }
-                        _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason}");
+                        _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason} ({modSw.ElapsedMilliseconds} ms)");
                     }
                     catch (Exception ex)
                     {
+                        modSw.Stop();
                         // Expected when symbols are not available locally (e.g. OS DLLs not in local cache)
                         if (WildcardPattern.IsUserCodeModule(fullPath ?? modFileName))
                         {
@@ -521,11 +579,25 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                     }
                 }
             });
+            symbolLoadSw.Stop();
+            long symbolLoadMs = symbolLoadSw.ElapsedMilliseconds;
 
+            long contextRefreshMs = 0;
             if (newlyLoadedModules.Count > 0 && currentThread != null)
             {
+                var contextSw = Stopwatch.StartNew();
                 RefreshBreakingFrameContext(debugger, currentThread, newlyLoadedModules);
+                contextSw.Stop();
+                contextRefreshMs = contextSw.ElapsedMilliseconds;
             }
+
+            totalSw.Stop();
+            _logger.Info(
+                $"[Profile] {reason}: total={totalSw.ElapsedMilliseconds}ms " +
+                $"(stackWalk={stackWalkMs}ms [threads={threadsInspected}, frames={framesInspected}], " +
+                $"moduleScan={moduleScanMs}ms [modules={totalModulesScanned}], " +
+                $"symbolLoad={symbolLoadMs}ms [loaded={newlyLoadedModules.Count}/{targetModules.Count}], " +
+                $"contextRefresh={contextRefreshMs}ms)");
         }
         catch (Exception ex)
         {

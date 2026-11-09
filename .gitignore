@@ -16,6 +16,7 @@ tests/Fixtures/MiniUnreal/Binaries/
 TestResults/
 *.trx
 coverage*/
+testsettings.local.json
 
 ## Scratch & Temp
 scratch/

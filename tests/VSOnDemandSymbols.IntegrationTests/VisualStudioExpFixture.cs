@@ -20,6 +20,7 @@ namespace VSOnDemandSymbols.IntegrationTests;
 public sealed class VisualStudioExpFixture : IDisposable
 {
     public string RepoRoot { get; }
+    public UnrealEnvironmentConfig UnrealConfig { get; }
     public string MiniUnrealSolutionPath { get; }
     public string MiniUnrealBinariesDir { get; }
     public string ModuleASourcePath { get; }
@@ -29,9 +30,10 @@ public sealed class VisualStudioExpFixture : IDisposable
     public System.Diagnostics.Process? DevenvProcess { get; private set; }
     public DTE2? Dte { get; private set; }
 
-    public VisualStudioExpFixture()
+    public VisualStudioExpFixture(string? ueRootOverride = null)
     {
         RepoRoot = LocateRepoRoot();
+        UnrealConfig = UnrealEnvironmentConfig.Resolve(ueRootOverride, RepoRoot);
         MiniUnrealSolutionPath = Path.Combine(RepoRoot, "tests", "Fixtures", "MiniUnreal", "MiniUnreal.sln");
         MiniUnrealBinariesDir = Path.Combine(RepoRoot, "tests", "Fixtures", "MiniUnreal", "Binaries", "Win64");
         ModuleASourcePath = Path.Combine(RepoRoot, "tests", "Fixtures", "MiniUnreal", "Source", "ModuleA", "ModuleA.cpp");

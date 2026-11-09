@@ -34,7 +34,6 @@ public static class LyraHarnessGenerator
         string uprojectMarkerPath = Path.Combine(harnessDir, "LyraHarness.uproject");
         string slnPath = Path.Combine(harnessDir, "LyraHarness.sln");
         string vcxprojPath = Path.Combine(harnessDir, "LyraHarness.vcxproj");
-        string vcxprojUserPath = Path.Combine(harnessDir, "LyraHarness.vcxproj.user");
         string logFilePath = Path.Combine(logsDir, "LyraProfile.log");
 
         string editorExe = config.PreferredEditorCmdExePath;
@@ -121,20 +120,6 @@ public static class LyraHarnessGenerator
                 <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
               </PropertyGroup>
               <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-            </Project>
-            """);
-
-        File.WriteAllText(
-            vcxprojUserPath,
-            $"""
-            <?xml version="1.0" encoding="utf-8"?>
-            <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-              <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-                <LocalDebuggerCommand>{escapedExe}</LocalDebuggerCommand>
-                <LocalDebuggerCommandArguments>{escapedArgs}</LocalDebuggerCommandArguments>
-                <LocalDebuggerWorkingDirectory>{escapedWorkDir}</LocalDebuggerWorkingDirectory>
-                <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-              </PropertyGroup>
             </Project>
             """);
 

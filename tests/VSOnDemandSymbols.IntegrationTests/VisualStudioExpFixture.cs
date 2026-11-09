@@ -150,6 +150,99 @@ public sealed class VisualStudioExpFixture : IDisposable
         File.WriteAllText(modeFile, mode);
     }
 
+    public DTE2 PrepareMiniUnrealTest(string? testMode = null)
+    {
+        var dte = Dte ?? throw new InvalidOperationException("DTE not attached.");
+        StopDebuggingIfActive();
+        ClearAllBreakpoints();
+        EnsureMiniUnrealSolutionOpen();
+        ClearOnDemandSymbolsOutputPane();
+
+        if (!string.IsNullOrEmpty(testMode))
+        {
+            SetMiniUnrealTestMode(testMode!);
+        }
+
+        return dte;
+    }
+
+    public void EnsureMiniUnrealSolutionOpen()
+    {
+        var dte = Dte ?? throw new InvalidOperationException("DTE not attached.");
+        string? currentSolution = null;
+        try
+        {
+            if (dte.Solution?.IsOpen == true)
+            {
+                currentSolution = dte.Solution.FullName;
+            }
+        }
+        catch
+        {
+        }
+
+        if (string.Equals(currentSolution, MiniUnrealSolutionPath, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        ClearOnDemandSymbolsOutputPane();
+        dte.Solution!.Open(MiniUnrealSolutionPath);
+        if (!WaitUntilOutputContains(
+                "Unreal solution detected: 'MiniUnreal.sln'. On-Demand Symbols active.",
+                TimeSpan.FromSeconds(30),
+                out string logOutput))
+        {
+            throw new InvalidOperationException(
+                $"Expected Unreal solution detection log when opening MiniUnreal.sln, but got:\n{logOutput}");
+        }
+    }
+
+    /// <summary>
+    /// If a previous crashed test run left the Experimental instance's persisted user settings
+    /// in manual-load mode, resets the backup DTO to Visual Studio's default ("Load all modules")
+    /// and restarts the Experimental instance so <c>RecoverFromCrashIfNeeded</c> restores clean defaults.
+    /// </summary>
+    public void ResetDirtyExpBackupSettingsIfNeeded(string reopenSolutionPath, string expectedSolutionName)
+    {
+        var (backupPath, backupDto) = FindBackupFileForCurrentProcess();
+        if (backupDto == null)
+        {
+            return;
+        }
+
+        Console.WriteLine(
+            $"  -> [Exp Backup Settings] IsManualLoad={backupDto.IsManualLoad}, " +
+            $"IsLoadAdjacent={backupDto.IsLoadAdjacent}, AutomaticSymbolLoad={backupDto.AutomaticSymbolLoad}, " +
+            $"IncludeList=[{string.Join(", ", backupDto.IncludeList.Select(x => $"{x.Name}:{x.IsEnabled}"))}]");
+
+        if (!backupDto.IsManualLoad || string.IsNullOrWhiteSpace(backupPath))
+        {
+            return;
+        }
+
+        Console.WriteLine("  -> [Exp Backup Settings] Resetting dirty Exp symbol settings to VS defaults (Load all modules)...");
+        backupDto.IsManualLoad = false;
+        backupDto.IsLoadAdjacent = true;
+        backupDto.AutomaticSymbolLoad = true;
+        backupDto.IncludeList.Clear();
+        File.WriteAllText(backupPath, JsonConvert.SerializeObject(backupDto, Formatting.Indented));
+
+        KillCurrentInstanceIfRunning();
+        StartAndAttach();
+        var dte = Dte ?? throw new InvalidOperationException("DTE not attached after restart.");
+        ClearOnDemandSymbolsOutputPane();
+        dte.Solution.Open(reopenSolutionPath);
+        if (!WaitUntilOutputContains(
+                $"Unreal solution detected: '{expectedSolutionName}'. On-Demand Symbols active.",
+                TimeSpan.FromSeconds(30),
+                out string openLog))
+        {
+            throw new InvalidOperationException(
+                $"Expected {expectedSolutionName} to be detected after Exp reset, but got:\n{openLog}");
+        }
+    }
+
     public string GetOnDemandSymbolsOutputText()
     {
         try
@@ -169,24 +262,9 @@ public sealed class VisualStudioExpFixture : IDisposable
         {
         }
 
-        if (Dte == null)
-        {
-            return string.Empty;
-        }
-
         try
         {
-            var panes = Dte.ToolWindows.OutputWindow.OutputWindowPanes;
-            OutputWindowPane? targetPane = null;
-            foreach (OutputWindowPane pane in panes)
-            {
-                if (string.Equals(pane.Name, "On-Demand Symbols", StringComparison.OrdinalIgnoreCase))
-                {
-                    targetPane = pane;
-                    break;
-                }
-            }
-
+            var targetPane = FindOnDemandSymbolsPane();
             if (targetPane == null)
             {
                 return string.Empty;
@@ -215,26 +293,31 @@ public sealed class VisualStudioExpFixture : IDisposable
         {
         }
 
-        if (Dte == null)
-        {
-            return;
-        }
-
         try
         {
-            var panes = Dte.ToolWindows.OutputWindow.OutputWindowPanes;
-            foreach (OutputWindowPane pane in panes)
-            {
-                if (string.Equals(pane.Name, "On-Demand Symbols", StringComparison.OrdinalIgnoreCase))
-                {
-                    pane.Clear();
-                    break;
-                }
-            }
+            FindOnDemandSymbolsPane()?.Clear();
         }
         catch
         {
         }
+    }
+
+    private OutputWindowPane? FindOnDemandSymbolsPane()
+    {
+        if (Dte == null)
+        {
+            return null;
+        }
+
+        foreach (OutputWindowPane pane in Dte.ToolWindows.OutputWindow.OutputWindowPanes)
+        {
+            if (string.Equals(pane.Name, "On-Demand Symbols", StringComparison.OrdinalIgnoreCase))
+            {
+                return pane;
+            }
+        }
+
+        return null;
     }
 
     public bool WaitUntilOutputContains(string expectedSubstring, TimeSpan timeout, out string lastOutput)
@@ -343,23 +426,12 @@ public sealed class VisualStudioExpFixture : IDisposable
 
     public EnvDTE90.Module? FindDebuggedModule(string moduleFileName)
     {
-        if (Dte?.Debugger?.DebuggedProcesses == null)
+        foreach (var mod in EnumerateDebuggedModules())
         {
-            return null;
-        }
-
-        foreach (EnvDTE.Process proc in Dte.Debugger.DebuggedProcesses)
-        {
-            if (proc is EnvDTE90.Process3 proc3 && proc3.Modules != null)
+            string name = Path.GetFileName(mod.Name ?? string.Empty);
+            if (string.Equals(name, moduleFileName, StringComparison.OrdinalIgnoreCase))
             {
-                foreach (EnvDTE90.Module mod in proc3.Modules)
-                {
-                    string name = Path.GetFileName(mod.Name ?? string.Empty);
-                    if (string.Equals(name, moduleFileName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return mod;
-                    }
-                }
+                return mod;
             }
         }
 
@@ -371,9 +443,32 @@ public sealed class VisualStudioExpFixture : IDisposable
         var symbolizedNames = new List<string>();
         int total = 0;
 
+        foreach (var mod in EnumerateDebuggedModules())
+        {
+            total++;
+            string? symFile = null;
+            try
+            {
+                symFile = mod.SymbolFile;
+            }
+            catch
+            {
+            }
+
+            if (!string.IsNullOrWhiteSpace(symFile))
+            {
+                symbolizedNames.Add(Path.GetFileName(mod.Name ?? string.Empty));
+            }
+        }
+
+        return (total, symbolizedNames.Count, symbolizedNames);
+    }
+
+    private IEnumerable<EnvDTE90.Module> EnumerateDebuggedModules()
+    {
         if (Dte?.Debugger?.DebuggedProcesses == null)
         {
-            return (0, 0, symbolizedNames);
+            yield break;
         }
 
         foreach (EnvDTE.Process proc in Dte.Debugger.DebuggedProcesses)
@@ -382,25 +477,10 @@ public sealed class VisualStudioExpFixture : IDisposable
             {
                 foreach (EnvDTE90.Module mod in proc3.Modules)
                 {
-                    total++;
-                    string? symFile = null;
-                    try
-                    {
-                        symFile = mod.SymbolFile;
-                    }
-                    catch
-                    {
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(symFile))
-                    {
-                        symbolizedNames.Add(Path.GetFileName(mod.Name ?? string.Empty));
-                    }
+                    yield return mod;
                 }
             }
         }
-
-        return (total, symbolizedNames.Count, symbolizedNames);
     }
 
     public (string? Path, SymbolSettingsBackupDto? Dto) FindBackupFileForCurrentProcess()
@@ -586,35 +666,15 @@ public sealed class VisualStudioExpFixture : IDisposable
             return envOverride!;
         }
 
-        string vswhere = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-            "Microsoft Visual Studio",
-            "Installer",
-            "vswhere.exe");
-
-        if (File.Exists(vswhere))
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = vswhere,
-                Arguments = "-latest -prerelease -property productPath",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-            using var proc = System.Diagnostics.Process.Start(psi);
-            string? output = proc?.StandardOutput.ReadToEnd()?.Trim();
-            proc?.WaitForExit();
-            if (!string.IsNullOrWhiteSpace(output) && File.Exists(output))
-            {
-                return output!;
-            }
-        }
-
-        throw new FileNotFoundException("Could not locate devenv.exe via vswhere.");
+        return RunVsWhere("-latest -prerelease -property productPath")
+            ?? throw new FileNotFoundException("Could not locate devenv.exe via vswhere.");
     }
 
-    private static string LocateMsBuildPath()
+    private static string LocateMsBuildPath() =>
+        RunVsWhere("-latest -prerelease -requires Microsoft.Component.MSBuild -find \"MSBuild\\**\\Bin\\MSBuild.exe\"")
+        ?? throw new FileNotFoundException("Could not locate MSBuild.exe via vswhere.");
+
+    private static string? RunVsWhere(string arguments)
     {
         string vswhere = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
@@ -622,28 +682,27 @@ public sealed class VisualStudioExpFixture : IDisposable
             "Installer",
             "vswhere.exe");
 
-        if (File.Exists(vswhere))
+        if (!File.Exists(vswhere))
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = vswhere,
-                Arguments = "-latest -prerelease -requires Microsoft.Component.MSBuild -find \"MSBuild\\**\\Bin\\MSBuild.exe\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-            using var proc = System.Diagnostics.Process.Start(psi);
-            string? output = proc?.StandardOutput.ReadToEnd()?
-                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .FirstOrDefault();
-            proc?.WaitForExit();
-            if (!string.IsNullOrWhiteSpace(output) && File.Exists(output))
-            {
-                return output!;
-            }
+            return null;
         }
 
-        throw new FileNotFoundException("Could not locate MSBuild.exe via vswhere.");
+        var psi = new ProcessStartInfo
+        {
+            FileName = vswhere,
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            CreateNoWindow = true
+        };
+        using var proc = System.Diagnostics.Process.Start(psi);
+        string? firstLine = proc?.StandardOutput.ReadToEnd()?
+            .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?
+            .Trim();
+        proc?.WaitForExit();
+
+        return !string.IsNullOrWhiteSpace(firstLine) && File.Exists(firstLine) ? firstLine : null;
     }
 
     [DllImport("ole32.dll")]

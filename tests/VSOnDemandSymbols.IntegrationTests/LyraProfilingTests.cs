@@ -51,86 +51,17 @@ public sealed class LyraProfilingTests
     public void Lyra01_ColdBoot_StartupAndBreakModeProfile()
     {
         EnsureLyraAvailable();
-        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
         var ue = _fixture.UnrealConfig;
-
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
 
         _harnessSolutionPath = LyraHarnessGenerator.Generate(ue);
         Console.WriteLine($"  -> Generated zero-write Lyra harness: {_harnessSolutionPath}");
         Console.WriteLine($"  -> Target Editor Executable: {ue.PreferredEditorCmdExePath}");
 
-        _fixture.ClearOnDemandSymbolsOutputPane();
-        dte.Solution.Open(_harnessSolutionPath);
-
-        bool detected = _fixture.WaitUntilOutputContains(
-            "Unreal solution detected: 'LyraHarness.sln'. On-Demand Symbols active.",
-            TimeSpan.FromSeconds(30),
-            out string openLog);
-        Assert.True(detected, $"Expected LyraHarness.sln to be detected as an Unreal solution, but got:\n{openLog}");
-
-        var (backupPath, backupDto) = _fixture.FindBackupFileForCurrentProcess();
-        if (backupDto != null)
-        {
-            Console.WriteLine(
-                $"  -> [Exp Backup Settings] IsManualLoad={backupDto.IsManualLoad}, " +
-                $"IsLoadAdjacent={backupDto.IsLoadAdjacent}, AutomaticSymbolLoad={backupDto.AutomaticSymbolLoad}, " +
-                $"IncludeList=[{string.Join(", ", backupDto.IncludeList.Select(x => $"{x.Name}:{x.IsEnabled}"))}]");
-
-            // If a previous crashed test session left the Exp instance's persisted user settings in manual-load mode,
-            // reset the backup DTO to Visual Studio's out-of-the-box default ("Load all modules, unless excluded")
-            // and restart the Exp instance so RecoverFromCrashIfNeeded restores clean VS defaults.
-            if (backupDto.IsManualLoad && !string.IsNullOrWhiteSpace(backupPath))
-            {
-                Console.WriteLine("  -> [Exp Backup Settings] Resetting dirty Exp symbol settings to VS defaults (Load all modules)...");
-                backupDto.IsManualLoad = false;
-                backupDto.IsLoadAdjacent = true;
-                backupDto.AutomaticSymbolLoad = true;
-                backupDto.IncludeList.Clear();
-                File.WriteAllText(backupPath, Newtonsoft.Json.JsonConvert.SerializeObject(backupDto, Newtonsoft.Json.Formatting.Indented));
-
-                _fixture.KillCurrentInstanceIfRunning();
-                _fixture.StartAndAttach();
-                dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached after restart.");
-                _fixture.ClearOnDemandSymbolsOutputPane();
-                dte.Solution.Open(_harnessSolutionPath);
-                bool redetected = _fixture.WaitUntilOutputContains(
-                    "Unreal solution detected: 'LyraHarness.sln'. On-Demand Symbols active.",
-                    TimeSpan.FromSeconds(30),
-                    out openLog);
-                Assert.True(redetected, $"Expected LyraHarness.sln to be detected after Exp reset, but got:\n{openLog}");
-            }
-        }
-
-        _fixture.ClearOnDemandSymbolsOutputPane();
-
-        // Set breakpoint 1: ULyraEditorEngine::Init (LyraEditorEngine.cpp line 27)
-        // Set breakpoint 2: ULyraEditorEngine::Start (LyraEditorEngine.cpp line 32) for in-session warm break test
-        dte.Debugger.Breakpoints.Add(File: ue.LyraEditorEngineSourcePath, Line: 27);
-        dte.Debugger.Breakpoints.Add(File: ue.LyraEditorEngineSourcePath, Line: 32);
-
-        Console.WriteLine("  -> [COLD BOOT] Launching UnrealEditor with Lyra.uproject (-nullrhi -unattended)...");
-        var launchSw = Stopwatch.StartNew();
-        dte.ExecuteCommand("Debug.Start");
-
-        bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(180));
-        launchSw.Stop();
-        _coldLaunchToBreakMs = launchSw.ElapsedMilliseconds;
-        Assert.True(hitBreak, $"Expected Cold Boot to hit breakpoint in ULyraEditorEngine::Init within 180s (elapsed: {_coldLaunchToBreakMs} ms).\nLog:\n{_fixture.GetOnDemandSymbolsOutputText()}");
-
-        bool breakProfileLogged = _fixture.WaitUntilOutputContains(
-            "[Profile] BreakMode:",
-            TimeSpan.FromSeconds(30),
-            out string coldLog);
-        Assert.True(breakProfileLogged, $"Expected [Profile] BreakMode telemetry on Cold Boot break, but got:\n{coldLog}");
-
-        _coldProfileReport = ProfileMetricsParser.Parse(coldLog);
-        Assert.NotEmpty(_coldProfileReport.BreakModeEvents);
-
-        var (totalMods, symbolizedMods, symbolizedNames) = _fixture.GetDebuggedModulesSummary();
-        _coldTotalModulesMapped = totalMods;
-        _coldSymbolizedModulesAfterBreak = symbolizedMods;
+        (_coldLaunchToBreakMs, _coldTotalModulesMapped, _coldSymbolizedModulesAfterBreak, _coldProfileReport) =
+            RunLyraBootPass(
+                label: "COLD BOOT",
+                resetDirtyBackupFirst: true,
+                addSecondWarmBreak: true);
 
         var lyraEditorMod = _fixture.FindDebuggedModule(ue.ExpectedLyraEditorDllName);
         var lyraGameMod = _fixture.FindDebuggedModule(ue.ExpectedLyraGameDllName);
@@ -146,16 +77,6 @@ public sealed class LyraProfilingTests
             "Expected UnrealEditor-UnrealEd.dll (caller on stack) to have symbols loaded on demand during BreakMode.");
         Assert.True(string.IsNullOrWhiteSpace(lyraGameMod!.SymbolFile),
             $"Expected {ue.ExpectedLyraGameDllName} (no breakpoint, not on breaking stack) to NOT have symbols loaded yet.");
-
-        var bm = _coldProfileReport.BreakModeEvents[0];
-        Console.WriteLine($"  -> [COLD BOOT] Launch to Breakpoint Hit : {_coldLaunchToBreakMs} ms");
-        Console.WriteLine($"  -> [COLD BOOT] Modules Mapped           : {_coldTotalModulesMapped} total, {_coldSymbolizedModulesAfterBreak} symbolized ({_coldTotalModulesMapped - _coldSymbolizedModulesAfterBreak} skipped)");
-        Console.WriteLine(
-            $"  -> [COLD BOOT] BreakMode Profile        : total={bm.TotalMs}ms " +
-            $"(stackWalk={bm.StackWalkMs}ms [threads={bm.ThreadsInspected}, frames={bm.FramesInspected}], " +
-            $"moduleScan={bm.ModuleScanMs}ms [modules={bm.ModulesScanned}], " +
-            $"symbolLoad={bm.SymbolLoadMs}ms [loaded={bm.ModulesLoaded}/{bm.CandidateTargetModules}], " +
-            $"contextRefresh={bm.ContextRefreshMs}ms)");
     }
 
     public void Lyra02_InSessionWarm_SecondBreakAndMidSessionBreakpointBind()
@@ -163,6 +84,12 @@ public sealed class LyraProfilingTests
         EnsureLyraAvailable();
         var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
         var ue = _fixture.UnrealConfig;
+
+        if (dte.Debugger.CurrentMode != dbgDebugMode.dbgBreakMode)
+        {
+            Lyra01_ColdBoot_StartupAndBreakModeProfile();
+            dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
+        }
 
         Assert.Equal(dbgDebugMode.dbgBreakMode, dte.Debugger.CurrentMode);
 
@@ -226,6 +153,24 @@ public sealed class LyraProfilingTests
     {
         EnsureLyraAvailable();
         var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
+
+        (_warmLaunchToBreakMs, _warmTotalModulesMapped, _warmSymbolizedModulesAfterBreak, _warmProfileReport) =
+            RunLyraBootPass(
+                label: "WARM BOOT",
+                resetDirtyBackupFirst: false,
+                addSecondWarmBreak: false);
+
+        _fixture.StopDebuggingIfActive();
+        _fixture.ClearAllBreakpoints();
+        dte.Solution.Close(SaveFirst: false);
+    }
+
+    private (long LaunchToBreakMs, int TotalModules, int SymbolizedModules, ParsedProfileReport ProfileReport) RunLyraBootPass(
+        string label,
+        bool resetDirtyBackupFirst,
+        bool addSecondWarmBreak)
+    {
+        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
         var ue = _fixture.UnrealConfig;
 
         _fixture.StopDebuggingIfActive();
@@ -243,48 +188,55 @@ public sealed class LyraProfilingTests
             "Unreal solution detected: 'LyraHarness.sln'. On-Demand Symbols active.",
             TimeSpan.FromSeconds(30),
             out string openLog);
-        Assert.True(detected, $"Expected LyraHarness.sln to reopen for Warm Boot, but got:\n{openLog}");
+        Assert.True(detected, $"Expected LyraHarness.sln to be detected for {label}, but got:\n{openLog}");
+
+        if (resetDirtyBackupFirst)
+        {
+            _fixture.ResetDirtyExpBackupSettingsIfNeeded(_harnessSolutionPath!, "LyraHarness.sln");
+            dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
+        }
 
         _fixture.ClearOnDemandSymbolsOutputPane();
 
-        // Set the same startup breakpoint in ULyraEditorEngine::Init (line 27)
+        // Startup breakpoint in ULyraEditorEngine::Init (line 27)
         dte.Debugger.Breakpoints.Add(File: ue.LyraEditorEngineSourcePath, Line: 27);
+        if (addSecondWarmBreak)
+        {
+            // Second breakpoint in ULyraEditorEngine::Start (line 32) for in-session warm break test
+            dte.Debugger.Breakpoints.Add(File: ue.LyraEditorEngineSourcePath, Line: 32);
+        }
 
-        Console.WriteLine("  -> [WARM BOOT] Launching UnrealEditor with Lyra.uproject (OS file cache & PDB cache warm)...");
+        Console.WriteLine($"  -> [{label}] Launching UnrealEditor with Lyra.uproject (-nullrhi -unattended)...");
         var launchSw = Stopwatch.StartNew();
         dte.ExecuteCommand("Debug.Start");
 
         bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(180));
         launchSw.Stop();
-        _warmLaunchToBreakMs = launchSw.ElapsedMilliseconds;
-        Assert.True(hitBreak, $"Expected Warm Boot to hit breakpoint in ULyraEditorEngine::Init within 180s (elapsed: {_warmLaunchToBreakMs} ms).");
+        long launchToBreakMs = launchSw.ElapsedMilliseconds;
+        Assert.True(hitBreak, $"Expected {label} to hit breakpoint in ULyraEditorEngine::Init within 180s (elapsed: {launchToBreakMs} ms).\nLog:\n{_fixture.GetOnDemandSymbolsOutputText()}");
 
         bool breakProfileLogged = _fixture.WaitUntilOutputContains(
             "[Profile] BreakMode:",
             TimeSpan.FromSeconds(30),
-            out string warmLog);
-        Assert.True(breakProfileLogged, $"Expected [Profile] BreakMode telemetry on Warm Boot break, but got:\n{warmLog}");
+            out string breakLog);
+        Assert.True(breakProfileLogged, $"Expected [Profile] BreakMode telemetry on {label} break, but got:\n{breakLog}");
 
-        _warmProfileReport = ProfileMetricsParser.Parse(warmLog);
-        Assert.NotEmpty(_warmProfileReport.BreakModeEvents);
+        var report = ProfileMetricsParser.Parse(breakLog);
+        Assert.NotEmpty(report.BreakModeEvents);
 
         var (totalMods, symbolizedMods, _) = _fixture.GetDebuggedModulesSummary();
-        _warmTotalModulesMapped = totalMods;
-        _warmSymbolizedModulesAfterBreak = symbolizedMods;
+        var bm = report.BreakModeEvents[0];
 
-        var bm = _warmProfileReport.BreakModeEvents[0];
-        Console.WriteLine($"  -> [WARM BOOT] Launch to Breakpoint Hit : {_warmLaunchToBreakMs} ms");
-        Console.WriteLine($"  -> [WARM BOOT] Modules Mapped           : {_warmTotalModulesMapped} total, {_warmSymbolizedModulesAfterBreak} symbolized ({_warmTotalModulesMapped - _warmSymbolizedModulesAfterBreak} skipped)");
+        Console.WriteLine($"  -> [{label}] Launch to Breakpoint Hit : {launchToBreakMs} ms");
+        Console.WriteLine($"  -> [{label}] Modules Mapped           : {totalMods} total, {symbolizedMods} symbolized ({totalMods - symbolizedMods} skipped)");
         Console.WriteLine(
-            $"  -> [WARM BOOT] BreakMode Profile        : total={bm.TotalMs}ms " +
+            $"  -> [{label}] BreakMode Profile        : total={bm.TotalMs}ms " +
             $"(stackWalk={bm.StackWalkMs}ms [threads={bm.ThreadsInspected}, frames={bm.FramesInspected}], " +
             $"moduleScan={bm.ModuleScanMs}ms [modules={bm.ModulesScanned}], " +
             $"symbolLoad={bm.SymbolLoadMs}ms [loaded={bm.ModulesLoaded}/{bm.CandidateTargetModules}], " +
             $"contextRefresh={bm.ContextRefreshMs}ms)");
 
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
-        dte.Solution.Close(SaveFirst: false);
+        return (launchToBreakMs, totalMods, symbolizedMods, report);
     }
 
     public void Lyra04_BaselineDisabled_FullSymbolLoadAndSavingsReport()

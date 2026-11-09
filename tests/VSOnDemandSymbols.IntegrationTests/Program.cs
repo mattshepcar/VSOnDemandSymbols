@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace VSOnDemandSymbols.IntegrationTests;
 
@@ -78,9 +77,8 @@ public static class Program
                 catch (Exception ex)
                 {
                     testSw.Stop();
-                    var inner = ex is TargetInvocationException tie ? tie.InnerException ?? tie : ex;
-                    Console.WriteLine($"[FAIL] {name} ({testSw.ElapsedMilliseconds} ms): {inner.Message}");
-                    Console.WriteLine(inner.StackTrace);
+                    Console.WriteLine($"[FAIL] {name} ({testSw.ElapsedMilliseconds} ms): {ex.Message}");
+                    Console.WriteLine(ex.StackTrace);
                     failed++;
                 }
             }

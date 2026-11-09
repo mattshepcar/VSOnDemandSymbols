@@ -19,7 +19,6 @@ public sealed class UnrealEnvironmentConfig
     public string ConfigurationSource { get; }
 
     public string EngineBinariesWin64Dir => Path.Combine(UnrealEngineRoot, "Engine", "Binaries", "Win64");
-    public string UnrealEditorExePath => Path.Combine(EngineBinariesWin64Dir, "UnrealEditor.exe");
     public string UnrealEditorCmdExePath => Path.Combine(EngineBinariesWin64Dir, "UnrealEditor-Cmd.exe");
     public string UnrealEditorDebugGameCmdExePath => Path.Combine(EngineBinariesWin64Dir, "UnrealEditor-Win64-DebugGame-Cmd.exe");
 
@@ -27,9 +26,7 @@ public sealed class UnrealEnvironmentConfig
     public string LyraBinariesWin64Dir => Path.Combine(LyraDirectory, "Binaries", "Win64");
     public string LyraUProjectPath => Path.Combine(LyraDirectory, "Lyra.uproject");
     public string LyraEditorEngineSourcePath => Path.Combine(LyraDirectory, "Source", "LyraEditor", "LyraEditorEngine.cpp");
-    public string LyraGameModuleSourcePath => Path.Combine(LyraDirectory, "Source", "LyraGame", "LyraGameModule.cpp");
     public string LyraGameplayTagsSourcePath => Path.Combine(LyraDirectory, "Source", "LyraGame", "LyraGameplayTags.cpp");
-    public string LyraGameplayAbilitySourcePath => Path.Combine(LyraDirectory, "Source", "LyraGame", "AbilitySystem", "Abilities", "LyraGameplayAbility.cpp");
 
     public bool HasDebugGameTarget =>
         File.Exists(UnrealEditorDebugGameCmdExePath) &&

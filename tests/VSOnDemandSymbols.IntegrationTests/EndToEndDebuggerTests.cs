@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using EnvDTE;
@@ -24,6 +25,7 @@ public sealed class EndToEndDebuggerTests
         var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
 
         Console.WriteLine("  -> Opening MiniUnreal.sln...");
+        _fixture.ClearOnDemandSymbolsOutputPane();
         dte.Solution.Open(_fixture.MiniUnrealSolutionPath);
 
         bool detected = _fixture.WaitUntilOutputContains(
@@ -41,12 +43,7 @@ public sealed class EndToEndDebuggerTests
 
     public void Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule()
     {
-        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
-        _fixture.ClearOnDemandSymbolsOutputPane();
-
-        _fixture.SetMiniUnrealTestMode("breakpoint_mod_a");
+        var dte = _fixture.PrepareMiniUnrealTest("breakpoint_mod_a");
 
         // Set a breakpoint in ModuleA.cpp at line 8 (RunModuleAWork)
         dte.Debugger.Breakpoints.Add(File: _fixture.ModuleASourcePath, Line: 8);
@@ -76,10 +73,9 @@ public sealed class EndToEndDebuggerTests
 
     public void Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile()
     {
-        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
-        _fixture.ClearOnDemandSymbolsOutputPane();
+        // Configure target to crash inside ModuleB::TriggerCrashInModuleB (via ModuleA::DispatchToModuleB)
+        // with zero breakpoints set, so neither ModuleA nor ModuleB has symbols loaded when the crash happens.
+        var dte = _fixture.PrepareMiniUnrealTest("crash_mod_b");
 
         // Close all open documents so no source file is pre-opened before the crash
         try
@@ -89,10 +85,6 @@ public sealed class EndToEndDebuggerTests
         catch
         {
         }
-
-        // Configure target to crash inside ModuleB::TriggerCrashInModuleB (via ModuleA::DispatchToModuleB)
-        // with zero breakpoints set, so neither ModuleA nor ModuleB has symbols loaded when the crash happens.
-        _fixture.SetMiniUnrealTestMode("crash_mod_b");
 
         Console.WriteLine("  -> Starting debugger (Debug.Start) in crash_mod_b mode with zero breakpoints...");
         dte.ExecuteCommand("Debug.Start");
@@ -129,28 +121,13 @@ public sealed class EndToEndDebuggerTests
         Assert.False(string.IsNullOrWhiteSpace(modB!.SymbolFile), "Expected UnrealEditor-ModuleB.dll symbols to be loaded on demand on crash.");
         Assert.False(string.IsNullOrWhiteSpace(modA!.SymbolFile), "Expected UnrealEditor-ModuleA.dll symbols (caller on stack) to be loaded on demand on crash.");
 
-        // Allow VS UI a brief moment to settle frame context & active document
-        System.Threading.Thread.Sleep(500);
+        var (activeDocFullName, activeSelectionLine) = WaitForActiveDocumentAndLine(dte, TimeSpan.FromSeconds(5));
 
         var currentFrame = dte.Debugger.CurrentStackFrame;
         Assert.NotNull(currentFrame);
 
         string frameFunc = currentFrame.FunctionName ?? string.Empty;
         string frameModule = Path.GetFileName(currentFrame.Module ?? string.Empty);
-        string? activeDocFullName = null;
-        int activeSelectionLine = 0;
-
-        try
-        {
-            activeDocFullName = dte.ActiveDocument?.FullName;
-            if (dte.ActiveDocument?.Selection is TextSelection sel)
-            {
-                activeSelectionLine = sel.ActivePoint.Line;
-            }
-        }
-        catch
-        {
-        }
 
         Console.WriteLine($"  -> CurrentStackFrame: Function='{frameFunc}', Module='{frameModule}'");
         Console.WriteLine($"  -> ActiveDocument: '{activeDocFullName}' (Line {activeSelectionLine})");
@@ -173,12 +150,7 @@ public sealed class EndToEndDebuggerTests
 
     public void Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint()
     {
-        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
-        _fixture.ClearOnDemandSymbolsOutputPane();
-
-        _fixture.SetMiniUnrealTestMode("wait_for_bp_mod_b");
+        var dte = _fixture.PrepareMiniUnrealTest("wait_for_bp_mod_b");
 
         Console.WriteLine("  -> Starting debugger (Debug.Start) in wait_for_bp_mod_b loop with zero breakpoints...");
         dte.ExecuteCommand("Debug.Start");
@@ -186,7 +158,7 @@ public sealed class EndToEndDebuggerTests
         bool running = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgRunMode, TimeSpan.FromSeconds(15));
         Assert.True(running, "Expected target to be running in dbgRunMode.");
 
-        // Give the process 500ms to enter the loop with ModuleB unsymbolized
+        // Give the process a brief moment to enter the loop with ModuleB unsymbolized
         System.Threading.Thread.Sleep(500);
 
         Console.WriteLine("  -> Adding breakpoint in ModuleB.cpp (TickModuleB, line 21) while process is running...");
@@ -218,9 +190,7 @@ public sealed class EndToEndDebuggerTests
 
     public void Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings()
     {
-        var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
+        var dte = _fixture.PrepareMiniUnrealTest();
 
         var (backupPathBeforeClose, _) = _fixture.FindBackupFileForCurrentProcess();
         Assert.False(string.IsNullOrWhiteSpace(backupPathBeforeClose), "Expected backup file to exist while solution is open.");
@@ -238,12 +208,7 @@ public sealed class EndToEndDebuggerTests
 
         // Now test crash recovery: reopen solution so backup file is written, kill devenv.exe, and relaunch
         Console.WriteLine("  -> Reopening MiniUnreal.sln and simulating devenv.exe crash (Kill)...");
-        dte.Solution.Open(_fixture.MiniUnrealSolutionPath);
-        bool reopened = _fixture.WaitUntilOutputContains(
-            "Unreal solution detected: 'MiniUnreal.sln'. On-Demand Symbols active.",
-            TimeSpan.FromSeconds(20),
-            out _);
-        Assert.True(reopened, "Expected solution to reopen and activate On-Demand Symbols.");
+        _fixture.EnsureMiniUnrealSolutionOpen();
 
         var (crashBackupPath, _) = _fixture.FindBackupFileForCurrentProcess();
         Assert.False(string.IsNullOrWhiteSpace(crashBackupPath), "Expected backup file to exist before simulated crash.");
@@ -254,7 +219,8 @@ public sealed class EndToEndDebuggerTests
 
         // Launch a new Experimental instance and open the solution so the package loads and runs RecoverFromCrashIfNeeded()
         _fixture.StartAndAttach();
-        _fixture.Dte!.Solution.Open(_fixture.MiniUnrealSolutionPath);
+        var restartedDte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached after restart.");
+        restartedDte.Solution.Open(_fixture.MiniUnrealSolutionPath);
 
         bool recovered = _fixture.WaitUntilOutputContains(
             "Restored symbol settings after a previous unexpected exit",
@@ -262,6 +228,45 @@ public sealed class EndToEndDebuggerTests
             out string recoveryLog);
 
         Assert.True(recovered, $"Expected crash recovery warning in Output pane after restart, but got:\n{recoveryLog}");
+
+        // Close the solution so the Experimental hive is left in a restored state for subsequent suites (e.g. LyraProfilingTests)
+        restartedDte.Solution.Close(SaveFirst: false);
+        bool restoredAfterRecovery = _fixture.WaitUntilOutputContains(
+            "Solution closed; restored original symbol settings.",
+            TimeSpan.FromSeconds(15),
+            out string postRecoveryCloseLog);
+        Assert.True(restoredAfterRecovery, $"Expected clean restore when closing solution after crash recovery, but got:\n{postRecoveryCloseLog}");
+    }
+
+    private static (string? FullName, int Line) WaitForActiveDocumentAndLine(EnvDTE80.DTE2 dte, TimeSpan timeout)
+    {
+        var sw = Stopwatch.StartNew();
+        string? fullName = null;
+        int line = 0;
+
+        while (sw.Elapsed < timeout)
+        {
+            try
+            {
+                fullName = dte.ActiveDocument?.FullName;
+                if (dte.ActiveDocument?.Selection is TextSelection sel)
+                {
+                    line = sel.ActivePoint.Line;
+                }
+
+                if (!string.IsNullOrWhiteSpace(fullName) && line > 0)
+                {
+                    return (fullName, line);
+                }
+            }
+            catch
+            {
+            }
+
+            System.Threading.Thread.Sleep(50);
+        }
+
+        return (fullName, line);
     }
 }
 

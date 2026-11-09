@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="VSOnDemandSymbols.d46f1838-c1d1-4b8a-b1d2-c1673443aee8" Version="1.0" Language="en-US" Publisher="Matt Shepcar" />
+    <Identity Id="VSOnDemandSymbols.d46f1838-c1d1-4b8a-b1d2-c1673443aee8" Version="1.1.0" Language="en-US" Publisher="Matt Shepcar" />
     <DisplayName>On-Demand Symbols</DisplayName>
     <Description>Accelerates Visual Studio debugger startup and breakpoint binding for Unreal Engine 5 projects by loading symbols on demand.</Description>
     <MoreInfo>https://github.com/mattshepcar/VSOnDemandSymbols</MoreInfo>

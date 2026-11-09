@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 using VSOnDemandSymbols.Core.Abstractions;
 
@@ -10,14 +9,10 @@ namespace VSOnDemandSymbols.Core.Tests;
 public sealed class InMemoryFileSystem : IFileSystem
 {
     private readonly Dictionary<string, string> _files = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, DateTime> _timestamps = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _directories = new(StringComparer.OrdinalIgnoreCase);
 
     public bool FileExists(string path) => _files.ContainsKey(path);
     public bool DirectoryExists(string path) => _directories.Contains(path);
-
-    public DateTime GetLastWriteTimeUtc(string path)
-        => _timestamps.TryGetValue(path, out var dt) ? dt : DateTime.MinValue;
 
     public string ReadAllText(string path)
     {
@@ -31,7 +26,6 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void WriteAllText(string path, string contents)
     {
         _files[path] = contents;
-        _timestamps[path] = DateTime.UtcNow;
         var dir = Path.GetDirectoryName(path);
         if (!string.IsNullOrEmpty(dir))
         {
@@ -42,23 +36,6 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void DeleteFile(string path)
     {
         _files.Remove(path);
-        _timestamps.Remove(path);
-    }
-
-    public void MoveFile(string sourceFileName, string destFileName)
-    {
-        if (!_files.TryGetValue(sourceFileName, out var content))
-        {
-            throw new FileNotFoundException("Source file not found", sourceFileName);
-        }
-        _files.Remove(sourceFileName);
-        _files[destFileName] = content;
-
-        if (_timestamps.TryGetValue(sourceFileName, out var dt))
-        {
-            _timestamps.Remove(sourceFileName);
-            _timestamps[destFileName] = dt;
-        }
     }
 
     public void ReplaceFile(string sourceFileName, string destinationFileName, string? destinationBackupFileName)
@@ -110,11 +87,6 @@ public sealed class InMemoryFileSystem : IFileSystem
         return list;
     }
 
-    public IEnumerable<string> EnumerateDirectories(string path)
-    {
-        return _directories;
-    }
-
     public void CreateDirectory(string path)
     {
         _directories.Add(path);
@@ -131,3 +103,4 @@ public sealed class InMemoryFileSystem : IFileSystem
         return new Regex("^" + escaped + "$", RegexOptions.IgnoreCase);
     }
 }
+

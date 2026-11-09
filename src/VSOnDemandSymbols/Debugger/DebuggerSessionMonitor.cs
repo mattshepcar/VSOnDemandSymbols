@@ -45,9 +45,9 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
     /// <summary>
     /// Gets or sets the delegate providing the current <see cref="BreakSymbolLoadMode"/>.
-    /// Defaults to reading the <c>ODS_BREAK_SYMBOL_LOAD_MODE</c> environment variable or <see cref="BreakSymbolLoadMode.LocalOnly"/>.
+    /// Defaults to <see cref="BreakSymbolLoadMode.LocalOnly"/>.
     /// </summary>
-    public Func<BreakSymbolLoadMode> BreakSymbolLoadModeProvider { get; set; } = () => BreakSymbolLoadModeExtensions.FromEnvironment();
+    public Func<BreakSymbolLoadMode> BreakSymbolLoadModeProvider { get; set; } = () => BreakSymbolLoadMode.LocalOnly;
 
     /// <summary>
     /// Current break-mode symbol loading mode, evaluated on demand from <see cref="BreakSymbolLoadModeProvider"/>.

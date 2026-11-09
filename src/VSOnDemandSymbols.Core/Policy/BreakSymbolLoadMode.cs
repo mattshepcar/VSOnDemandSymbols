@@ -25,32 +25,13 @@ public enum BreakSymbolLoadMode
 }
 
 /// <summary>
-/// Helper extensions for parsing and reading <see cref="BreakSymbolLoadMode"/>.
+/// Helper extensions for parsing <see cref="BreakSymbolLoadMode"/>.
 /// </summary>
 public static class BreakSymbolLoadModeExtensions
 {
-    public const string EnvironmentVariableName = "ODS_BREAK_SYMBOL_LOAD_MODE";
-
-    /// <summary>
-    /// Reads <see cref="BreakSymbolLoadMode"/> from the <c>ODS_BREAK_SYMBOL_LOAD_MODE</c> environment variable,
-    /// falling back to <paramref name="defaultValue"/> if not set or invalid.
-    /// </summary>
-    public static BreakSymbolLoadMode FromEnvironment(BreakSymbolLoadMode defaultValue = BreakSymbolLoadMode.LocalOnly)
-    {
-        try
-        {
-            string? val = Environment.GetEnvironmentVariable(EnvironmentVariableName);
-            return ParseOrDefault(val, defaultValue);
-        }
-        catch
-        {
-            return defaultValue;
-        }
-    }
-
     /// <summary>
     /// Parses a string into a <see cref="BreakSymbolLoadMode"/>, falling back to <paramref name="defaultValue"/>
-    /// if null, empty, or unparseable. Supports numeric values, enum names, and common aliases.
+    /// if null, empty, or unparseable.
     /// </summary>
     public static BreakSymbolLoadMode ParseOrDefault(string? value, BreakSymbolLoadMode defaultValue = BreakSymbolLoadMode.LocalOnly)
     {
@@ -59,32 +40,10 @@ public static class BreakSymbolLoadModeExtensions
             return defaultValue;
         }
 
-        value = value!.Trim();
-        if (Enum.TryParse<BreakSymbolLoadMode>(value, ignoreCase: true, out var parsed) &&
+        if (Enum.TryParse<BreakSymbolLoadMode>(value!.Trim(), ignoreCase: true, out var parsed) &&
             Enum.IsDefined(typeof(BreakSymbolLoadMode), parsed))
         {
             return parsed;
-        }
-
-        if (string.Equals(value, "none", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "disabled", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "false", StringComparison.OrdinalIgnoreCase))
-        {
-            return BreakSymbolLoadMode.Off;
-        }
-
-        if (string.Equals(value, "local", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "localonly", StringComparison.OrdinalIgnoreCase))
-        {
-            return BreakSymbolLoadMode.LocalOnly;
-        }
-
-        if (string.Equals(value, "remote", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "network", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(value, "all", StringComparison.OrdinalIgnoreCase))
-        {
-            return BreakSymbolLoadMode.All;
         }
 
         return defaultValue;

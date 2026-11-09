@@ -1,28 +1,22 @@
 using System;
-using System.Collections.Concurrent;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.Threading;
 using VSOnDemandSymbols.Core.Abstractions;
 
 namespace VSOnDemandSymbols.Logging;
 
 /// <summary>
 /// Writes extension log messages to the "On-Demand Symbols" Output window pane (SPEC §4.1).
-/// Non-blocking from any thread.
+/// Non-blocking and safe to call from any thread via <see cref="IVsOutputWindowPane.OutputStringThreadSafe"/>.
 /// </summary>
 public sealed class OutputLog : ILogger
 {
     public static readonly Guid PaneGuid = new("d2b57819-4a12-4c8d-9e3f-7152e89c01a1");
     public const string PaneTitle = "On-Demand Symbols";
 
-    private readonly JoinableTaskFactory _joinableTaskFactory;
     private readonly IVsOutputWindowPane? _pane;
-    private readonly ConcurrentQueue<string> _pendingLines = new();
-    private int _isFlushing;
     private int _level = (int)LogLevel.Info;
 
     public LogLevel Level
@@ -32,11 +26,9 @@ public sealed class OutputLog : ILogger
     }
 
     public OutputLog(
-        JoinableTaskFactory joinableTaskFactory,
         IVsOutputWindowPane? pane,
         LogLevel initialLevel = LogLevel.Info)
     {
-        _joinableTaskFactory = joinableTaskFactory ?? throw new ArgumentNullException(nameof(joinableTaskFactory));
         _pane = pane;
         Level = initialLevel;
     }
@@ -61,7 +53,7 @@ public sealed class OutputLog : ILogger
             outputWindow.GetPane(ref paneGuid, out pane);
         }
 
-        return new OutputLog(package.JoinableTaskFactory, pane, initialLevel);
+        return new OutputLog(pane, initialLevel);
     }
 
     public bool IsEnabled(LogLevel level)
@@ -79,15 +71,7 @@ public sealed class OutputLog : ILogger
     {
         if (IsEnabled(LogLevel.Info))
         {
-            EnqueueLine(message);
-        }
-    }
-
-    public void Verbose(string message)
-    {
-        if (IsEnabled(LogLevel.Verbose))
-        {
-            EnqueueLine($"[Verbose] {message}");
+            WriteLine(message);
         }
     }
 
@@ -95,7 +79,7 @@ public sealed class OutputLog : ILogger
     {
         if (IsEnabled(LogLevel.Diagnostic))
         {
-            EnqueueLine($"[Diagnostic] {message}");
+            WriteLine($"[Diagnostic] {message}");
         }
     }
 
@@ -103,7 +87,7 @@ public sealed class OutputLog : ILogger
     {
         if (Level != LogLevel.Off)
         {
-            EnqueueLine($"[Warning] {message}");
+            WriteLine($"[Warning] {message}");
         }
     }
 
@@ -112,57 +96,27 @@ public sealed class OutputLog : ILogger
         if (Level != LogLevel.Off)
         {
             string details = ex != null ? $"{message} ({ex.GetType().Name}: {ex.Message})" : message;
-            EnqueueLine($"[Error] {details}");
+            WriteLine($"[Error] {details}");
         }
     }
 
-    private void EnqueueLine(string message)
+    private void WriteLine(string message)
     {
         if (_pane == null)
         {
             return;
         }
 
-        string formatted = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
-        _pendingLines.Enqueue(formatted);
-
-        if (Interlocked.CompareExchange(ref _isFlushing, 1, 0) == 0)
-        {
-            _ = _joinableTaskFactory.RunAsync(FlushQueueAsync);
-        }
-    }
-
-    private async Task FlushQueueAsync()
-    {
         try
         {
-            await _joinableTaskFactory.SwitchToMainThreadAsync();
-
-            var sb = new StringBuilder();
-            while (true)
-            {
-                sb.Clear();
-                while (_pendingLines.TryDequeue(out string? line))
-                {
-                    sb.Append(line);
-                }
-
-                if (sb.Length > 0 && _pane != null)
-                {
-                    _pane.OutputStringThreadSafe(sb.ToString());
-                }
-
-                Interlocked.Exchange(ref _isFlushing, 0);
-
-                if (_pendingLines.IsEmpty || Interlocked.CompareExchange(ref _isFlushing, 1, 0) != 0)
-                {
-                    break;
-                }
-            }
+            string formatted = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
+#pragma warning disable VSTHRD010 // OutputStringThreadSafe is explicitly thread-safe on background threads
+            _pane.OutputStringThreadSafe(formatted);
+#pragma warning restore VSTHRD010
         }
         catch
         {
-            Interlocked.Exchange(ref _isFlushing, 0);
+            // Ignore output window write errors
         }
     }
 }

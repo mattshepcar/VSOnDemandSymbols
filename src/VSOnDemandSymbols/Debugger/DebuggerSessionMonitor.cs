@@ -212,6 +212,20 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             return;
         }
 
+        var compiledPatterns = new List<WildcardPattern>(candidatePatterns.Count);
+        for (int i = 0; i < candidatePatterns.Count; i++)
+        {
+            if (!string.IsNullOrWhiteSpace(candidatePatterns[i]))
+            {
+                compiledPatterns.Add(new WildcardPattern(candidatePatterns[i]));
+            }
+        }
+
+        if (compiledPatterns.Count == 0)
+        {
+            return;
+        }
+
         try
         {
             foreach (Process proc in _dte.Debugger.DebuggedProcesses)
@@ -227,9 +241,9 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         }
 
                         bool matches = false;
-                        for (int i = 0; i < candidatePatterns.Count; i++)
+                        for (int i = 0; i < compiledPatterns.Count; i++)
                         {
-                            if (WildcardPattern.MatchesFileName(candidatePatterns[i], modFileName))
+                            if (compiledPatterns[i].IsMatch(modFileName))
                             {
                                 matches = true;
                                 break;

@@ -1,16 +1,14 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-using VSOnDemandSymbols.Core.Modules;
 
 namespace VSOnDemandSymbols.Core.Policy;
 
 public sealed class WildcardPattern
 {
     private static readonly char[] PathSeparators = { '\\', '/' };
-    private readonly Regex _regex;
+    private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> KnownSystemDlls = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -77,41 +75,32 @@ public sealed class WildcardPattern
         return "C:\\Windows\\";
     }
 
-    public string RawPattern { get; }
-    public bool IsUnrealModulePattern { get; }
+    private readonly Regex _regex;
+
     public string Pattern { get; }
+    public string RawPattern => Pattern;
 
-    public WildcardPattern(string rawPattern)
+    public WildcardPattern(string pattern)
     {
-        if (string.IsNullOrWhiteSpace(rawPattern))
+        if (string.IsNullOrWhiteSpace(pattern))
         {
-            throw new ArgumentException("Pattern cannot be empty or whitespace.", nameof(rawPattern));
+            throw new ArgumentException("Pattern cannot be empty or whitespace.", nameof(pattern));
         }
 
-        RawPattern = rawPattern.Trim();
-        if (RawPattern.StartsWith("ue:", StringComparison.OrdinalIgnoreCase))
-        {
-            IsUnrealModulePattern = true;
-            Pattern = RawPattern.Substring(3).Trim();
-        }
-        else
-        {
-            IsUnrealModulePattern = false;
-            Pattern = RawPattern;
-        }
-
-        _regex = BuildRegex(Pattern);
+        Pattern = pattern.Trim();
+        _regex = RegexCache.GetOrAdd(Pattern, BuildRegex);
     }
 
-    public bool IsMatchFileName(string fileNameOrPath)
+    public bool IsMatch(string fileNameOrPath)
     {
         if (string.IsNullOrEmpty(fileNameOrPath)) return false;
-        if (IsUnrealModulePattern) return false;
 
         string fileName = ExtractFileNameSafe(fileNameOrPath);
         if (fileName.Length == 0) return false;
         return _regex.IsMatch(fileName);
     }
+
+    public bool IsMatchFileName(string fileNameOrPath) => IsMatch(fileNameOrPath);
 
     /// <summary>
     /// Strips any embedded NUL characters and trims whitespace.
@@ -251,45 +240,6 @@ public sealed class WildcardPattern
         return !IsSystemModule(fileNameOrPath) && !IsSystemModule(norm);
     }
 
-    public bool IsMatchModule(string moduleName, IEnumerable<string>? candidateFileNames = null)
-    {
-        if (IsUnrealModulePattern)
-        {
-            return _regex.IsMatch(moduleName);
-        }
-
-        if (candidateFileNames != null)
-        {
-            foreach (var fn in candidateFileNames)
-            {
-                if (IsMatchFileName(fn)) return true;
-            }
-        }
-
-        return IsMatchFileName(moduleName);
-    }
-
-    public static IReadOnlyList<WildcardPattern> ParseMultiple(string? semicolonSeparatedPatterns)
-    {
-        if (string.IsNullOrWhiteSpace(semicolonSeparatedPatterns))
-        {
-            return Array.Empty<WildcardPattern>();
-        }
-
-        var list = new List<WildcardPattern>();
-        var parts = semicolonSeparatedPatterns!.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-        foreach (var part in parts)
-        {
-            var trimmed = part.Trim();
-            if (!string.IsNullOrEmpty(trimmed))
-            {
-                list.Add(new WildcardPattern(trimmed));
-            }
-        }
-
-        return list;
-    }
-
     public static bool MatchesFileName(string rawPattern, string fileNameOrPath)
     {
         if (string.IsNullOrWhiteSpace(rawPattern) || string.IsNullOrEmpty(fileNameOrPath))
@@ -297,24 +247,37 @@ public sealed class WildcardPattern
             return false;
         }
 
-        return new WildcardPattern(rawPattern).IsMatchFileName(fileNameOrPath);
+        string fileName = ExtractFileNameSafe(fileNameOrPath);
+        if (fileName.Length == 0)
+        {
+            return false;
+        }
+
+        var regex = RegexCache.GetOrAdd(rawPattern.Trim(), BuildRegex);
+        return regex.IsMatch(fileName);
     }
 
-    public static bool MatchesAnyFileName(IEnumerable<WildcardPattern> patterns, string fileNameOrPath)
+    public static bool MatchesAnyFileName(IEnumerable<WildcardPattern>? patterns, string? fileNameOrPath)
     {
-        foreach (var p in patterns)
+        if (patterns == null || string.IsNullOrEmpty(fileNameOrPath))
         {
-            if (p.IsMatchFileName(fileNameOrPath)) return true;
+            return false;
         }
-        return false;
-    }
 
-    public static bool MatchesAnyModule(IEnumerable<WildcardPattern> patterns, string moduleName, IEnumerable<string>? candidateFileNames = null)
-    {
+        string fileName = ExtractFileNameSafe(fileNameOrPath);
+        if (fileName.Length == 0)
+        {
+            return false;
+        }
+
         foreach (var p in patterns)
         {
-            if (p.IsMatchModule(moduleName, candidateFileNames)) return true;
+            if (p._regex.IsMatch(fileName))
+            {
+                return true;
+            }
         }
+
         return false;
     }
 
@@ -325,6 +288,6 @@ public sealed class WildcardPattern
         return new Regex(regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     }
 
-    public override string ToString() => RawPattern;
+    public override string ToString() => Pattern;
 }
 

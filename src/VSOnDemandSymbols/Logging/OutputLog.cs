@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
@@ -17,6 +18,8 @@ public sealed class OutputLog : ILogger
     public const string PaneTitle = "On-Demand Symbols";
 
     private readonly IVsOutputWindowPane? _pane;
+    private readonly string? _mirrorLogFilePath;
+    private readonly object _fileLock = new();
     private int _level = (int)LogLevel.Info;
 
     public LogLevel Level
@@ -31,6 +34,7 @@ public sealed class OutputLog : ILogger
     {
         _pane = pane;
         Level = initialLevel;
+        _mirrorLogFilePath = Environment.GetEnvironmentVariable("VSONDEMANDSYMBOLS_LOG_FILE");
     }
 
     public static async Task<OutputLog> CreateAsync(
@@ -102,6 +106,22 @@ public sealed class OutputLog : ILogger
 
     private void WriteLine(string message)
     {
+        string formatted = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
+
+        if (!string.IsNullOrWhiteSpace(_mirrorLogFilePath))
+        {
+            try
+            {
+                lock (_fileLock)
+                {
+                    File.AppendAllText(_mirrorLogFilePath!, formatted);
+                }
+            }
+            catch
+            {
+            }
+        }
+
         if (_pane == null)
         {
             return;
@@ -109,7 +129,6 @@ public sealed class OutputLog : ILogger
 
         try
         {
-            string formatted = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
 #pragma warning disable VSTHRD010 // OutputStringThreadSafe is explicitly thread-safe on background threads
             _pane.OutputStringThreadSafe(formatted);
 #pragma warning restore VSTHRD010

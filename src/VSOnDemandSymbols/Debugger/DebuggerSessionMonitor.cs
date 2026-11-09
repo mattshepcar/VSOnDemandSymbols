@@ -146,10 +146,16 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             long applyMs = applySw.ElapsedMilliseconds;
             totalSw.Stop();
 
-            if (applied)
+            if (applied || !string.Equals(reason, "before launch", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.Info(
                     $"[Profile] UpdateIncludeList ({reason}): total={totalSw.ElapsedMilliseconds}ms " +
+                    $"(resolve={resolveMs}ms [breakpoints={breakpointCount}], apply={applyMs}ms)");
+            }
+            else
+            {
+                _logger.Diagnostic(
+                    $"[Profile] UpdateIncludeList ({reason}, unchanged): total={totalSw.ElapsedMilliseconds}ms " +
                     $"(resolve={resolveMs}ms [breakpoints={breakpointCount}], apply={applyMs}ms)");
             }
             return candidatePatterns;
@@ -285,6 +291,15 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
                         if (matches)
                         {
+                            string? fullPath = GetModulePathSafe(mod);
+                            if (!_settings.HasLocalSymbolFile(modFileName, fullPath) &&
+                                !_settings.HasActiveRemoteSymbolServers())
+                            {
+                                _loadedModulesThisSession.Add(modFileName);
+                                _logger.Diagnostic($"Skipping breakpoint symbol load for {modFileName}: no local PDB found and no remote symbol servers enabled.");
+                                continue;
+                            }
+
                             var modSw = Stopwatch.StartNew();
                             try
                             {
@@ -496,6 +511,8 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             var targetModules = new List<(EnvDTE90.Module Module, string FileName, string? FullPath)>();
             var candidateBinaries = new List<string>();
             int totalModulesScanned = 0;
+            bool maskServers = (BreakSymbolLoadMode == BreakSymbolLoadMode.LocalOnly);
+            bool requireLocalPdb = maskServers || !_settings.HasActiveRemoteSymbolServers();
 
             foreach (EnvDTE.Process proc in debugger.DebuggedProcesses)
             {
@@ -518,7 +535,15 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
                         if (missingModules.Contains(modFileName))
                         {
-                            targetModules.Add((mod, modFileName, GetModulePathSafe(mod)));
+                            string? fullPath = GetModulePathSafe(mod);
+                            if (requireLocalPdb && !_settings.HasLocalSymbolFile(modFileName, fullPath))
+                            {
+                                _loadedModulesThisSession.Add(modFileName);
+                                _logger.Diagnostic($"Skipping on-demand symbol load for {modFileName}: no local PDB found.");
+                                continue;
+                            }
+
+                            targetModules.Add((mod, modFileName, fullPath));
                             candidateBinaries.Add(modFileName);
                         }
                     }
@@ -533,7 +558,6 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 return;
             }
 
-            bool maskServers = (BreakSymbolLoadMode == BreakSymbolLoadMode.LocalOnly);
             string modeDesc = maskServers ? " (local-only)" : string.Empty;
             var newlyLoadedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

@@ -18,19 +18,40 @@ public sealed class UnrealEnvironmentConfig
     public string UnrealEngineRoot { get; }
     public string ConfigurationSource { get; }
 
-    public string UnrealEditorExePath => Path.Combine(UnrealEngineRoot, "Engine", "Binaries", "Win64", "UnrealEditor.exe");
-    public string UnrealEditorCmdExePath => Path.Combine(UnrealEngineRoot, "Engine", "Binaries", "Win64", "UnrealEditor-Cmd.exe");
+    public string EngineBinariesWin64Dir => Path.Combine(UnrealEngineRoot, "Engine", "Binaries", "Win64");
+    public string UnrealEditorExePath => Path.Combine(EngineBinariesWin64Dir, "UnrealEditor.exe");
+    public string UnrealEditorCmdExePath => Path.Combine(EngineBinariesWin64Dir, "UnrealEditor-Cmd.exe");
+    public string UnrealEditorDebugGameCmdExePath => Path.Combine(EngineBinariesWin64Dir, "UnrealEditor-Win64-DebugGame-Cmd.exe");
+
     public string LyraDirectory => Path.Combine(UnrealEngineRoot, "Samples", "Games", "Lyra");
+    public string LyraBinariesWin64Dir => Path.Combine(LyraDirectory, "Binaries", "Win64");
     public string LyraUProjectPath => Path.Combine(LyraDirectory, "Lyra.uproject");
+    public string LyraEditorEngineSourcePath => Path.Combine(LyraDirectory, "Source", "LyraEditor", "LyraEditorEngine.cpp");
     public string LyraGameModuleSourcePath => Path.Combine(LyraDirectory, "Source", "LyraGame", "LyraGameModule.cpp");
+    public string LyraGameplayTagsSourcePath => Path.Combine(LyraDirectory, "Source", "LyraGame", "LyraGameplayTags.cpp");
     public string LyraGameplayAbilitySourcePath => Path.Combine(LyraDirectory, "Source", "LyraGame", "AbilitySystem", "Abilities", "LyraGameplayAbility.cpp");
+
+    public bool HasDebugGameTarget =>
+        File.Exists(UnrealEditorDebugGameCmdExePath) &&
+        File.Exists(Path.Combine(LyraBinariesWin64Dir, "UnrealEditor-LyraEditor-Win64-DebugGame.dll")) &&
+        File.Exists(Path.Combine(LyraBinariesWin64Dir, "UnrealEditor-LyraGame-Win64-DebugGame.dll"));
+
+    public string PreferredEditorCmdExePath =>
+        HasDebugGameTarget ? UnrealEditorDebugGameCmdExePath : UnrealEditorCmdExePath;
+
+    public string ExpectedLyraEditorDllName =>
+        HasDebugGameTarget ? "UnrealEditor-LyraEditor-Win64-DebugGame.dll" : "UnrealEditor-LyraEditor.dll";
+
+    public string ExpectedLyraGameDllName =>
+        HasDebugGameTarget ? "UnrealEditor-LyraGame-Win64-DebugGame.dll" : "UnrealEditor-LyraGame.dll";
 
     public bool IsUnrealRootPresent => Directory.Exists(UnrealEngineRoot);
     public bool IsLyraAvailable =>
         IsUnrealRootPresent &&
-        File.Exists(UnrealEditorCmdExePath) &&
+        File.Exists(PreferredEditorCmdExePath) &&
         File.Exists(LyraUProjectPath) &&
-        File.Exists(LyraGameModuleSourcePath);
+        File.Exists(LyraEditorEngineSourcePath) &&
+        File.Exists(LyraGameplayTagsSourcePath);
 
     public string? UnavailableReason
     {
@@ -42,9 +63,9 @@ public sealed class UnrealEnvironmentConfig
                        $"Specify --ue-root <path> or set {EnvVarName}.";
             }
 
-            if (!File.Exists(UnrealEditorCmdExePath))
+            if (!File.Exists(PreferredEditorCmdExePath))
             {
-                return $"UnrealEditor-Cmd.exe not found at '{UnrealEditorCmdExePath}'.";
+                return $"UnrealEditor command binary not found at '{PreferredEditorCmdExePath}'.";
             }
 
             if (!File.Exists(LyraUProjectPath))
@@ -52,9 +73,9 @@ public sealed class UnrealEnvironmentConfig
                 return $"Lyra sample project not found at '{LyraUProjectPath}'.";
             }
 
-            if (!File.Exists(LyraGameModuleSourcePath))
+            if (!File.Exists(LyraEditorEngineSourcePath))
             {
-                return $"Lyra source file not found at '{LyraGameModuleSourcePath}'.";
+                return $"Lyra source file not found at '{LyraEditorEngineSourcePath}'.";
             }
 
             return null;
@@ -111,4 +132,3 @@ public sealed class UnrealEnvironmentConfig
         return new UnrealEnvironmentConfig(DefaultUnrealRoot, $"Default ({DefaultUnrealRoot})");
     }
 }
-

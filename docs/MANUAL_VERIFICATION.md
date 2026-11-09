@@ -17,12 +17,19 @@ An end-to-end automated test runner (`tests/VSOnDemandSymbols.IntegrationTests`)
 Run from the repository root:
 
 ```powershell
-# Run all 5 integration tests (or pass a substring filter, e.g. Test03)
+# Run all 5 fast MiniUnreal integration tests (~12s total)
 tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe
+
+# Run the full Unreal Engine 5 + Lyra Starter Game Cold Boot vs. Warm Boot profiling suite (~32s total;
+# launches UnrealEditor-Win64-DebugGame-Cmd.exe headlessly across ~1,060 DLLs via a zero-write %TEMP% harness)
+tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe --profile-lyra
+
+# Run both MiniUnreal integration tests and the Lyra profiling suite
+tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe --all
 
 # Optionally override the Unreal Engine 5 root directory (also configurable via
 # $env:VSONDEMANDSYMBOLS_UE_ROOT or tests/VSOnDemandSymbols.IntegrationTests/testsettings.local.json)
-tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe --ue-root "D:\UnrealEngine"
+tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe --profile-lyra --ue-root "D:\UnrealEngine"
 ```
 
 ---

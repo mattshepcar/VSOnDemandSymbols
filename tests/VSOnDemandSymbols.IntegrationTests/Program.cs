@@ -10,7 +10,7 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        ParseArgs(args, out string? filter, out string? ueRootOverride);
+        ParseArgs(args, out string? filter, out string? ueRootOverride, out bool includeLyra, out bool lyraOnly);
         Console.WriteLine("==================================================================");
         Console.WriteLine(" VSOnDemandSymbols — Automated Experimental Instance Test Runner");
         Console.WriteLine("==================================================================");
@@ -25,23 +25,36 @@ public static class Program
             using var fixture = new VisualStudioExpFixture(ueRootOverride);
             var ueConfig = fixture.UnrealConfig;
             Console.WriteLine($"[Config] UnrealEngineRoot : {ueConfig.UnrealEngineRoot} (via {ueConfig.ConfigurationSource})");
-            Console.WriteLine($"[Config] Lyra Available   : {(ueConfig.IsLyraAvailable ? "Yes" : $"No ({ueConfig.UnavailableReason})")}");
+            Console.WriteLine($"[Config] Lyra Available   : {(ueConfig.IsLyraAvailable ? $"Yes ({ueConfig.PreferredEditorCmdExePath})" : $"No ({ueConfig.UnavailableReason})")}");
 
-            var suite = new EndToEndDebuggerTests(fixture);
+            var testMethods = new List<(string Name, Action Run)>();
 
-            var testMethods = new List<(string Name, Action Run)>
+            if (!lyraOnly)
             {
-                (nameof(EndToEndDebuggerTests.Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup),
-                    suite.Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup),
-                (nameof(EndToEndDebuggerTests.Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule),
-                    suite.Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule),
-                (nameof(EndToEndDebuggerTests.Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile),
-                    suite.Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile),
-                (nameof(EndToEndDebuggerTests.Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint),
-                    suite.Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint),
-                (nameof(EndToEndDebuggerTests.Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings),
-                    suite.Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings),
-            };
+                var suite = new EndToEndDebuggerTests(fixture);
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup),
+                    suite.Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup));
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule),
+                    suite.Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule));
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile),
+                    suite.Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile));
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint),
+                    suite.Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint));
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings),
+                    suite.Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings));
+            }
+
+            if (includeLyra || lyraOnly ||
+                (!string.IsNullOrWhiteSpace(filter) && filter!.IndexOf("Lyra", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                var lyraSuite = new LyraProfilingTests(fixture);
+                testMethods.Add((nameof(LyraProfilingTests.Lyra01_ColdBoot_StartupAndBreakModeProfile),
+                    lyraSuite.Lyra01_ColdBoot_StartupAndBreakModeProfile));
+                testMethods.Add((nameof(LyraProfilingTests.Lyra02_InSessionWarm_SecondBreakAndMidSessionBreakpointBind),
+                    lyraSuite.Lyra02_InSessionWarm_SecondBreakAndMidSessionBreakpointBind));
+                testMethods.Add((nameof(LyraProfilingTests.Lyra03_WarmBoot_CachedRelaunchAndComparisonReport),
+                    lyraSuite.Lyra03_WarmBoot_CachedRelaunchAndComparisonReport));
+            }
 
             foreach (var (name, run) in testMethods)
             {
@@ -87,10 +100,17 @@ public static class Program
         return failed == 0 ? 0 : 1;
     }
 
-    private static void ParseArgs(string[] args, out string? filter, out string? ueRootOverride)
+    private static void ParseArgs(
+        string[] args,
+        out string? filter,
+        out string? ueRootOverride,
+        out bool includeLyra,
+        out bool lyraOnly)
     {
         filter = null;
         ueRootOverride = null;
+        includeLyra = false;
+        lyraOnly = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -102,6 +122,15 @@ public static class Program
             else if (arg.StartsWith("--ue-root=", StringComparison.OrdinalIgnoreCase))
             {
                 ueRootOverride = arg.Substring("--ue-root=".Length);
+            }
+            else if (string.Equals(arg, "--profile-lyra", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(arg, "--lyra", StringComparison.OrdinalIgnoreCase))
+            {
+                lyraOnly = true;
+            }
+            else if (string.Equals(arg, "--all", StringComparison.OrdinalIgnoreCase))
+            {
+                includeLyra = true;
             }
             else if (!arg.StartsWith("-", StringComparison.Ordinal))
             {

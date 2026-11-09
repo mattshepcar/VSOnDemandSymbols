@@ -26,6 +26,7 @@ public sealed class VisualStudioExpFixture : IDisposable
     public string ModuleASourcePath { get; }
     public string ModuleBSourcePath { get; }
     public string DevenvPath { get; }
+    public string MirrorLogFilePath { get; }
 
     public System.Diagnostics.Process? DevenvProcess { get; private set; }
     public DTE2? Dte { get; private set; }
@@ -39,6 +40,7 @@ public sealed class VisualStudioExpFixture : IDisposable
         ModuleASourcePath = Path.Combine(RepoRoot, "tests", "Fixtures", "MiniUnreal", "Source", "ModuleA", "ModuleA.cpp");
         ModuleBSourcePath = Path.Combine(RepoRoot, "tests", "Fixtures", "MiniUnreal", "Source", "ModuleB", "ModuleB.cpp");
         DevenvPath = LocateDevenvPath();
+        MirrorLogFilePath = Path.Combine(Path.GetTempPath(), "VSOnDemandSymbols_ExpMirror.log");
 
         EnsureMiniUnrealBuilt();
         DeployLatestBuildToExpHive();
@@ -104,6 +106,17 @@ public sealed class VisualStudioExpFixture : IDisposable
         KillCurrentInstanceIfRunning();
 
         Console.WriteLine($"[Fixture] Launching Visual Studio Experimental instance: {DevenvPath} /rootsuffix Exp /nosplash");
+        try
+        {
+            if (File.Exists(MirrorLogFilePath))
+            {
+                File.WriteAllText(MirrorLogFilePath, string.Empty);
+            }
+        }
+        catch
+        {
+        }
+
         var psi = new ProcessStartInfo
         {
             FileName = DevenvPath,
@@ -111,6 +124,7 @@ public sealed class VisualStudioExpFixture : IDisposable
             WorkingDirectory = RepoRoot,
             UseShellExecute = false
         };
+        psi.EnvironmentVariables["VSONDEMANDSYMBOLS_LOG_FILE"] = MirrorLogFilePath;
 
         DevenvProcess = System.Diagnostics.Process.Start(psi)
             ?? throw new InvalidOperationException("Failed to start devenv.exe process.");
@@ -138,6 +152,23 @@ public sealed class VisualStudioExpFixture : IDisposable
 
     public string GetOnDemandSymbolsOutputText()
     {
+        try
+        {
+            if (File.Exists(MirrorLogFilePath))
+            {
+                using var fs = new FileStream(MirrorLogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(fs);
+                string mirrorText = reader.ReadToEnd();
+                if (!string.IsNullOrEmpty(mirrorText))
+                {
+                    return mirrorText;
+                }
+            }
+        }
+        catch
+        {
+        }
+
         if (Dte == null)
         {
             return string.Empty;
@@ -173,6 +204,17 @@ public sealed class VisualStudioExpFixture : IDisposable
 
     public void ClearOnDemandSymbolsOutputPane()
     {
+        try
+        {
+            if (File.Exists(MirrorLogFilePath))
+            {
+                File.WriteAllText(MirrorLogFilePath, string.Empty);
+            }
+        }
+        catch
+        {
+        }
+
         if (Dte == null)
         {
             return;
@@ -322,6 +364,43 @@ public sealed class VisualStudioExpFixture : IDisposable
         }
 
         return null;
+    }
+
+    public (int TotalModules, int SymbolizedModules, List<string> SymbolizedModuleNames) GetDebuggedModulesSummary()
+    {
+        var symbolizedNames = new List<string>();
+        int total = 0;
+
+        if (Dte?.Debugger?.DebuggedProcesses == null)
+        {
+            return (0, 0, symbolizedNames);
+        }
+
+        foreach (EnvDTE.Process proc in Dte.Debugger.DebuggedProcesses)
+        {
+            if (proc is EnvDTE90.Process3 proc3 && proc3.Modules != null)
+            {
+                foreach (EnvDTE90.Module mod in proc3.Modules)
+                {
+                    total++;
+                    string? symFile = null;
+                    try
+                    {
+                        symFile = mod.SymbolFile;
+                    }
+                    catch
+                    {
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(symFile))
+                    {
+                        symbolizedNames.Add(Path.GetFileName(mod.Name ?? string.Empty));
+                    }
+                }
+            }
+        }
+
+        return (total, symbolizedNames.Count, symbolizedNames);
     }
 
     public (string? Path, SymbolSettingsBackupDto? Dto) FindBackupFileForCurrentProcess()

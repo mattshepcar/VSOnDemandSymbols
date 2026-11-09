@@ -30,8 +30,8 @@ public sealed class OleMessageFilter : IOleMessageFilter
 
     int IOleMessageFilter.RetryRejectedCall(IntPtr hTaskCallee, int dwTickCount, int dwRejectType)
     {
-        // SERVERCALL_RETRYLATER (2): retry after 100ms
-        if (dwRejectType == 2)
+        // SERVERCALL_RETRYLATER (2): retry after 100ms up to 15 seconds per call
+        if (dwRejectType == 2 && dwTickCount < 15000)
         {
             return 100;
         }

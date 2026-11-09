@@ -389,6 +389,178 @@ public sealed class SymbolSettingsManager
                pathOrUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Returns <see langword="true"/> if remote symbol servers (Microsoft Symbol Servers, NuGet Symbol Servers,
+    /// or HTTP/HTTPS symbol paths) are currently enabled in the user's symbol settings.
+    /// </summary>
+    public bool HasActiveRemoteSymbolServers()
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            var current = _settingsManager.GetCurrentSymbolSettings();
+            if (current.UseMSSymbolServers)
+            {
+                return true;
+            }
+
+            if (current is IVsDebuggerSymbolSettings161 current161 && current161.get_UseNugetSymbolServers())
+            {
+                return true;
+            }
+
+            var paths = ReadOptionList(current.SymbolPaths);
+            foreach (var opt in paths)
+            {
+                if (opt.IsEnabled && IsRemoteSymbolUrl(opt.Name))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore read failure
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks whether a local <c>.pdb</c> file exists for <paramref name="moduleFileName"/> either adjacent to
+    /// <paramref name="fullModulePath"/> or inside Visual Studio's configured symbol cache / local symbol paths.
+    /// Calling <c>EnvDTE90.Module.LoadSymbols(string.Empty)</c> when no local PDB exists and symbol servers are
+    /// disabled causes Visual Studio to pop up a modal Win32 "Browse for PDB" file dialog on the UI thread.
+    /// </summary>
+    public bool HasLocalSymbolFile(string moduleFileName, string? fullModulePath)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(fullModulePath))
+            {
+                string adjacentPdb = Path.ChangeExtension(fullModulePath!, ".pdb");
+                if (!string.IsNullOrWhiteSpace(adjacentPdb) && File.Exists(adjacentPdb))
+                {
+                    return true;
+                }
+            }
+
+            string cleanName = WildcardPattern.ExtractFileNameSafe(moduleFileName);
+            if (string.IsNullOrWhiteSpace(cleanName))
+            {
+                return false;
+            }
+
+            string pdbFileName = Path.ChangeExtension(cleanName, ".pdb");
+            if (string.IsNullOrWhiteSpace(pdbFileName))
+            {
+                return false;
+            }
+
+            var searchDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var current = _settingsManager.GetCurrentSymbolSettings();
+            if (!string.IsNullOrWhiteSpace(current.CachePath))
+            {
+                searchDirs.Add(current.CachePath);
+            }
+
+            string defaultSymCache = Path.Combine(Path.GetTempPath(), "SymbolCache");
+            if (!string.IsNullOrWhiteSpace(defaultSymCache))
+            {
+                searchDirs.Add(defaultSymCache);
+            }
+
+            var paths = ReadOptionList(current.SymbolPaths);
+            foreach (var opt in paths)
+            {
+                if (opt.IsEnabled && !string.IsNullOrWhiteSpace(opt.Name) && !IsRemoteSymbolUrl(opt.Name))
+                {
+                    searchDirs.Add(opt.Name);
+                }
+            }
+
+            foreach (string dir in searchDirs)
+            {
+                if (ContainsLocalPdbInDirectory(dir, pdbFileName))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore filesystem or settings errors
+        }
+
+        return false;
+    }
+
+    private static bool ContainsLocalPdbInDirectory(string rootDir, string pdbFileName)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir))
+            {
+                return false;
+            }
+
+            // 1. Flat symbol path: <rootDir>\<module>.pdb
+            string flatFile = Path.Combine(rootDir, pdbFileName);
+            if (File.Exists(flatFile))
+            {
+                return true;
+            }
+
+            // 2. Two-tier symstore layout: <rootDir>\<module>.pdb\<guidAge>\<module>.pdb
+            if (Directory.Exists(flatFile))
+            {
+                foreach (string subDir in Directory.EnumerateDirectories(flatFile))
+                {
+                    if (File.Exists(Path.Combine(subDir, pdbFileName)))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // 3. Three-tier symstore layout: <rootDir>\dll\<module>.pdb or <rootDir>\<2-char-prefix>\<module>.pdb
+            string prefix = pdbFileName.Length >= 2 ? pdbFileName.Substring(0, 2) : string.Empty;
+            string[] prefixes = string.IsNullOrEmpty(prefix)
+                ? new[] { "dll", "exe" }
+                : new[] { "dll", "exe", prefix };
+
+            foreach (string sub in prefixes)
+            {
+                string tierPath = Path.Combine(rootDir, sub, pdbFileName);
+                if (File.Exists(tierPath))
+                {
+                    return true;
+                }
+
+                if (Directory.Exists(tierPath))
+                {
+                    foreach (string guidDir in Directory.EnumerateDirectories(tierPath))
+                    {
+                        if (File.Exists(Path.Combine(guidDir, pdbFileName)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Ignore directory enumeration errors
+        }
+
+        return false;
+    }
+
     private void EnsureBackupExists()
     {
         if (_activeBackup == null)

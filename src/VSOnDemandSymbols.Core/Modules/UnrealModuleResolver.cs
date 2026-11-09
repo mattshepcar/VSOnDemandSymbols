@@ -62,26 +62,41 @@ public sealed class UnrealModuleResolver
 
         // 2. Walk up directory tree to find *.Build.cs
         string? dir = Path.GetDirectoryName(sourceFilePath);
+        if (string.IsNullOrEmpty(dir))
+        {
+            return null;
+        }
+
+        if (_dirToModuleCache.TryGetValue(dir!, out string? fastCached))
+        {
+            return fastCached;
+        }
+
+        var visitedDirs = new List<string>();
+        string? resolvedModule = null;
+
         while (!string.IsNullOrEmpty(dir))
         {
-            if (_dirToModuleCache.TryGetValue(dir, out string? cachedModule))
+            if (_dirToModuleCache.TryGetValue(dir!, out string? cachedModule))
             {
-                return cachedModule;
+                resolvedModule = cachedModule;
+                break;
+            }
+
+            visitedDirs.Add(dir!);
+
+            string? foundModule = TryFindModuleInDirectory(dir!);
+            if (foundModule != null)
+            {
+                resolvedModule = foundModule;
+                break;
             }
 
             // Boundary check: stop at project, plugin, or engine root
-            if (IsBoundaryDirectory(dir))
+            if (IsBoundaryDirectory(dir!))
             {
-                string? modAtBoundary = TryFindModuleInDirectory(dir);
-                _dirToModuleCache[dir] = modAtBoundary;
-                return modAtBoundary;
-            }
-
-            string? foundModule = TryFindModuleInDirectory(dir);
-            if (foundModule != null)
-            {
-                _dirToModuleCache[dir] = foundModule;
-                return foundModule;
+                resolvedModule = null;
+                break;
             }
 
             string? parent = Path.GetDirectoryName(dir);
@@ -92,8 +107,18 @@ public sealed class UnrealModuleResolver
             dir = parent;
         }
 
-        return null;
+        for (int i = 0; i < visitedDirs.Count; i++)
+        {
+            _dirToModuleCache[visitedDirs[i]] = resolvedModule;
+        }
+
+        return resolvedModule;
     }
+
+    /// <summary>
+    /// Clears the cached directory-to-module mappings.
+    /// </summary>
+    public void ClearCache() => _dirToModuleCache.Clear();
 
     /// <summary>
     /// Checks whether the specified solution directory belongs to an Unreal Engine project or engine source.
@@ -177,20 +202,35 @@ public sealed class UnrealModuleResolver
     {
         try
         {
+            string? firstModule = null;
+            string dirName = Policy.WildcardPattern.ExtractFileNameSafe(dir);
+
             foreach (string file in _fileSystem.EnumerateFiles(dir, "*.Build.cs", SearchOption.TopDirectoryOnly))
             {
                 string fileName = Path.GetFileName(file);
-                if (fileName.EndsWith(".Build.cs", StringComparison.OrdinalIgnoreCase))
+                if (!fileName.EndsWith(".Build.cs", StringComparison.OrdinalIgnoreCase))
                 {
-                    return fileName.Substring(0, fileName.Length - ".Build.cs".Length);
+                    continue;
+                }
+
+                string moduleName = fileName.Substring(0, fileName.Length - ".Build.cs".Length);
+                if (string.Equals(moduleName, dirName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return moduleName;
+                }
+
+                if (firstModule == null || string.Compare(moduleName, firstModule, StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    firstModule = moduleName;
                 }
             }
+
+            return firstModule;
         }
         catch
         {
             // Ignore directory search errors
+            return null;
         }
-
-        return null;
     }
 }

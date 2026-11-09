@@ -143,4 +143,30 @@ public sealed class UnrealModuleResolverTests
         _fileSystem.WriteAllText(@"C:\Dev\NativeSample\NativeSample.sln", "...");
         Assert.False(_resolver.IsUnrealSolution(@"C:\Dev\NativeSample"));
     }
+
+    [Fact]
+    public void ResolveModuleFromSource_MultipleBuildCsFiles_PrefersDirectoryNameMatch()
+    {
+        _fileSystem.WriteAllText(@"C:\Dev\MyGame\Source\MultiMod\ZetaModule.Build.cs", "// build");
+        _fileSystem.WriteAllText(@"C:\Dev\MyGame\Source\MultiMod\MultiMod.Build.cs", "// build");
+        _fileSystem.WriteAllText(@"C:\Dev\MyGame\Source\MultiMod\AlphaModule.Build.cs", "// build");
+        _fileSystem.WriteAllText(@"C:\Dev\MyGame\Source\MultiMod\Private\Test.cpp", "// cpp");
+
+        Assert.Equal("MultiMod", _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Source\MultiMod\Private\Test.cpp"));
+    }
+
+    [Fact]
+    public void ResolveModuleFromSource_CachesLeafDirectoriesAndClearCacheInvalidates()
+    {
+        string nestedFile = @"C:\Dev\MyGame\Source\MyGame\Private\SubA\SubB\ActorB.cpp";
+        Assert.Equal("MyGame", _resolver.ResolveModuleFromSource(nestedFile));
+
+        // Even after deleting the Build.cs file from the filesystem, the cached leaf directory returns "MyGame"
+        _fileSystem.DeleteFile(@"C:\Dev\MyGame\Source\MyGame\MyGame.Build.cs");
+        Assert.Equal("MyGame", _resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Source\MyGame\Private\SubA\SubB\OtherActor.cpp"));
+
+        // Clearing the cache forces re-evaluation, which now returns null
+        _resolver.ClearCache();
+        Assert.Null(_resolver.ResolveModuleFromSource(@"C:\Dev\MyGame\Source\MyGame\Private\SubA\SubB\OtherActor.cpp"));
+    }
 }

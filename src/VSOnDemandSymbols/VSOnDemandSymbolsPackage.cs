@@ -168,6 +168,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
         ThreadHelper.ThrowIfNotOnUIThread();
 
         _activeSolutionPath = null;
+        _resolver?.ClearCache();
         if (_isUnrealSolutionOpen)
         {
             _isUnrealSolutionOpen = false;

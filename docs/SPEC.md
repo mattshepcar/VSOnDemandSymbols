@@ -117,43 +117,39 @@ VSOnDemandSymbols/
 #### 1. `UnrealModuleResolver` (Core)
 * Given a source file path (e.g. `D:\MyProject\Source\MyGame\Private\MyActor.cpp`):
   * Special case: Intermediate UHT files (`Intermediate/Build/.../Inc/{Module}/...`) or unity files (`Module.{Module}.*.cpp`) extract the module name directly from the path.
-  * Standard case: Walks up parent directories looking for `{Module}.Build.cs`. Stops at root boundaries (`*.uproject`, `Engine/Source`, drive root). Caches directory $\to$ module mappings in a `ConcurrentDictionary`.
+  * Standard case: Walks up parent directories looking for `{Module}.Build.cs`. Stops at root boundaries (`*.uproject`, `*.uplugin`, `Engine/Source`, drive root). Caches all visited directory $\to$ module mappings (including negative results) in a `ConcurrentDictionary`, cleared on solution close via `ClearCache()`.
 * Given a module name (`MyGame`):
-  * Returns candidate binary names:
-    * `UnrealEditor-MyGame.dll`
-    * `UnrealEditor-MyGame-Win64-DebugGame.dll`
-    * `UnrealEditor-MyGame-Win64-Development.dll`
-    * `UnrealEditor-MyGame*.dll`
+  * Returns the wildcard binary pattern `UnrealEditor-MyGame*.dll` (ADR-07), which matches all configurations (`Development`, `DebugGame`, `Debug`, `Shipping`) and hot-reload suffixes (`-0001`).
 * Solution detection:
   * `IsUnrealSolution(dir)`: checks for `*.uproject` or `Engine/Build/Build.version` (walking up for nested project files).
 
 #### 2. `SymbolSettingsBackupStore` (Core)
 * Manages `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`.
-* Stores: `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList` (names + enabled flags), timestamp, and `ProcessId`.
-* `CheckCrashRecovery(path, currentPid)`: If backup exists and the recorded PID is dead, returns the backup so settings can be restored before doing anything else.
+* Stores: `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `UseMSSymbolServers`, `UseNugetSymbolServers`, `SymbolPaths`, `IncludeList` (names + enabled flags), timestamp, and `ProcessId`.
+* `CheckCrashRecovery(path, currentPid)`: If backup exists and the recorded PID is dead, returns the backup so settings (including any temporarily masked symbol server flags/paths) can be restored before doing anything else.
 
 #### 3. `SymbolSettingsManager` (VSIX)
 * Single owner of Visual Studio symbol settings (`SVsShellDebugger` $\to$ `IVsDebuggerSymbolSettingsManager120A`).
 * `ApplyManualMode(wantedBinaries)`:
   * Ensures disk backup is saved.
   * Sets `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`.
-  * Merges the user's backed-up original `IncludeList` with the active `wantedBinaries`.
+  * Merges the user's backed-up original `IncludeList` with the active `wantedBinaries` (skipping redundant saves if the effective `IncludeList` is unchanged).
   * Saves settings with `loadSymbolsNow: false`.
 * `RestoreOriginalSettings()`:
-  * Restores user's original flags and `IncludeList`.
+  * Restores user's original manual-load flags and `IncludeList` (preserving any user edits made to symbol paths or servers during the session).
   * Deletes disk backup.
 
 #### 4. `DebuggerSessionMonitor` (VSIX)
 * Subscribes to `DTE.Events.CommandEvents` for `StandardCommandSet97:cmdidStart (295)` (F5 Launch).
   * Resolves all breakpoints (both enabled and disabled, ADR-03) from `DTE.Debugger.Breakpoints`.
-  * Adds `UnrealEditor.exe`, `UnrealEditor-Win64-*.exe`, and candidate DLL names to `IncludeList` via `SymbolSettingsManager`.
+  * Adds `UnrealEditor*.exe` and candidate DLL patterns (`UnrealEditor-{Module}*.dll`) to `IncludeList` via `SymbolSettingsManager`.
 * Subscribes to AD7 `IVsDebugger.AdviseDebugEventCallback` (`IDebugBreakpointErrorEvent2`):
   * When a new breakpoint is added mid-session while running (or in break mode), Visual Studio's debug engine reports a binding error if the module's symbols are not loaded.
-  * Coalesces error event bursts to the UI thread, rescans breakpoints via DTE, updates `IncludeList`, and invokes `mod.LoadSymbols("")` on matching modules in `DTE.Debugger.DebuggedProcesses`.
+  * Coalesces error event bursts to the UI thread, rescans breakpoints via DTE, updates `IncludeList`, and invokes `mod.LoadSymbols("")` on matching un-symbolized modules in `DTE.Debugger.DebuggedProcesses`.
   * Breakpoints activate immediately without restarting the debug session.
   * Logs symbol loads with reason `Breakpoint`.
 * Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode` and `OnContextChanged`:
-  * Governed by `BreakSymbolLoadMode` (`Off`, `LocalOnly` [default], `All`), configurable via environment variable or settings.
+  * Governed by `BreakSymbolLoadMode` (`Off`, `LocalOnly` [default], `All`), configurable via Visual Studio Unified Settings (`Debugging -> Symbols -> On Demand Loading`).
   * Inspects `CurrentThread.StackFrames` fully, and for non-step breaks (breakpoint hits, exceptions, manual break) up to 10 frames of background threads in `CurrentProgram.Threads` (stopping at the first user-code module). Single-stepping (F10/F11) inspects only `CurrentThread`.
   * For `LocalOnly`, temporarily masks remote symbol servers so Visual Studio native loader resolves only adjacent, locally cached, or local path PDBs without network latency.
   * For `All`, resolves symbols with remote symbol servers unmasked.
@@ -171,7 +167,7 @@ VSOnDemandSymbols/
 
 ## 5. Non-Functional Requirements & Rules
 
-1. **Golden Rule #1 (Settings Safety):** User symbol settings are *always* backed up to disk before any modification and restored on solution close, disable, or crash recovery. Symbol search paths, cache directory, and symbol servers are *never* touched.
+1. **Golden Rule #1 (Settings Safety):** User symbol settings are *always* backed up to disk before any modification and restored on solution close, disable, or crash recovery. Symbol search paths, cache directory, and symbol servers are never persistently modified (remote symbol servers are only masked within a scoped `try / finally` block during `LocalOnly` break-mode loading, and backed up to disk to guard against mid-break crashes).
 2. **Never Break Debugging (Golden Rule #2):** All debugger event handlers are wrapped in `try / catch`. Failures log a warning and let Visual Studio proceed normally.
 3. **No Private IDE Assemblies:** Zero references to internal Visual Studio DLLs outside of official NuGet packages (`Microsoft.VisualStudio.SDK 17.14.40265`). Zero custom compiler targets (`.vsdconfig`).
 4. **Sandboxed Build Safe:** Respect `/p:UseSharedCompilation=false /nr:false` and run unit tests via in-process runner.

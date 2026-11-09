@@ -17,11 +17,14 @@ public sealed class UnrealModuleResolver
     // Resolves a C++ source file path (including intermediate UHT and unity files) to its owning module name
     public string? ResolveModuleFromSource(string sourceFilePath);
 
-    // Returns candidate binary names (e.g. UnrealEditor-MyGame.dll, UnrealEditor-MyGame-Win64-DebugGame.dll, UnrealEditor-MyGame*.dll)
+    // Returns the wildcard candidate binary pattern (e.g. UnrealEditor-MyGame*.dll)
     public IReadOnlyList<string> GetCandidateBinaries(string moduleName);
 
     // Checks whether a directory is an Unreal Engine solution (contains *.uproject or Engine/Build/Build.version)
     public bool IsUnrealSolution(string solutionDir);
+
+    // Clears the in-memory directory -> module name cache (called on solution close)
+    public void ClearCache();
 }
 ```
 
@@ -47,14 +50,14 @@ loop:
     dir = parent(dir)
 ```
 
-- Cache `directory → Build.cs path` (including negative results) in a `ConcurrentDictionary`. Invalidate the cache when `*.Build.cs` files are created or deleted (a `FileSystemWatcher` on the solution's source roots, filtered to `*.Build.cs`), or when the solution reloads.
+- Cache `directory → module name` (including `null` for negative results) across all visited directories in a `ConcurrentDictionary`, and clear the cache via `ClearCache()` when the solution closes.
 - Parsing the `.Build.cs` contents is **not** required to get the name: UBT requires the class name to equal the file name. `ShortName` in `ModuleRules` only affects intermediate directories (not the binary output DLL name). `BinariesSubFolder` places the output DLL into a subfolder of `Binaries/<Platform>/` (e.g. `Binaries/Win64/<SubFolder>/`), but the DLL name itself still adheres to the standard binary naming rule.
 - Ignore `*.Target.cs` (those are targets, not modules).
 - `ThirdParty` external modules (`Type = ModuleType.External`) have no DLL of their own and are inert.
 
-### 2.3 Module owner (root) detection
+### 2.3 Module owner (root) reference
 
-For naming and binaries folders, also determine which root owns the module:
+For reference, UBT organizes module binary output folders by owner root:
 
 | Owner | How to detect (nearest ancestor) | Binaries folder |
 |---|---|---|
@@ -63,11 +66,14 @@ For naming and binaries folders, also determine which root owns the module:
 | Project | folder containing `*.uproject` | `<ProjectDir>/Binaries/Win64` |
 | Engine | `Engine/` (has `Build/Build.version`) | `Engine/Binaries/Win64` |
 
-Also handle `Engine/Platforms/<Platform>/...`, `Engine/Restricted/<Kind>/...` and `<Project>/Platforms/...` trees (discovered via `Unreal.GetExtensionDirs`). In shared builds, their modules output to the engine or project's main `Binaries/Win64/` (or `<PluginDir>/Binaries/Win64`).
+Also handle `Engine/Platforms/<Platform>/...`, `Engine/Restricted/<Kind>/...` and `<Project>/Platforms/...` trees (discovered via `Unreal.GetExtensionDirs`). In shared builds, their modules output to the engine or project's main `Binaries/Win64/` (or `<PluginDir>/Binaries/Win64`). Because Visual Studio's `IncludeList` matches module file names directly via wildcard patterns (`UnrealEditor-{ModuleName}*.dll`, ADR-07), `UnrealModuleResolver` does not need to locate the physical `Binaries/Win64` directory on disk.
 
 ---
 
-## 3. Unreal: `.modules` manifests (preferred source of truth)
+## 3. Unreal: `.modules` manifests (UBT reference)
+
+> [!NOTE]
+> Because Visual Studio's `IncludeList` natively supports `*` wildcards (ADR-07), `UnrealModuleResolver.GetCandidateBinaries` emits `UnrealEditor-{ModuleName}*.dll` directly and does not need to parse `.modules` files at runtime. The `.modules` manifest format is documented below as UBT reference.
 
 UBT writes a JSON manifest next to the binaries in each binaries folder (`Engine/Binaries/Win64`, `<PluginDir>/Binaries/Win64`, `<ProjectDir>/Binaries/Win64`).
 Filename format (`ModuleManifest.GetStandardFileName`):
@@ -86,10 +92,7 @@ JSON Schema:
 }
 ```
 
-- When resolving names for module `M` owned by root `R`: read every `*.modules` file in known binaries folders (`<ProjectDir>/Binaries/Win64`, `<ProjectDir>/Plugins/**/Binaries/Win64`, `Engine/Binaries/Win64`), collect every file name mapped to `M` (there can be one per configuration), and union them with the standard UBT naming candidates (§4) so switching configurations (e.g. between `Development Editor` and `DebugGame Editor`) resolves `-Win64-DebugGame.dll` even before a new `.modules` file has been written.
-- Cache each manifest keyed by path and last-write time.
 - The runtime engine (`FModuleManager::FindModulePaths`) reads the main engine manifest via `FModuleManifest::TryRead` to establish the current session's `BuildId`, then scans all engine/game/plugin binary directories, rejecting manifests whose `BuildId` does not match (except Bridge plugin) before caching valid module DLL paths.
-- If no manifest exists (module never built), fall back to the naming rules in §4.
 
 ---
 
@@ -126,11 +129,14 @@ Phase 2 checklist (confirmed against `D:\UnrealEngine`):
 
 ---
 
-## 5. Unreal: loaded DLL → module key (reverse mapping)
+## 5. Unreal: loaded DLL → module name (UBT reference)
+
+> [!NOTE]
+> At runtime, `WildcardPattern.MatchesFileName` matches loaded module file names directly against wildcard patterns (`UnrealEditor-{ModuleName}*.dll`, ADR-07). The reverse structure below documents how UBT formats binary file names from module identifiers.
 
 Module names are C# identifiers, so they never contain `-`. That makes splitting on `-` safe.
 
-Confirmed regex / parser logic, matched against the file name (case-insensitive):
+Confirmed binary filename structure (case-insensitive):
 
 ```
 ^(?<app>[A-Za-z0-9_]+)-(?<module>[A-Za-z0-9_]+)
@@ -141,17 +147,11 @@ Confirmed regex / parser logic, matched against the file name (case-insensitive)
  \.dll$
 ```
 
-- `app` must be one of the known prefixes: `UnrealEditor`, `UE4Editor`, `UnrealGame`, `UnrealClient`, `UnrealServer`, or a custom target name from `*.Target.cs` in unique build environments. Third-party DLLs such as `api-ms-win-core-...dll` are rejected on fast-path.
+- `app` is one of the known prefixes: `UnrealEditor`, `UE4Editor`, `UnrealGame`, `UnrealClient`, `UnrealServer`, or a custom target name from `*.Target.cs` in unique build environments.
 - Live Coding patch binaries match:
 ```
 ^(?<app>[A-Za-z0-9_]+)-(?<module>[A-Za-z0-9_]+).*\.patch_\d+\.(?:exe|dll)$
 ```
-- The result maps to `ModuleKey(ModuleKind.Unreal, module)`.
-
-- `app` must be one of the known prefixes for this solution: `UnrealEditor`, `UE4Editor`, `UnrealGame`, or a target name found in `*.Target.cs` files of the project. This avoids misreading third-party DLLs such as `api-ms-win-core-...dll`.
-- The result is `ModuleKey(Unreal, module)`.
-- Live Coding patch names get their own pattern once confirmed.
-- Unit-test this exhaustively. It runs for every one of the ~1,000 module loads, so it must be fast: precompiled `Regex` or a hand-written parser, plus an allocation-free fast path that rejects names without a known prefix.
 
 ---
 

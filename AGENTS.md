@@ -58,9 +58,6 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 
 # Unit tests (Core only — no VS needed; --no-build reuses the MSBuild output above)
 dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build
-
-# Opt-in Unreal integration tests (requires access to D:\UnrealEngine)
-$env:ODS_UE_ROOT = "D:\UnrealEngine"; dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build
 ```
 
 - **Preventing sandbox build hangs (important for agents):**

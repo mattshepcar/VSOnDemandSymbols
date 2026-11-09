@@ -4,6 +4,7 @@ obj/
 [Dd]ebug/
 [Rr]elease/
 *.vsix
+tests/Fixtures/MiniUnreal/Binaries/
 
 ## Visual Studio
 .vs/

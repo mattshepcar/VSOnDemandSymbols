@@ -1,0 +1,7 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.5",
+  "Category": "",
+  "Description": "Minimal Unreal fixture for VSOnDemandSymbols integration tests."
+}
+

@@ -1,10 +1,29 @@
-# Manual Verification Guide — On-Demand Symbols
+# Manual & Automated Verification Guide — On-Demand Symbols
 
-This document provides step-by-step verification instructions for Visual Studio 2022 (17.14+) and Visual Studio 2026.
+This document provides instructions for running the automated Experimental instance integration tests as well as step-by-step manual verification in Visual Studio 2022 (17.14+) and Visual Studio 2026.
 
 ---
 
-## 1. Setup & Launching the Experimental Instance
+## 0. Automated Experimental Instance Integration Tests
+
+An end-to-end automated test runner (`tests/VSOnDemandSymbols.IntegrationTests`) boots `devenv.exe /rootsuffix Exp`, deploys the latest built VSIX binaries into the `Exp` hive, attaches via the Windows Running Object Table (ROT), and runs 5 end-to-end scenarios against the `tests/Fixtures/MiniUnreal` native C++ fixture (~20 seconds total):
+
+1. `Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup`
+2. `Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule`
+3. `Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile`
+4. `Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint`
+5. `Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings`
+
+Run from the repository root:
+
+```powershell
+# Run all 5 integration tests (or pass a substring filter, e.g. Test03)
+tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe
+```
+
+---
+
+## 1. Setup & Launching the Experimental Instance Manually
 
 1. Open `VSOnDemandSymbols.slnx` in Visual Studio.
 2. Ensure the configuration is **Debug | Any CPU** (or run the build via MSBuild).

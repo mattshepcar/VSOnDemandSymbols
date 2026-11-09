@@ -58,6 +58,10 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 
 # Unit tests (Core only — no VS needed; --no-build reuses the MSBuild output above)
 dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build
+
+# Automated Experimental instance integration tests (boots devenv.exe /rootsuffix Exp via ROT COM;
+# must run with BypassSandbox: true so devenv.exe can access %LOCALAPPDATA% and the Windows ROT)
+tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.IntegrationTests.exe
 ```
 
 - **Preventing sandbox build hangs (important for agents):**

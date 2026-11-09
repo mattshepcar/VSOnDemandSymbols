@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using EnvDTE;
 using EnvDTE80;
+using EnvDTE90a;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.Shell;
@@ -479,6 +481,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
             bool maskServers = (BreakSymbolLoadMode == BreakSymbolLoadMode.LocalOnly);
             string modeDesc = maskServers ? " (local-only)" : string.Empty;
+            var newlyLoadedModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Load symbols using configured server policy (masked or unmasked)
             _settings.ExecuteWithCandidateModules(candidateBinaries, maskSymbolServers: maskServers, () =>
@@ -494,6 +497,10 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                     try
                     {
                         mod.LoadSymbols(string.Empty);
+                        if (HasSymbolsLoaded(mod))
+                        {
+                            newlyLoadedModules.Add(modFileName);
+                        }
                         _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason}");
                     }
                     catch (Exception ex)
@@ -514,10 +521,100 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                     }
                 }
             });
+
+            if (newlyLoadedModules.Count > 0 && currentThread != null)
+            {
+                RefreshBreakingFrameContext(debugger, currentThread, newlyLoadedModules);
+            }
         }
         catch (Exception ex)
         {
             _logger.Error($"Error loading symbols for threads ({reason}).", ex);
+        }
+    }
+
+    /// <summary>
+    /// When execution breaks inside an un-symbolized module, Visual Studio initially sets
+    /// <see cref="EnvDTE.Debugger.CurrentStackFrame"/> and the active editor document to the nearest
+    /// caller that already had symbols loaded (or the "Symbols not loaded" tab).
+    /// Once on-demand symbol loading completes for the breaking thread, this method updates the active
+    /// stack frame context and opens the corresponding source file if the top source-resolvable frame
+    /// belongs to one of the newly symbolized modules.
+    /// </summary>
+    private void RefreshBreakingFrameContext(
+        EnvDTE.Debugger debugger,
+        EnvDTE.Thread currentThread,
+        HashSet<string> newlyLoadedModules)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+
+        try
+        {
+            var frames = currentThread.StackFrames;
+            if (frames == null)
+            {
+                return;
+            }
+
+            foreach (StackFrame frame in frames)
+            {
+                string? rawMod = null;
+                string? fileName = null;
+                uint lineNumber = 0;
+
+                try
+                {
+                    rawMod = frame.Module;
+                    if (frame is StackFrame2 frame2)
+                    {
+                        fileName = frame2.FileName;
+                        lineNumber = frame2.LineNumber;
+                    }
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(fileName) || !File.Exists(fileName))
+                {
+                    continue;
+                }
+
+                string? modFileName = WildcardPattern.NormalizeFrameModuleName(rawMod);
+                if (!string.IsNullOrWhiteSpace(modFileName) && newlyLoadedModules.Contains(modFileName!))
+                {
+                    try
+                    {
+                        debugger.CurrentStackFrame = frame;
+                    }
+                    catch
+                    {
+                    }
+
+                    try
+                    {
+                        var window = _dte.ItemOperations?.OpenFile(fileName!, EnvDTE.Constants.vsViewKindTextView);
+                        window?.Activate();
+
+                        if (lineNumber > 0 && _dte.ActiveDocument?.Selection is TextSelection selection)
+                        {
+                            selection.GotoLine((int)lineNumber, Select: false);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Diagnostic($"Could not open source file '{fileName}' for breaking frame: {ex.Message}");
+                    }
+                }
+
+                // Only evaluate the top-most stack frame that resolves to an existing source file.
+                break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Diagnostic($"Could not refresh breaking frame context: {ex.Message}");
         }
     }
 

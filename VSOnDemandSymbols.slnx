@@ -22,5 +22,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/VSOnDemandSymbols.Core.Tests/VSOnDemandSymbols.Core.Tests.csproj" />
+    <Project Path="tests/VSOnDemandSymbols.IntegrationTests/VSOnDemandSymbols.IntegrationTests.csproj" />
   </Folder>
 </Solution>

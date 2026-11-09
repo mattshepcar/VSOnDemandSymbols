@@ -56,6 +56,16 @@ This document records the active architectural decisions governing the **On-Dema
 * **Decision:** Zero custom menu commands, tool windows, or status bar indicators. The extension activates automatically for Unreal solutions and restores original settings on solution close. Status and diagnostics are reported to the "On-Demand Symbols" Output pane.
 * **Rationale:** Reduces UI maintenance overhead and provides a seamless, invisible user experience.
 
+### ADR-11: Breaking Frame Context & Source Navigation Refresh
+* **Context:** When execution breaks (e.g. crash, `__debugbreak()`, or assertion) inside a module whose symbols were skipped at startup, Visual Studio evaluates initial stack frame selection *before* `DTE.DebuggerEvents.OnEnterBreakMode` completes. As a result, Visual Studio falls back to the nearest caller on the stack that already had symbols loaded (such as `main` in `UnrealEditor.exe`) and opens that caller's source file instead of the crashing module's source file.
+* **Decision:** After loading symbols on demand in `DebuggerSessionMonitor.LoadSymbolsForThreads`, inspect `CurrentThread.StackFrames` from top to bottom for the first frame with an existing source file (`EnvDTE90a.StackFrame2.FileName`). If that top source-resolvable frame belongs to a module whose symbols were just loaded on demand, set `DTE.Debugger.CurrentStackFrame` to that frame and open/activate its source file at `StackFrame2.LineNumber`.
+* **Rationale:** Ensures that breaking or crashing into an un-symbolized module behaves identically to having full symbols preloaded—automatically focusing the crashing stack frame and opening the exact source file and line in the editor.
+
+### ADR-12: Out-of-Proc DTE/ROT Automated Integration Testing with MiniUnreal Fixture
+* **Context:** End-to-end verification of Visual Studio native debugger integration (`CppDebug.dll`, `IVsDebuggerSymbolSettings120A`, `IDebugBreakpointErrorEvent2`, `OnEnterBreakMode`) requires a real `devenv.exe /rootsuffix Exp` instance, while launching the full Unreal Engine editor is too slow and heavy for automated tests.
+* **Decision:** Provide a self-contained native C++ fixture (`tests/Fixtures/MiniUnreal`) that mimics an Unreal solution (`MiniUnreal.uproject`, `{Module}.Build.cs`, `UnrealEditor.exe`, `UnrealEditor-ModuleA.dll`, `UnrealEditor-ModuleB.dll`) alongside an out-of-process STA COM test runner (`tests/VSOnDemandSymbols.IntegrationTests`) that boots `devenv.exe /rootsuffix Exp` and attaches via the Windows Running Object Table (`!VisualStudio.DTE.*:<PID>`).
+* **Rationale:** Compiles in ~2 seconds and executes the entire 5-scenario end-to-end debugger test suite against a real Visual Studio Experimental instance in ~20 seconds without brittle mouse/keyboard UI automation.
+
 ---
 
 ## Historical Explorations & Retired Approaches

@@ -42,7 +42,9 @@ VSOnDemandSymbols/
 │           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
 │
 └── tests/
-    └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with FakeUnrealProject
+    ├── Fixtures/MiniUnreal/                # Native C++ Unreal fixture (UnrealEditor.exe + 2 DLLs)
+    ├── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process unit test runner
+    └── VSOnDemandSymbols.IntegrationTests/ # Out-of-proc DTE/ROT Experimental instance test runner
 ```
 
 ---
@@ -162,9 +164,10 @@ sequenceDiagram
     loop For each un-symbolized frame (.dll)
         DSM->>VS: Locate EnvDTE90.Module
         DSM->>VS: Call mod.LoadSymbols("")
-        DSM->>Log: Log "Loading symbols on demand: Module.dll — CallStack"
+        DSM->>Log: Log "Loading symbols on demand: Module.dll — BreakMode"
     end
-    VS->>User: Call Stack window resolves with function names and line numbers
+    DSM->>VS: Refresh CurrentStackFrame & open top frame source file (ADR-11)
+    VS->>User: Call Stack window & editor focus resolve to breaking frame and source line
 ```
 
 ### 4.3 Breakpoint Added or Activated Mid-Session (Running or Break Mode)

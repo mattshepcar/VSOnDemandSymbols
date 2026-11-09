@@ -108,8 +108,10 @@ VSOnDemandSymbols/
 │       └── Logging/
 │           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
 │
-└── tests/
-    └── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process test runner with InMemoryFileSystem
+├── tests/
+│   ├── Fixtures/MiniUnreal/                # Minimal C++ Unreal fixture (UnrealEditor.exe + 2 DLLs)
+│   ├── VSOnDemandSymbols.Core.Tests/       # xUnit / In-process unit test runner with InMemoryFileSystem
+│   └── VSOnDemandSymbols.IntegrationTests/ # Out-of-proc DTE/ROT Experimental instance autotest runner
 ```
 
 ### 4.1 Component Details
@@ -154,6 +156,7 @@ VSOnDemandSymbols/
   * For `LocalOnly`, temporarily masks remote symbol servers so Visual Studio native loader resolves only adjacent, locally cached, or local path PDBs without network latency.
   * For `All`, resolves symbols with remote symbol servers unmasked.
   * For each frame without symbols, locates matching `EnvDTE90.Module` and calls `mod.LoadSymbols("")`.
+  * If the top source-resolvable stack frame on `CurrentThread` belongs to a module whose symbols were just loaded on demand, updates `DTE.Debugger.CurrentStackFrame` to that frame and opens its source file at the breaking line in the editor (ADR-11).
   * Logs symbol loads with reason `BreakMode` or `ContextChanged`.
 
 #### 5. `VSOnDemandSymbolsPackage` (VSIX)

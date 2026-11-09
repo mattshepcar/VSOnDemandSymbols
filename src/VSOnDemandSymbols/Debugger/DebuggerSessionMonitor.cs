@@ -33,6 +33,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private readonly HashSet<string> _loadedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
 
     private int _rescanPending;
+    private int _lastInspectedThreadId;
     private bool _advised;
     private bool _disposed;
 
@@ -126,8 +127,10 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         breakpointCount++;
                         foreach (string binary in _resolver.GetCandidateBinaries(moduleName!))
                         {
-                            wantedBinaries.Add(binary);
-                            candidatePatterns.Add(binary);
+                            if (wantedBinaries.Add(binary))
+                            {
+                                candidatePatterns.Add(binary);
+                            }
                         }
                     }
                 }
@@ -240,6 +243,12 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                             continue;
                         }
 
+                        if (HasSymbolsLoaded(mod))
+                        {
+                            _loadedModulesThisSession.Add(modFileName);
+                            continue;
+                        }
+
                         bool matches = false;
                         for (int i = 0; i < compiledPatterns.Count; i++)
                         {
@@ -254,9 +263,9 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         {
                             try
                             {
-                                _logger.Info($"Loading symbols on demand: {modFileName} — Breakpoint");
                                 mod.LoadSymbols(string.Empty);
                                 _loadedModulesThisSession.Add(modFileName);
+                                _logger.Info($"Loading symbols on demand: {modFileName} — Breakpoint");
                             }
                             catch (Exception ex)
                             {
@@ -287,6 +296,8 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
+        _lastInspectedThreadId = 0;
+
         if (!IsEnabled || BreakSymbolLoadMode == BreakSymbolLoadMode.Off)
         {
             return;
@@ -304,6 +315,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             var currentThread = debugger.CurrentThread;
             if (currentThread != null)
             {
+                _lastInspectedThreadId = GetThreadIdSafe(currentThread);
                 threadsToInspect.Add(currentThread);
             }
 
@@ -343,6 +355,13 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             var targetThread = newThread ?? debugger.CurrentThread;
             if (targetThread != null)
             {
+                int threadId = GetThreadIdSafe(targetThread);
+                if (threadId != 0 && threadId == _lastInspectedThreadId)
+                {
+                    return;
+                }
+
+                _lastInspectedThreadId = threadId;
                 LoadSymbolsForThreads(new[] { targetThread }, "ContextChanged");
             }
         }
@@ -423,7 +442,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 return;
             }
 
-            var targetModules = new List<EnvDTE90.Module>();
+            var targetModules = new List<(EnvDTE90.Module Module, string FileName, string? FullPath)>();
             var candidateBinaries = new List<string>();
 
             foreach (Process proc in debugger.DebuggedProcesses)
@@ -433,9 +452,20 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                     foreach (EnvDTE90.Module mod in proc3.Modules)
                     {
                         string modFileName = WildcardPattern.ExtractFileNameSafe(mod.Name);
-                        if (missingModules.Contains(modFileName) && !_loadedModulesThisSession.Contains(modFileName))
+                        if (string.IsNullOrWhiteSpace(modFileName) || _loadedModulesThisSession.Contains(modFileName))
                         {
-                            targetModules.Add(mod);
+                            continue;
+                        }
+
+                        if (HasSymbolsLoaded(mod))
+                        {
+                            _loadedModulesThisSession.Add(modFileName);
+                            continue;
+                        }
+
+                        if (missingModules.Contains(modFileName))
+                        {
+                            targetModules.Add((mod, modFileName, GetModulePathSafe(mod)));
                             candidateBinaries.Add(modFileName);
                         }
                     }
@@ -454,9 +484,8 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             _settings.ExecuteWithCandidateModules(candidateBinaries, maskSymbolServers: maskServers, () =>
             {
                 ThreadHelper.ThrowIfNotOnUIThread();
-                foreach (var mod in targetModules)
+                foreach (var (mod, modFileName, fullPath) in targetModules)
                 {
-                    string modFileName = WildcardPattern.ExtractFileNameSafe(mod.Name);
                     if (_loadedModulesThisSession.Contains(modFileName))
                     {
                         continue;
@@ -464,13 +493,13 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
                     try
                     {
-                        _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason}");
                         mod.LoadSymbols(string.Empty);
+                        _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason}");
                     }
                     catch (Exception ex)
                     {
                         // Expected when symbols are not available locally (e.g. OS DLLs not in local cache)
-                        if (WildcardPattern.IsUserCodeModule(modFileName))
+                        if (WildcardPattern.IsUserCodeModule(fullPath ?? modFileName))
                         {
                             _logger.Warning($"Could not load symbols for {modFileName}: {ex.Message}");
                         }
@@ -492,9 +521,54 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         }
     }
 
+    private static bool HasSymbolsLoaded(EnvDTE90.Module module)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        try
+        {
+            return !string.IsNullOrWhiteSpace(module.SymbolFile);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static string? GetModulePathSafe(EnvDTE90.Module module)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        try
+        {
+            return module.Path;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int GetThreadIdSafe(EnvDTE.Thread? thread)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        if (thread == null)
+        {
+            return 0;
+        }
+
+        try
+        {
+            return thread.ID;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     private void OnEnterDesignMode(dbgEventReason reason)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
+        _lastInspectedThreadId = 0;
         _loadedModulesThisSession.Clear();
     }
 

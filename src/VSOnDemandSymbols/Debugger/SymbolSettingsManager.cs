@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -26,6 +25,7 @@ public sealed class SymbolSettingsManager
     private readonly ILogger _logger;
     private readonly string _backupFilePath;
     private readonly int _currentProcessId;
+    private readonly HashSet<string> _appliedWantedBinaries = new(StringComparer.OrdinalIgnoreCase);
 
     private SymbolSettingsBackupDto? _activeBackup;
     private bool _isApplied;
@@ -128,10 +128,11 @@ public sealed class SymbolSettingsManager
                 return false;
             }
 
-            RestoreSettingsToVs(crashBackup);
+            RestoreSettingsToVs(crashBackup, restoreSymbolServersAndPaths: true);
             _backupStore.DeleteBackup(_backupFilePath);
             _activeBackup = null;
             _isApplied = false;
+            _appliedWantedBinaries.Clear();
 
             _logger.Warning(
                 $"Restored symbol settings after a previous unexpected exit " +
@@ -155,6 +156,24 @@ public sealed class SymbolSettingsManager
 
         try
         {
+            var cleanWanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (wantedBinaries != null)
+            {
+                foreach (string binary in wantedBinaries)
+                {
+                    string clean = WildcardPattern.ExtractFileNameSafe(binary);
+                    if (!string.IsNullOrWhiteSpace(clean))
+                    {
+                        cleanWanted.Add(clean);
+                    }
+                }
+            }
+
+            if (_isApplied && _appliedWantedBinaries.SetEquals(cleanWanted))
+            {
+                return;
+            }
+
             EnsureBackupExists();
 
             var current = _settingsManager.GetCurrentSymbolSettings();
@@ -183,20 +202,21 @@ public sealed class SymbolSettingsManager
             }
 
             int userCount = existingNames.Count;
-            if (wantedBinaries != null)
+            foreach (string clean in cleanWanted)
             {
-                foreach (string binary in wantedBinaries)
+                if (existingNames.Add(clean))
                 {
-                    string clean = WildcardPattern.ExtractFileNameSafe(binary);
-                    if (!string.IsNullOrWhiteSpace(clean) && existingNames.Add(clean))
-                    {
-                        updated.IncludeList.Add(clean, true);
-                    }
+                    updated.IncludeList.Add(clean, true);
                 }
             }
 
             _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow: false);
             _isApplied = true;
+            _appliedWantedBinaries.Clear();
+            foreach (string clean in cleanWanted)
+            {
+                _appliedWantedBinaries.Add(clean);
+            }
 
             _logger.Info(
                 $"IncludeList updated ({reason}): {existingNames.Count - userCount} wanted binaries + " +
@@ -225,7 +245,7 @@ public sealed class SymbolSettingsManager
         {
             if (backup != null)
             {
-                RestoreSettingsToVs(backup);
+                RestoreSettingsToVs(backup, restoreSymbolServersAndPaths: false);
                 _logger.Info(
                     $"Restored user symbol settings (IsManualLoad={backup.IsManualLoad}, " +
                     $"IsLoadAdjacent={backup.IsLoadAdjacent}, AutomaticSymbolLoad={backup.AutomaticSymbolLoad}, " +
@@ -241,123 +261,120 @@ public sealed class SymbolSettingsManager
             _backupStore.DeleteBackup(_backupFilePath);
             _activeBackup = null;
             _isApplied = false;
+            _appliedWantedBinaries.Clear();
         }
     }
 
     /// <summary>
     /// Prepares symbol settings for on-demand loading of candidate modules:
-    /// ensures candidate modules are added to IncludeList so Visual Studio's manual-load mode permits loading them,
+    /// temporarily merges candidate modules into <c>IncludeList</c> so Visual Studio's manual-load mode permits loading them,
     /// optionally masks remote symbol servers so only local/cached symbols are resolved,
-    /// and restores original settings/server flags in finally.
+    /// and restores <c>IncludeList</c> and server flags in <c>finally</c>.
     /// </summary>
     public void ExecuteWithCandidateModules(IEnumerable<string>? candidateModules, bool maskSymbolServers, Action loadAction)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        if (loadAction == null) throw new ArgumentNullException(nameof(loadAction));
-
-        if (maskSymbolServers)
+        if (loadAction == null)
         {
-            ExecuteWithMaskedSymbolServers(candidateModules, loadAction);
-            return;
+            throw new ArgumentNullException(nameof(loadAction));
         }
-
-        EnsureBackupExists();
-        var current = _settingsManager.GetCurrentSymbolSettings();
-        var updated = current.Clone();
-
-        bool changed = false;
-        if (candidateModules != null)
-        {
-            foreach (string candidate in candidateModules)
-            {
-                string clean = WildcardPattern.ExtractFileNameSafe(candidate);
-                if (!string.IsNullOrWhiteSpace(clean))
-                {
-                    updated.IncludeList.Add(clean, true);
-                    changed = true;
-                }
-            }
-        }
-
-        if (changed)
-        {
-            _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow: false);
-        }
-
-        loadAction();
-    }
-
-    /// <summary>
-    /// Executes an action with remote symbol servers temporarily masked (disabled)
-    /// and candidate module names merged into IncludeList, ensuring that only local and cached
-    /// symbols are resolved by Visual Studio's native debug engine without querying internet servers.
-    /// Original symbol server flags and remote SymbolPath states are guaranteed to be restored in finally.
-    /// </summary>
-    public void ExecuteWithMaskedSymbolServers(IEnumerable<string>? candidateModules, Action loadAction)
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-        if (loadAction == null) throw new ArgumentNullException(nameof(loadAction));
 
         EnsureBackupExists();
 
         var current = _settingsManager.GetCurrentSymbolSettings();
         bool origUseMs = current.UseMSSymbolServers;
         bool origUseNuget = (current as IVsDebuggerSymbolSettings161)?.get_UseNugetSymbolServers() ?? false;
-        var origSymbolPaths = ReadOptionList(current.SymbolPaths);
+        var origSymbolPaths = maskSymbolServers ? ReadOptionList(current.SymbolPaths) : null;
+        var origIncludeList = ReadOptionList(current.IncludeList);
 
-        var masked = current.Clone();
-        masked.UseMSSymbolServers = false;
-        if (masked is IVsDebuggerSymbolSettings161 masked161)
+        var existingIncludeNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var opt in origIncludeList)
         {
-            masked161.set_UseNugetSymbolServers(false);
+            existingIncludeNames.Add(opt.Name);
         }
 
-        masked.SymbolPaths.Clear();
-        foreach (var opt in origSymbolPaths)
+        var updated = current.Clone();
+        bool settingsChanged = false;
+
+        if (maskSymbolServers)
         {
-            bool isRemote = IsRemoteSymbolUrl(opt.Name);
-            masked.SymbolPaths.Add(opt.Name, opt.IsEnabled && !isRemote);
+            updated.UseMSSymbolServers = false;
+            if (updated is IVsDebuggerSymbolSettings161 updated161)
+            {
+                updated161.set_UseNugetSymbolServers(false);
+            }
+
+            updated.SymbolPaths.Clear();
+            foreach (var opt in origSymbolPaths!)
+            {
+                bool isRemote = IsRemoteSymbolUrl(opt.Name);
+                updated.SymbolPaths.Add(opt.Name, opt.IsEnabled && !isRemote);
+            }
+
+            settingsChanged = true;
         }
 
+        bool includeListChanged = false;
         if (candidateModules != null)
         {
             foreach (string candidate in candidateModules)
             {
                 string clean = WildcardPattern.ExtractFileNameSafe(candidate);
-                if (!string.IsNullOrWhiteSpace(clean))
+                if (!string.IsNullOrWhiteSpace(clean) && existingIncludeNames.Add(clean))
                 {
-                    masked.IncludeList.Add(clean, true);
+                    updated.IncludeList.Add(clean, true);
+                    includeListChanged = true;
+                    settingsChanged = true;
                 }
             }
         }
 
         try
         {
-            _settingsManager.SaveSymbolSettings(masked, loadSymbolsNow: false);
+            if (settingsChanged)
+            {
+                _settingsManager.SaveSymbolSettings(updated, loadSymbolsNow: false);
+            }
+
             loadAction();
         }
         finally
         {
-            try
+            if (maskSymbolServers || includeListChanged)
             {
-                var unmasked = _settingsManager.GetCurrentSymbolSettings().Clone();
-                unmasked.UseMSSymbolServers = origUseMs;
-                if (unmasked is IVsDebuggerSymbolSettings161 unmasked161)
+                try
                 {
-                    unmasked161.set_UseNugetSymbolServers(origUseNuget);
-                }
+                    var restored = _settingsManager.GetCurrentSymbolSettings().Clone();
+                    if (maskSymbolServers)
+                    {
+                        restored.UseMSSymbolServers = origUseMs;
+                        if (restored is IVsDebuggerSymbolSettings161 restored161)
+                        {
+                            restored161.set_UseNugetSymbolServers(origUseNuget);
+                        }
 
-                unmasked.SymbolPaths.Clear();
-                foreach (var opt in origSymbolPaths)
+                        restored.SymbolPaths.Clear();
+                        foreach (var opt in origSymbolPaths!)
+                        {
+                            restored.SymbolPaths.Add(opt.Name, opt.IsEnabled);
+                        }
+                    }
+
+                    if (includeListChanged)
+                    {
+                        restored.IncludeList.Clear();
+                        foreach (var opt in origIncludeList)
+                        {
+                            restored.IncludeList.Add(opt.Name, opt.IsEnabled);
+                        }
+                    }
+
+                    _settingsManager.SaveSymbolSettings(restored, loadSymbolsNow: false);
+                }
+                catch (Exception ex)
                 {
-                    unmasked.SymbolPaths.Add(opt.Name, opt.IsEnabled);
+                    _logger.Error("Failed to restore symbol settings after on-demand load pass.", ex);
                 }
-
-                _settingsManager.SaveSymbolSettings(unmasked, loadSymbolsNow: false);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("Failed to unmask symbol servers after local load pass.", ex);
             }
         }
     }
@@ -395,7 +412,7 @@ public sealed class SymbolSettingsManager
         }
     }
 
-    private void RestoreSettingsToVs(SymbolSettingsBackupDto backup)
+    private void RestoreSettingsToVs(SymbolSettingsBackupDto backup, bool restoreSymbolServersAndPaths)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
@@ -409,20 +426,23 @@ public sealed class SymbolSettingsManager
             updated170.set_AutomaticSymbolLoad(backup.AutomaticSymbolLoad);
         }
 
-        updated.UseMSSymbolServers = backup.UseMsSymbolServers;
-        if (updated is IVsDebuggerSymbolSettings161 updated161)
+        if (restoreSymbolServersAndPaths)
         {
-            updated161.set_UseNugetSymbolServers(backup.UseNugetSymbolServers);
-        }
-
-        if (backup.SymbolPaths != null && backup.SymbolPaths.Count > 0)
-        {
-            updated.SymbolPaths.Clear();
-            foreach (var opt in backup.SymbolPaths)
+            updated.UseMSSymbolServers = backup.UseMsSymbolServers;
+            if (updated is IVsDebuggerSymbolSettings161 updated161)
             {
-                if (!string.IsNullOrWhiteSpace(opt.Name))
+                updated161.set_UseNugetSymbolServers(backup.UseNugetSymbolServers);
+            }
+
+            if (backup.SymbolPaths != null && backup.SymbolPaths.Count > 0)
+            {
+                updated.SymbolPaths.Clear();
+                foreach (var opt in backup.SymbolPaths)
                 {
-                    updated.SymbolPaths.Add(opt.Name, opt.IsEnabled);
+                    if (!string.IsNullOrWhiteSpace(opt.Name))
+                    {
+                        updated.SymbolPaths.Add(opt.Name, opt.IsEnabled);
+                    }
                 }
             }
         }

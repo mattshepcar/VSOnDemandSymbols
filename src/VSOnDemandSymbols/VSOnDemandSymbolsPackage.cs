@@ -52,6 +52,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
     private DTE2? _dte;
     private uint _solutionEventsCookie;
     private bool _isUnrealSolutionOpen;
+    private string? _activeSolutionPath;
 
     protected override async Task InitializeAsync(
         CancellationToken cancellationToken,
@@ -131,12 +132,19 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
                 return;
             }
 
+            if (_isUnrealSolutionOpen &&
+                string.Equals(_activeSolutionPath, solutionPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             string? solutionDir = Path.GetDirectoryName(solutionPath);
             bool isUnreal = !string.IsNullOrEmpty(solutionDir) && (_resolver?.IsUnrealSolution(solutionDir!) ?? false);
 
             if (isUnreal)
             {
                 _isUnrealSolutionOpen = true;
+                _activeSolutionPath = solutionPath;
                 if (_sessionMonitor != null)
                 {
                     _sessionMonitor.IsEnabled = true;
@@ -159,6 +167,7 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
     {
         ThreadHelper.ThrowIfNotOnUIThread();
 
+        _activeSolutionPath = null;
         if (_isUnrealSolutionOpen)
         {
             _isUnrealSolutionOpen = false;

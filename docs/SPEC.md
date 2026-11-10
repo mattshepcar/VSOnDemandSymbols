@@ -152,11 +152,11 @@ VSOnDemandSymbols/
   * Logs symbol loads with reason `Breakpoint`.
 * Subscribes to `DTE.Events.DebuggerEvents.OnEnterBreakMode` and `OnContextChanged`:
   * Governed by `BreakSymbolLoadMode` (`Off`, `LocalOnly` [default], `All`), configurable via Visual Studio Unified Settings (`Debugging -> Symbols -> On Demand Loading`).
-  * Inspects `CurrentThread.StackFrames` fully, and for non-step breaks (breakpoint hits, exceptions, manual break) up to 10 frames of background threads in `CurrentProgram.Threads` (stopping at the first user-code module). Single-stepping (F10/F11) inspects only `CurrentThread`.
+  * Walks thread stacks via AD7 `IDebugProgram2.EnumThreads` and `IDebugThread2.EnumFrameInfo(FIF_MODULE)` (with DTE fallback): inspects `CurrentThread` fully, and for non-step breaks (breakpoint hits, exceptions, manual break) up to 10 frames of background threads in 4-frame chunks (stopping at the first user-code module). Single-stepping (F10/F11) inspects only `CurrentThread`.
   * For `LocalOnly`, temporarily masks remote symbol servers so Visual Studio native loader resolves only adjacent, locally cached, or local path PDBs without network latency.
   * For `All`, resolves symbols with remote symbol servers unmasked.
   * For each frame without symbols, locates matching `EnvDTE90.Module` and calls `mod.LoadSymbols("")`.
-  * If the top source-resolvable stack frame on `CurrentThread` belongs to a module whose symbols were just loaded on demand, updates `DTE.Debugger.CurrentStackFrame` to that frame and opens its source file at the breaking line in the editor (ADR-11).
+  * If the top user-code stack frame on `CurrentThread` was not already symbolized prior to the break and belongs to a module whose symbols were just loaded on demand, updates `DTE.Debugger.CurrentStackFrame` to that frame and opens its source file at the breaking line in the editor (ADR-11).
   * Logs symbol loads with reason `BreakMode` or `ContextChanged`.
 
 #### 5. `VSOnDemandSymbolsPackage` (VSIX)

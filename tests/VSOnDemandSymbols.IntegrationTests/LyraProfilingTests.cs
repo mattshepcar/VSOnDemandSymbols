@@ -111,6 +111,16 @@ public sealed class LyraProfilingTests
             ? _inSessionWarmBreakReport.BreakModeEvents.Sum(e => e.TotalMs)
             : 0L;
         Console.WriteLine($"  -> [IN-SESSION WARM BREAK] Continue to Break(Start) : {_inSessionWarmContinueToBreakMs} ms (additional symbol loads: {_inSessionWarmBreakReport.ModuleLoads.Count}, on-demand overhead: {warmBreakOnDemandMs} ms)");
+        if (_inSessionWarmBreakReport.BreakModeEvents.Count > 0)
+        {
+            var wbm = _inSessionWarmBreakReport.BreakModeEvents[0];
+            Console.WriteLine(
+                $"  -> [IN-SESSION WARM BREAK] BreakMode Profile        : total={wbm.TotalMs}ms " +
+                $"(stackWalk={wbm.StackWalkMs}ms [threads={wbm.ThreadsInspected}, frames={wbm.FramesInspected}], " +
+                $"moduleScan={wbm.ModuleScanMs}ms [modules={wbm.ModulesScanned}], " +
+                $"symbolLoad={wbm.SymbolLoadMs}ms [loaded={wbm.ModulesLoaded}/{wbm.CandidateTargetModules}], " +
+                $"contextRefresh={wbm.ContextRefreshMs}ms)");
+        }
 
         // 2. Test Mid-Session Breakpoint Binding on an unsymbolized 115 MB PDB module (UnrealEditor-LyraGame*.dll)
         _fixture.ClearOnDemandSymbolsOutputPane();

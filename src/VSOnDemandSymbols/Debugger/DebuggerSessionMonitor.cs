@@ -34,9 +34,13 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private readonly CommandEvents _launchCommandEvents;
     private readonly DebuggerEvents _debuggerEvents;
     private readonly HashSet<string> _loadedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _symbolizedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
 
     private int _rescanPending;
     private int _lastInspectedThreadId;
+    private IDebugProgram2? _activeAd7Program;
+    private IDebugProcess2? _activeAd7Process;
+    private IDebugThread2? _lastAd7EventThread;
     private bool _advised;
     private bool _disposed;
 
@@ -186,6 +190,21 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 return VSConstants.S_OK;
             }
 
+            if (pProgram != null)
+            {
+                _activeAd7Program = pProgram;
+            }
+
+            if (pProcess != null)
+            {
+                _activeAd7Process = pProcess;
+            }
+
+            if (pThread != null)
+            {
+                _lastAd7EventThread = pThread;
+            }
+
             if (riidEvent == typeof(IDebugBreakpointErrorEvent2).GUID &&
                 Interlocked.CompareExchange(ref _rescanPending, 1, 0) == 0)
             {
@@ -276,6 +295,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         if (HasSymbolsLoaded(mod))
                         {
                             _loadedModulesThisSession.Add(modFileName);
+                            _symbolizedModulesThisSession.Add(modFileName);
                             continue;
                         }
 
@@ -308,6 +328,10 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                                 symbolLoadMs += modSw.ElapsedMilliseconds;
                                 loadedCount++;
                                 _loadedModulesThisSession.Add(modFileName);
+                                if (HasSymbolsLoaded(mod))
+                                {
+                                    _symbolizedModulesThisSession.Add(modFileName);
+                                }
                                 _logger.Info($"Loading symbols on demand: {modFileName} — Breakpoint ({modSw.ElapsedMilliseconds} ms)");
                             }
                             catch (Exception ex)
@@ -367,28 +391,16 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 return;
             }
 
-            var threadsToInspect = new List<EnvDTE.Thread>();
             var currentThread = debugger.CurrentThread;
             if (currentThread != null)
             {
                 _lastInspectedThreadId = GetThreadIdSafe(currentThread);
-                threadsToInspect.Add(currentThread);
             }
 
             // Only inspect background threads on non-step breaks (breakpoint hits, exceptions, manual breaks).
             // Single-stepping (F10/F11) restricts inspection to CurrentThread to keep stepping fast and responsive.
-            if (reason != dbgEventReason.dbgEventReasonStep && debugger.CurrentProgram?.Threads != null)
-            {
-                foreach (EnvDTE.Thread th in debugger.CurrentProgram.Threads)
-                {
-                    if (th != currentThread)
-                    {
-                        threadsToInspect.Add(th);
-                    }
-                }
-            }
-
-            LoadSymbolsForThreads(threadsToInspect, "BreakMode");
+            bool inspectBackgroundThreads = reason != dbgEventReason.dbgEventReasonStep;
+            LoadSymbolsForBreak(currentThread, inspectBackgroundThreads, "BreakMode");
         }
         catch (Exception ex)
         {
@@ -418,7 +430,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 }
 
                 _lastInspectedThreadId = threadId;
-                LoadSymbolsForThreads(new[] { targetThread }, "ContextChanged");
+                LoadSymbolsForBreak(targetThread, inspectBackgroundThreads: false, "ContextChanged");
             }
         }
         catch (Exception ex)
@@ -427,7 +439,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         }
     }
 
-    private void LoadSymbolsForThreads(IEnumerable<EnvDTE.Thread> threads, string reason)
+    private void LoadSymbolsForBreak(EnvDTE.Thread? targetThread, bool inspectBackgroundThreads, string reason)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         var debugger = _dte.Debugger;
@@ -440,63 +452,37 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         {
             var totalSw = Stopwatch.StartNew();
             var stackWalkSw = Stopwatch.StartNew();
-            var currentThread = debugger.CurrentThread;
+            var currentThread = targetThread ?? debugger.CurrentThread;
+            uint targetThreadId = (uint)GetThreadIdSafe(currentThread);
             var missingModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var currentThreadModules = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            string? topCurrentThreadUserModule = null;
             const int maxNonCurrentThreadFrames = 10;
             int threadsInspected = 0;
             int framesInspected = 0;
 
-            foreach (EnvDTE.Thread th in threads)
+            bool walkedViaAd7 = TryCollectMissingModulesViaAd7(
+                targetThreadId,
+                inspectBackgroundThreads,
+                maxNonCurrentThreadFrames,
+                missingModules,
+                currentThreadModules,
+                out topCurrentThreadUserModule,
+                out threadsInspected,
+                out framesInspected);
+
+            if (!walkedViaAd7)
             {
-                try
-                {
-                    var frames = th.StackFrames;
-                    if (frames == null)
-                    {
-                        continue;
-                    }
-
-                    threadsInspected++;
-                    int frameIndex = 0;
-                    foreach (StackFrame frame in frames)
-                    {
-                        frameIndex++;
-                        if (th != currentThread && frameIndex > maxNonCurrentThreadFrames)
-                        {
-                            break;
-                        }
-
-                        framesInspected++;
-                        string? rawMod = null;
-                        try
-                        {
-                            rawMod = frame.Module;
-                        }
-                        catch
-                        {
-                        }
-
-                        string? norm = WildcardPattern.NormalizeFrameModuleName(rawMod);
-                        if (!string.IsNullOrWhiteSpace(norm))
-                        {
-                            if (!_loadedModulesThisSession.Contains(norm!))
-                            {
-                                missingModules.Add(norm!);
-                            }
-
-                            // For non-current threads, stop once the first user-code module is encountered
-                            // so that the thread's location is resolved without walking deeper OS/runtime frames.
-                            if (th != currentThread && WildcardPattern.IsUserCodeModule(rawMod ?? norm))
-                            {
-                                break;
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    // Ignore errors reading individual thread stack frames
-                }
+                CollectMissingModulesViaDte(
+                    debugger,
+                    currentThread,
+                    inspectBackgroundThreads,
+                    maxNonCurrentThreadFrames,
+                    missingModules,
+                    currentThreadModules,
+                    out topCurrentThreadUserModule,
+                    out threadsInspected,
+                    out framesInspected);
             }
 
             stackWalkSw.Stop();
@@ -504,6 +490,10 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
             if (missingModules.Count == 0)
             {
+                totalSw.Stop();
+                _logger.Diagnostic(
+                    $"[Profile] {reason} (no new modules): total={totalSw.ElapsedMilliseconds}ms " +
+                    $"(stackWalk={stackWalkMs}ms [threads={threadsInspected}, frames={framesInspected}])");
                 return;
             }
 
@@ -530,6 +520,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         if (HasSymbolsLoaded(mod))
                         {
                             _loadedModulesThisSession.Add(modFileName);
+                            _symbolizedModulesThisSession.Add(modFileName);
                             continue;
                         }
 
@@ -581,6 +572,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                         if (HasSymbolsLoaded(mod))
                         {
                             newlyLoadedModules.Add(modFileName);
+                            _symbolizedModulesThisSession.Add(modFileName);
                         }
                         _logger.Info($"Loading symbols on demand{modeDesc}: {modFileName} — {reason} ({modSw.ElapsedMilliseconds} ms)");
                     }
@@ -607,10 +599,18 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             long symbolLoadMs = symbolLoadSw.ElapsedMilliseconds;
 
             long contextRefreshMs = 0;
-            if (newlyLoadedModules.Count > 0 && currentThread != null)
+            bool shouldRefreshContext =
+                newlyLoadedModules.Count > 0 &&
+                currentThread != null &&
+                (currentThreadModules.Count == 0 || newlyLoadedModules.Overlaps(currentThreadModules)) &&
+                (topCurrentThreadUserModule == null ||
+                 newlyLoadedModules.Contains(topCurrentThreadUserModule) ||
+                 !_symbolizedModulesThisSession.Contains(topCurrentThreadUserModule));
+
+            if (shouldRefreshContext)
             {
                 var contextSw = Stopwatch.StartNew();
-                RefreshBreakingFrameContext(debugger, currentThread, newlyLoadedModules);
+                RefreshBreakingFrameContext(debugger, currentThread!, newlyLoadedModules);
                 contextSw.Stop();
                 contextRefreshMs = contextSw.ElapsedMilliseconds;
             }
@@ -626,6 +626,344 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         catch (Exception ex)
         {
             _logger.Error($"Error loading symbols for threads ({reason}).", ex);
+        }
+    }
+
+    /// <summary>
+    /// Walks thread stacks using AD7 <see cref="IDebugThread2.EnumFrameInfo"/> with <see cref="enum_FRAMEINFO_FLAGS.FIF_MODULE"/>
+    /// only, avoiding DTE's full-stack function/argument formatting overhead and per-frame COM automation calls.
+    /// </summary>
+    private bool TryCollectMissingModulesViaAd7(
+        uint targetThreadId,
+        bool inspectBackgroundThreads,
+        int maxNonCurrentThreadFrames,
+        HashSet<string> missingModules,
+        HashSet<string> currentThreadModules,
+        out string? topCurrentThreadUserModule,
+        out int threadsInspected,
+        out int framesInspected)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        topCurrentThreadUserModule = null;
+        threadsInspected = 0;
+        framesInspected = 0;
+
+        try
+        {
+            var program = _activeAd7Program;
+            if (program == null && _activeAd7Process != null &&
+                ErrorHandler.Succeeded(_activeAd7Process.EnumPrograms(out IEnumDebugPrograms2? enumProgs)) &&
+                enumProgs != null)
+            {
+                var progBuf = new IDebugProgram2[1];
+                uint progFetched = 0;
+                if (ErrorHandler.Succeeded(enumProgs.Next(1, progBuf, ref progFetched)) && progFetched == 1 && progBuf[0] != null)
+                {
+                    program = progBuf[0];
+                    _activeAd7Program = program;
+                }
+            }
+
+            var frameBuffer = new FRAMEINFO[32];
+
+            // Fast path when inspecting only the active/target thread (e.g. single-stepping or OnContextChanged)
+            if (!inspectBackgroundThreads && _lastAd7EventThread != null && targetThreadId != 0 &&
+                ErrorHandler.Succeeded(_lastAd7EventThread.GetThreadId(out uint lastTid)) && lastTid == targetThreadId)
+            {
+                InspectAd7ThreadFrames(
+                    _lastAd7EventThread,
+                    isCurrentThread: true,
+                    maxNonCurrentThreadFrames,
+                    missingModules,
+                    currentThreadModules,
+                    ref topCurrentThreadUserModule,
+                    ref threadsInspected,
+                    ref framesInspected,
+                    frameBuffer);
+                if (threadsInspected > 0)
+                {
+                    return true;
+                }
+            }
+
+            if (program == null ||
+                !ErrorHandler.Succeeded(program.EnumThreads(out IEnumDebugThreads2? enumThreads)) ||
+                enumThreads == null)
+            {
+                return false;
+            }
+
+            var threadBatch = new IDebugThread2[64];
+            while (true)
+            {
+                uint threadsFetched = 0;
+                int hr = enumThreads.Next((uint)threadBatch.Length, threadBatch, ref threadsFetched);
+                if (!ErrorHandler.Succeeded(hr) || threadsFetched == 0)
+                {
+                    break;
+                }
+
+                for (uint i = 0; i < threadsFetched; i++)
+                {
+                    var ad7Thread = threadBatch[i];
+                    threadBatch[i] = null!;
+                    if (ad7Thread == null)
+                    {
+                        continue;
+                    }
+
+                    uint tid = 0;
+                    try
+                    {
+                        ad7Thread.GetThreadId(out tid);
+                    }
+                    catch
+                    {
+                    }
+
+                    bool isCurrentThread = targetThreadId != 0 && tid == targetThreadId;
+                    if (!inspectBackgroundThreads && !isCurrentThread)
+                    {
+                        continue;
+                    }
+
+                    InspectAd7ThreadFrames(
+                        ad7Thread,
+                        isCurrentThread,
+                        maxNonCurrentThreadFrames,
+                        missingModules,
+                        currentThreadModules,
+                        ref topCurrentThreadUserModule,
+                        ref threadsInspected,
+                        ref framesInspected,
+                        frameBuffer);
+
+                    if (!inspectBackgroundThreads && isCurrentThread)
+                    {
+                        return threadsInspected > 0;
+                    }
+                }
+            }
+
+            return threadsInspected > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void InspectAd7ThreadFrames(
+        IDebugThread2 ad7Thread,
+        bool isCurrentThread,
+        int maxNonCurrentThreadFrames,
+        HashSet<string> missingModules,
+        HashSet<string> currentThreadModules,
+        ref string? topCurrentThreadUserModule,
+        ref int threadsInspected,
+        ref int framesInspected,
+        FRAMEINFO[] frameBuffer)
+    {
+        try
+        {
+            if (!ErrorHandler.Succeeded(ad7Thread.EnumFrameInfo(
+                    enum_FRAMEINFO_FLAGS.FIF_MODULE,
+                    10,
+                    out IEnumDebugFrameInfo2? enumFrames)) ||
+                enumFrames == null)
+            {
+                return;
+            }
+
+            threadsInspected++;
+
+            if (isCurrentThread)
+            {
+                while (true)
+                {
+                    uint fetched = 0;
+                    int hr = enumFrames.Next((uint)frameBuffer.Length, frameBuffer, ref fetched);
+                    if (!ErrorHandler.Succeeded(hr) || fetched == 0)
+                    {
+                        break;
+                    }
+
+                    for (uint i = 0; i < fetched; i++)
+                    {
+                        framesInspected++;
+                        string? rawMod = (frameBuffer[i].m_dwValidFields & enum_FRAMEINFO_FLAGS.FIF_MODULE) != 0
+                            ? frameBuffer[i].m_bstrModule
+                            : null;
+                        frameBuffer[i] = default;
+
+                        string? norm = WildcardPattern.NormalizeFrameModuleName(rawMod);
+                        if (!string.IsNullOrWhiteSpace(norm))
+                        {
+                            currentThreadModules.Add(norm!);
+                            if (topCurrentThreadUserModule == null && WildcardPattern.IsUserCodeModule(rawMod ?? norm))
+                            {
+                                topCurrentThreadUserModule = norm;
+                            }
+
+                            if (!_loadedModulesThisSession.Contains(norm!))
+                            {
+                                missingModules.Add(norm!);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                int remaining = maxNonCurrentThreadFrames;
+                uint chunkSize = 4;
+                while (remaining > 0)
+                {
+                    uint requestCount = (uint)Math.Min(remaining, (int)Math.Min(chunkSize, (uint)frameBuffer.Length));
+                    uint fetched = 0;
+                    if (!ErrorHandler.Succeeded(enumFrames.Next(requestCount, frameBuffer, ref fetched)) || fetched == 0)
+                    {
+                        break;
+                    }
+
+                    remaining -= (int)fetched;
+                    bool hitUserCode = false;
+                    for (uint i = 0; i < fetched; i++)
+                    {
+                        string? rawMod = (frameBuffer[i].m_dwValidFields & enum_FRAMEINFO_FLAGS.FIF_MODULE) != 0
+                            ? frameBuffer[i].m_bstrModule
+                            : null;
+                        frameBuffer[i] = default;
+
+                        if (hitUserCode)
+                        {
+                            continue;
+                        }
+
+                        framesInspected++;
+                        string? norm = WildcardPattern.NormalizeFrameModuleName(rawMod);
+                        if (!string.IsNullOrWhiteSpace(norm))
+                        {
+                            if (!_loadedModulesThisSession.Contains(norm!))
+                            {
+                                missingModules.Add(norm!);
+                            }
+
+                            if (WildcardPattern.IsUserCodeModule(rawMod ?? norm))
+                            {
+                                hitUserCode = true;
+                            }
+                        }
+                    }
+
+                    if (hitUserCode || fetched < requestCount)
+                    {
+                        break;
+                    }
+
+                    chunkSize = (uint)remaining;
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors reading individual thread stack frames
+        }
+    }
+
+    private void CollectMissingModulesViaDte(
+        EnvDTE.Debugger debugger,
+        EnvDTE.Thread? currentThread,
+        bool inspectBackgroundThreads,
+        int maxNonCurrentThreadFrames,
+        HashSet<string> missingModules,
+        HashSet<string> currentThreadModules,
+        out string? topCurrentThreadUserModule,
+        out int threadsInspected,
+        out int framesInspected)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        topCurrentThreadUserModule = null;
+        threadsInspected = 0;
+        framesInspected = 0;
+
+        var threadsToInspect = new List<EnvDTE.Thread>();
+        if (currentThread != null)
+        {
+            threadsToInspect.Add(currentThread);
+        }
+
+        if (inspectBackgroundThreads && debugger.CurrentProgram?.Threads != null)
+        {
+            foreach (EnvDTE.Thread th in debugger.CurrentProgram.Threads)
+            {
+                if (th != currentThread)
+                {
+                    threadsToInspect.Add(th);
+                }
+            }
+        }
+
+        foreach (EnvDTE.Thread th in threadsToInspect)
+        {
+            try
+            {
+                var frames = th.StackFrames;
+                if (frames == null)
+                {
+                    continue;
+                }
+
+                threadsInspected++;
+                int frameIndex = 0;
+                foreach (StackFrame frame in frames)
+                {
+                    frameIndex++;
+                    if (th != currentThread && frameIndex > maxNonCurrentThreadFrames)
+                    {
+                        break;
+                    }
+
+                    framesInspected++;
+                    string? rawMod = null;
+                    try
+                    {
+                        rawMod = frame.Module;
+                    }
+                    catch
+                    {
+                    }
+
+                    string? norm = WildcardPattern.NormalizeFrameModuleName(rawMod);
+                    if (!string.IsNullOrWhiteSpace(norm))
+                    {
+                        if (th == currentThread)
+                        {
+                            currentThreadModules.Add(norm!);
+                            if (topCurrentThreadUserModule == null && WildcardPattern.IsUserCodeModule(rawMod ?? norm))
+                            {
+                                topCurrentThreadUserModule = norm;
+                            }
+                        }
+
+                        if (!_loadedModulesThisSession.Contains(norm!))
+                        {
+                            missingModules.Add(norm!);
+                        }
+
+                        // For non-current threads, stop once the first user-code module is encountered
+                        // so that the thread's location is resolved without walking deeper OS/runtime frames.
+                        if (th != currentThread && WildcardPattern.IsUserCodeModule(rawMod ?? norm))
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors reading individual thread stack frames
+            }
         }
     }
 
@@ -762,7 +1100,11 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         _lastInspectedThreadId = 0;
+        _activeAd7Program = null;
+        _activeAd7Process = null;
+        _lastAd7EventThread = null;
         _loadedModulesThisSession.Clear();
+        _symbolizedModulesThisSession.Clear();
     }
 
     public void Dispose()
@@ -794,6 +1136,10 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
             // Ignore shutdown errors
         }
 
+        _activeAd7Program = null;
+        _activeAd7Process = null;
+        _lastAd7EventThread = null;
         _loadedModulesThisSession.Clear();
+        _symbolizedModulesThisSession.Clear();
     }
 }

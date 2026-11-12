@@ -35,6 +35,8 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
 [ProvideSettingsManifest(PackageRelativeManifestFile = @"Settings\registration.json")]
+[ProvideObject(typeof(SymbolSettingsLaunchHook))]
+[ProvideDebugLaunchHook(typeof(SymbolSettingsLaunchHook), SymbolSettingsLaunchHook.HookRegistrationName)]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {
@@ -42,6 +44,10 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
     public const string CppSolutionUiContextGuidString = "4f8d2b19-6a34-4e52-9c71-83b4a1e0c512";
 
     private const string BreakSymbolLoadModeMoniker = "debugging.symbols.onDemandLoading.breakSymbolLoadMode";
+
+    internal static DebuggerSessionMonitor? CurrentSessionMonitor { get; private set; }
+    internal static SymbolSettingsManager? CurrentSettingsManager { get; private set; }
+    internal static ILogger? Logger { get; private set; }
 
     private OutputLog? _logger;
     private SymbolSettingsManager? _symbolSettingsManager;
@@ -99,6 +105,10 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);
             _sessionMonitor = new DebuggerSessionMonitor(_dte, vsDebugger, JoinableTaskFactory, _symbolSettingsManager, _resolver, _logger);
 
+            CurrentSessionMonitor = _sessionMonitor;
+            CurrentSettingsManager = _symbolSettingsManager;
+            Logger = _logger;
+
             var settingsReader = await GetServiceAsync(typeof(ISettingsReader)) as ISettingsReader;
             if (settingsReader != null)
             {
@@ -151,7 +161,6 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
                     _sessionMonitor.IsEnabled = true;
                 }
                 _logger?.Info($"Unreal solution detected: '{Path.GetFileName(solutionPath)}'. On-Demand Symbols active.");
-                _sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened");
             }
             else
             {
@@ -223,6 +232,10 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
         {
             try
             {
+                CurrentSessionMonitor = null;
+                CurrentSettingsManager = null;
+                Logger = null;
+
                 if (_solutionEventsCookie != 0 && _vsSolution != null)
                 {
                     _vsSolution.UnadviseSolutionEvents(_solutionEventsCookie);

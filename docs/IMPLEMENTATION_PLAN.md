@@ -70,17 +70,17 @@ All coordination logic stays VS-free in `netstandard2.0` so every interleaving c
 
 ## Phase 3: Launch Hook, Session Monitor & Package Lifecycle (`VSOnDemandSymbols`)
 
-- [ ] **3.1 `SymbolSettingsLaunchHook` (`Debugger/SymbolSettingsLaunchHook.cs`):**
+- [x] **3.1 `SymbolSettingsLaunchHook` (`Debugger/SymbolSettingsLaunchHook.cs`):**
   - Implements `IVsDebugLaunchHook` (`OnLaunchDebugTargets`, `SetNextHook`, `IsProcessRecycleRequired`) and registers via `[ProvideObject]` / `.pkgdef` under `Debugger\LaunchHooks110`.
   - If Unreal solution is open and extension is enabled: resolves breakpoints via `DebuggerSessionMonitor.ResolveWantedBinariesFromBreakpoints()` and calls `Reconcile(wantedBinaries)`.
   - Otherwise (non-Unreal launch): if `baseline.json` exists, calls `Reconcile(null)` to restore baseline settings before launch proceeds (Rule P1: correctness beats speed); else zero-touch.
   - Always forwards to `_nextHook?.OnLaunchDebugTargets(...)` inside `try/catch` (Golden Rule #2).
-- [ ] **3.2 Update `DebuggerSessionMonitor` (`Debugger/DebuggerSessionMonitor.cs`):**
+- [x] **3.2 Update `DebuggerSessionMonitor` (`Debugger/DebuggerSessionMonitor.cs`):**
   - Expose `ResolveWantedBinariesFromBreakpoints()`.
   - Remove `CommandEvents.BeforeExecute (cmdidStart)` subscription (unless retained as S2 fallback).
   - Update `OnBreakpointBindError` to call `Reconcile(refreshedWantedBinaries)`.
   - Update `OnEnterDesignMode` to release this instance's lease via `Reconcile(null)`.
-- [ ] **3.3 Update `VSOnDemandSymbolsPackage` (`VSOnDemandSymbolsPackage.cs`):**
+- [x] **3.3 Update `VSOnDemandSymbolsPackage` (`VSOnDemandSymbolsPackage.cs`):**
   - Remove `_sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened")` from `EvaluateOpenSolution()`. Detection only sets `IsEnabled = true`.
   - In `InitializeAsync`: call `Reconcile(null)` (crash recovery / dead-lease prune).
   - In `HandleSolutionClosed` and `Dispose`: call `Reconcile(null)`.

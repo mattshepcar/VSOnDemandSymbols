@@ -31,7 +31,6 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private readonly UnrealModuleResolver _resolver;
     private readonly ILogger _logger;
 
-    private readonly CommandEvents _launchCommandEvents;
     private readonly DebuggerEvents _debuggerEvents;
     private readonly HashSet<string> _loadedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _symbolizedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
@@ -78,13 +77,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        // Intercept F5 / Debug.Start to populate IncludeList before launch.
-        // Uses Standard Command Set 97 (guidVSStd97 from stdidcmd.h) and cmdidStart (295).
-        _launchCommandEvents = _dte.Events.get_CommandEvents(
-            VSConstants.CMDSETID.StandardCommandSet97_string,
-            (int)VSConstants.VSStd97CmdID.Start);
-        _launchCommandEvents.BeforeExecute += OnBeforeLaunch;
-
+        // Debugger event subscriptions (SPEC.md §4.1)
         _debuggerEvents = _dte.Events.DebuggerEvents;
         _debuggerEvents.OnEnterBreakMode += OnEnterBreakMode;
         _debuggerEvents.OnEnterDesignMode += OnEnterDesignMode;
@@ -95,6 +88,44 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         {
             _logger.Warning("Could not subscribe to debugger events; new breakpoints during a session will not trigger symbol loads.");
         }
+    }
+
+    /// <summary>
+    /// Resolves breakpoints (both enabled and disabled) to candidate binary names.
+    /// Always includes the UnrealEditor executable wildcard pattern.
+    /// </summary>
+    public IReadOnlyList<string> ResolveWantedBinariesFromBreakpoints(out int breakpointCount)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        breakpointCount = 0;
+
+        var wantedBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "UnrealEditor*.exe"
+        };
+
+        if (_dte.Debugger?.Breakpoints != null)
+        {
+            foreach (Breakpoint bp in _dte.Debugger.Breakpoints)
+            {
+                if (string.IsNullOrWhiteSpace(bp.File))
+                {
+                    continue;
+                }
+
+                string? moduleName = _resolver.ResolveModuleFromSource(bp.File);
+                if (!string.IsNullOrWhiteSpace(moduleName))
+                {
+                    breakpointCount++;
+                    foreach (string binary in _resolver.GetCandidateBinaries(moduleName!))
+                    {
+                        wantedBinaries.Add(binary);
+                    }
+                }
+            }
+        }
+
+        return new List<string>(wantedBinaries);
     }
 
     /// <summary>
@@ -113,40 +144,11 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         try
         {
             var totalSw = Stopwatch.StartNew();
-            var wantedBinaries = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            {
-                "UnrealEditor*.exe"
-            };
-
-            var candidatePatterns = new List<string>();
-            int breakpointCount = 0;
-            if (_dte.Debugger?.Breakpoints != null)
-            {
-                foreach (Breakpoint bp in _dte.Debugger.Breakpoints)
-                {
-                    if (string.IsNullOrWhiteSpace(bp.File))
-                    {
-                        continue;
-                    }
-
-                    string? moduleName = _resolver.ResolveModuleFromSource(bp.File);
-                    if (!string.IsNullOrWhiteSpace(moduleName))
-                    {
-                        breakpointCount++;
-                        foreach (string binary in _resolver.GetCandidateBinaries(moduleName!))
-                        {
-                            if (wantedBinaries.Add(binary))
-                            {
-                                candidatePatterns.Add(binary);
-                            }
-                        }
-                    }
-                }
-            }
-
+            var wantedBinaries = ResolveWantedBinariesFromBreakpoints(out int breakpointCount);
             long resolveMs = totalSw.ElapsedMilliseconds;
+
             var applySw = Stopwatch.StartNew();
-            bool applied = _settings.ApplyManualMode(wantedBinaries, reason: $"{reason} (breakpoints: {breakpointCount})");
+            bool applied = _settings.Reconcile(wantedBinaries, reason: $"{reason} (breakpoints: {breakpointCount})");
             long applyMs = applySw.ElapsedMilliseconds;
             totalSw.Stop();
 
@@ -161,6 +163,15 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
                 _logger.Diagnostic(
                     $"[Profile] UpdateIncludeList ({reason}, unchanged): total={totalSw.ElapsedMilliseconds}ms " +
                     $"(resolve={resolveMs}ms [breakpoints={breakpointCount}], apply={applyMs}ms)");
+            }
+
+            var candidatePatterns = new List<string>();
+            foreach (string b in wantedBinaries)
+            {
+                if (!b.StartsWith("UnrealEditor*", StringComparison.OrdinalIgnoreCase))
+                {
+                    candidatePatterns.Add(b);
+                }
             }
             return candidatePatterns;
         }
@@ -362,16 +373,6 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         }
     }
 
-    private void OnBeforeLaunch(string guid, int id, object customIn, object customOut, ref bool cancelDefault)
-    {
-        ThreadHelper.ThrowIfNotOnUIThread();
-        if (!IsEnabled)
-        {
-            return;
-        }
-
-        UpdateIncludeListFromBreakpoints("before launch");
-    }
 
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
     {
@@ -1129,7 +1130,6 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
-            _launchCommandEvents.BeforeExecute -= OnBeforeLaunch;
             _debuggerEvents.OnEnterBreakMode -= OnEnterBreakMode;
             _debuggerEvents.OnEnterDesignMode -= OnEnterDesignMode;
             _debuggerEvents.OnContextChanged -= OnContextChanged;

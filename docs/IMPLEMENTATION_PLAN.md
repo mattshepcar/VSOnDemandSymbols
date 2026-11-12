@@ -27,31 +27,31 @@ Before refactoring the production classes, verify the two Visual Studio host ass
 
 All coordination logic stays VS-free in `netstandard2.0` so every interleaving can be deterministically unit-tested.
 
-- [ ] **1.1 Process abstraction (`Abstractions/IProcessInfo.cs` & `SystemProcessInfo.cs`):**
+- [x] **1.1 Process abstraction (`Abstractions/IProcessInfo.cs` & `SystemProcessInfo.cs`):**
   - `int CurrentProcessId { get; }`
   - `DateTime CurrentProcessStartTimeUtc { get; }`
   - `bool IsDevenvProcessAlive(int pid, DateTime expectedStartTimeUtc)` — verifies PID exists, process name is `devenv`, and `StartTime.ToUniversalTime()` matches within ±2 seconds (guards against OS PID reuse).
-- [ ] **1.2 Snapshot & Coordination DTOs (`State/SymbolSettingsSnapshot.cs`, `State/CoordinationDtos.cs`):**
+- [x] **1.2 Snapshot & Coordination DTOs (`State/SymbolSettingsSnapshot.cs`, `State/CoordinationDtos.cs`):**
   - `SymbolSettingsSnapshot`: `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList`, `UseMsSymbolServers`, `UseNugetSymbolServers`, `SymbolPaths`, plus structural equality helpers for managed fields vs. server fields.
   - `BaselineDto`: `State` (`Active` | `Released`), `ActiveSinceUtc`, `ReleasedUtc`, `Snapshot`.
   - `SessionLeaseDto`: `ProcessId`, `ProcessStartTimeUtc`, `Kind` (`Unreal` | `Baseline`), `WantedBinaries`, `ServerMaskActive`, `UpdatedUtc`.
   - `DirtyWindowDto` / `DirtyWindowLogDto`: last 20 `[ActiveSinceUtc, ReleasedUtc)` intervals with `RestoredBaseline`.
-- [ ] **1.3 `CoordinationStore` (`State/CoordinationStore.cs`):**
+- [x] **1.3 `CoordinationStore` (`State/CoordinationStore.cs`):**
   - Resolves `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/` (`baseline.json`, `leases/<pid>.json`, `dirty-windows.json`).
   - Atomic writes (`WriteAllText` temp file + `ReplaceFile`).
   - `MigrateLegacyBackupIfNeeded(...)`: converts pre-ADR-16 `symbol-settings-backup.json` into an `Active` `baseline.json` and deletes the legacy file.
   - `PruneDeadLeases(...)`: deletes leases whose process is dead; returns whether any pruned lease had `ServerMaskActive == true` (crash during break-mode masking).
   - `AppendDirtyWindow(...)` / `HasOverlappingDirtyWindow(DateTime processStartTimeUtc)`.
-- [ ] **1.4 `EffectiveSettingsPolicy` (`State/EffectiveSettingsPolicy.cs`):**
+- [x] **1.4 `EffectiveSettingsPolicy` (`State/EffectiveSettingsPolicy.cs`):**
   - Pure function `Compute(BaselineDto baseline, IReadOnlyList<SessionLeaseDto> liveLeases, bool recoverServerSettings)`.
   - Encodes:
     - No live leases $\to$ restore `baseline` managed fields (and server fields if `recoverServerSettings`), mark `ShouldReleaseBaseline = true`.
     - $\ge 1$ `Baseline` lease $\to$ force `baseline` managed fields (Priority rule P1: correctness beats speed).
     - Only `Unreal` leases $\to$ `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`, `IncludeList = baseline.IncludeList ∪ union(all live WantedBinaries)` (Priority rule P2).
-- [ ] **1.5 Unit Tests (`VSOnDemandSymbols.Core.Tests`):**
+- [x] **1.5 Unit Tests (`VSOnDemandSymbols.Core.Tests`):**
   - `EffectiveSettingsPolicyTests`: empty leases, single Unreal, two Unreal (merged IncludeList), Unreal + Baseline (Baseline wins), server recovery flag.
   - `CoordinationStoreTests`: atomic round-trips, dead-lease pruning, PID reuse mismatch, `ServerMaskActive` crash detection, dirty-window capping (20 entries) and overlap queries, legacy `symbol-settings-backup.json` migration.
-  - Remove or supersede `SymbolSettingsBackupStoreTests` once legacy migration tests are in place.
+  - `SymbolSettingsSnapshotTests`: cloning and equality checking.
 
 ---
 

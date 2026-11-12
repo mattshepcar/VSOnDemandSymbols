@@ -89,11 +89,11 @@ All coordination logic stays VS-free in `netstandard2.0` so every interleaving c
 
 ## Phase 4: Integration Tests & Verification
 
-- [ ] **4.1 Update existing `MiniUnreal` integration tests (`tests/VSOnDemandSymbols.IntegrationTests`):**
+- [x] **4.1 Update existing `MiniUnreal` integration tests (`tests/VSOnDemandSymbols.IntegrationTests`):**
   - Update `VisualStudioExpFixture` to inspect `baseline.json` and `leases/<pid>.json` instead of `symbol-settings-backup.json`.
   - Update `Test01`: verify opening an Unreal solution does **not** modify symbol settings or create a baseline/lease until launch.
   - Update `Test05`: verify stopping debugging restores settings and releases the baseline, and force-killing `devenv.exe` mid-session recovers via dead-lease pruning on next startup.
-- [ ] **4.2 Add multi-instance automated integration tests:**
+- [x] **4.2 Add multi-instance automated integration tests:**
   - Spawn two `devenv.exe /rootsuffix Exp` processes in the same hive and attach to both via ROT (`!VisualStudio.DTE.*:<PID>`).
   - Cover:
     - Non-Unreal B launches while Unreal A is idle (zero-touch).

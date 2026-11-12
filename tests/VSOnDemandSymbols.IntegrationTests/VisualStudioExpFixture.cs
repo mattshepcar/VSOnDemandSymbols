@@ -483,6 +483,77 @@ public sealed class VisualStudioExpFixture : IDisposable
         }
     }
 
+    public string GetCoordinationDirectory()
+    {
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
+        {
+            localAppData = Path.GetTempPath();
+        }
+
+        string root = Path.Combine(localAppData, "OnDemandSymbols");
+        if (Directory.Exists(root))
+        {
+            foreach (string dir in Directory.GetDirectories(root, "*_Exp"))
+            {
+                return dir;
+            }
+        }
+
+        return Path.Combine(root, "Default_Exp");
+    }
+
+    public (string? BaselinePath, BaselineDto? Dto) FindBaselineFile()
+    {
+        string coordDir = GetCoordinationDirectory();
+        string baselinePath = Path.Combine(coordDir, "baseline.json");
+        if (!File.Exists(baselinePath))
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            using var stream = new FileStream(baselinePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            string json = reader.ReadToEnd();
+            var dto = JsonConvert.DeserializeObject<BaselineDto>(json);
+            return (baselinePath, dto);
+        }
+        catch
+        {
+            return (baselinePath, null);
+        }
+    }
+
+    public (string? LeasePath, SessionLeaseDto? Dto) FindLeaseFileForCurrentProcess()
+    {
+        if (DevenvProcess == null)
+        {
+            return (null, null);
+        }
+
+        string coordDir = GetCoordinationDirectory();
+        string leasePath = Path.Combine(coordDir, "leases", $"{DevenvProcess.Id}.json");
+        if (!File.Exists(leasePath))
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            using var stream = new FileStream(leasePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
+            string json = reader.ReadToEnd();
+            var dto = JsonConvert.DeserializeObject<SessionLeaseDto>(json);
+            return (leasePath, dto);
+        }
+        catch
+        {
+            return (leasePath, null);
+        }
+    }
+
     public (string? Path, SymbolSettingsBackupDto? Dto) FindBackupFileForCurrentProcess()
     {
         if (DevenvProcess == null)
@@ -562,7 +633,45 @@ public sealed class VisualStudioExpFixture : IDisposable
         }
     }
 
-    private static DTE2 WaitForDteInRot(System.Diagnostics.Process process, TimeSpan timeout)
+    public (System.Diagnostics.Process Process, DTE2 Dte) SpawnSecondaryInstance(string? logFilePath = null)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = DevenvPath,
+            Arguments = "/rootsuffix Exp /nosplash",
+            WorkingDirectory = RepoRoot,
+            UseShellExecute = false
+        };
+        if (!string.IsNullOrWhiteSpace(logFilePath))
+        {
+            psi.EnvironmentVariables["VSONDEMANDSYMBOLS_LOG_FILE"] = logFilePath;
+        }
+
+        var process = System.Diagnostics.Process.Start(psi)
+            ?? throw new InvalidOperationException("Failed to start secondary devenv.exe process.");
+
+        var dte = WaitForDteInRot(process, TimeSpan.FromSeconds(60));
+        Console.WriteLine($"[Fixture] Attached to Secondary DTE (PID={process.Id}).");
+
+        return (process, dte);
+    }
+
+    public static void KillProcessGracefully(System.Diagnostics.Process? proc)
+    {
+        if (proc != null && !proc.HasExited)
+        {
+            try
+            {
+                proc.Kill();
+                proc.WaitForExit(10000);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    public static DTE2 WaitForDteInRot(System.Diagnostics.Process process, TimeSpan timeout)
     {
         var sw = Stopwatch.StartNew();
         string pidSuffix = ":" + process.Id;

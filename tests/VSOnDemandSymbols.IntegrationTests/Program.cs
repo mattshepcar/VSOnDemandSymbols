@@ -31,16 +31,26 @@ public static class Program
             if (!lyraOnly)
             {
                 var suite = new EndToEndDebuggerTests(fixture);
-                testMethods.Add((nameof(EndToEndDebuggerTests.Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup),
-                    suite.Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup));
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test01_SolutionOpen_DetectsUnrealSolutionAndDoesNotTouchSettings),
+                    suite.Test01_SolutionOpen_DetectsUnrealSolutionAndDoesNotTouchSettings));
                 testMethods.Add((nameof(EndToEndDebuggerTests.Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule),
                     suite.Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule));
                 testMethods.Add((nameof(EndToEndDebuggerTests.Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile),
                     suite.Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile));
                 testMethods.Add((nameof(EndToEndDebuggerTests.Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint),
                     suite.Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint));
-                testMethods.Add((nameof(EndToEndDebuggerTests.Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings),
-                    suite.Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings));
+                testMethods.Add((nameof(EndToEndDebuggerTests.Test05_SessionLifecycleAndCrashRecovery_ManagesBaselineAndPrunesDeadLeases),
+                    suite.Test05_SessionLifecycleAndCrashRecovery_ManagesBaselineAndPrunesDeadLeases));
+
+                var multiSuite = new MultiInstanceDebuggerTests(fixture);
+                testMethods.Add((nameof(MultiInstanceDebuggerTests.Multi01_NonUnrealInstanceLaunchesWhileUnrealIsIdle_ZeroTouch),
+                    multiSuite.Multi01_NonUnrealInstanceLaunchesWhileUnrealIsIdle_ZeroTouch));
+                testMethods.Add((nameof(MultiInstanceDebuggerTests.Multi02_NonUnrealLaunchesWhileUnrealIsDebugging_RestoresBaselineForNonUnreal),
+                    multiSuite.Multi02_NonUnrealLaunchesWhileUnrealIsDebugging_RestoresBaselineForNonUnreal));
+                testMethods.Add((nameof(MultiInstanceDebuggerTests.Multi03_TwoUnrealInstances_MergeIncludeListAndHandleOutOfOrderExits),
+                    multiSuite.Multi03_TwoUnrealInstances_MergeIncludeListAndHandleOutOfOrderExits));
+                testMethods.Add((nameof(MultiInstanceDebuggerTests.Multi04_CrashOfOneInstance_PrunedByOtherInstanceWithoutSettingsCorruption),
+                    multiSuite.Multi04_CrashOfOneInstance_PrunedByOtherInstanceWithoutSettingsCorruption));
             }
 
             if (includeLyra || lyraOnly ||

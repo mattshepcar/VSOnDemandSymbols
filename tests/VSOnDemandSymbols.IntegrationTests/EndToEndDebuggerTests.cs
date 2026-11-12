@@ -20,7 +20,7 @@ public sealed class EndToEndDebuggerTests
         _fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
     }
 
-    public void Test01_SolutionOpen_DetectsUnrealSolutionAndCreatesBackup()
+    public void Test01_SolutionOpen_DetectsUnrealSolutionAndDoesNotTouchSettings()
     {
         var dte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached.");
 
@@ -35,10 +35,13 @@ public sealed class EndToEndDebuggerTests
 
         Assert.True(detected, $"Expected Unreal solution detection log in Output pane, but got:\n{logOutput}");
 
-        var (backupPath, backupDto) = _fixture.FindBackupFileForCurrentProcess();
-        Assert.False(string.IsNullOrWhiteSpace(backupPath), "Expected symbol-settings-backup.json to be created for current devenv PID.");
-        Assert.NotNull(backupDto);
-        Assert.Equal(_fixture.DevenvProcess!.Id, backupDto!.ProcessId);
+        // SPEC.md §4.1 / ADR-15: Opening an Unreal solution only arms the session monitor;
+        // it must NEVER write symbol settings or create a baseline/lease file until launch.
+        var (baselinePath, _) = _fixture.FindBaselineFile();
+        Assert.True(string.IsNullOrWhiteSpace(baselinePath), $"Expected NO baseline.json on solution open (just-in-time launch hook rule R1), but found: {baselinePath}");
+
+        var (leasePath, _) = _fixture.FindLeaseFileForCurrentProcess();
+        Assert.True(string.IsNullOrWhiteSpace(leasePath), $"Expected NO lease file on solution open, but found: {leasePath}");
     }
 
     public void Test02_PreLaunchBreakpoint_LoadsSymbolsOnlyForBreakpointModule()
@@ -53,6 +56,16 @@ public sealed class EndToEndDebuggerTests
 
         bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(30));
         Assert.True(hitBreak, "Expected debugger to hit breakpoint in ModuleA.cpp and enter BreakMode.");
+
+        // Verify baseline and lease are created upon debug launch
+        var (baselinePath, baselineDto) = _fixture.FindBaselineFile();
+        Assert.False(string.IsNullOrWhiteSpace(baselinePath), "Expected baseline.json to be created upon debug launch.");
+        Assert.NotNull(baselineDto);
+
+        var (leasePath, leaseDto) = _fixture.FindLeaseFileForCurrentProcess();
+        Assert.False(string.IsNullOrWhiteSpace(leasePath), "Expected lease file to be created for current devenv PID upon debug launch.");
+        Assert.NotNull(leaseDto);
+        Assert.Equal(_fixture.DevenvProcess!.Id, leaseDto!.ProcessId);
 
         var modA = _fixture.FindDebuggedModule("UnrealEditor-ModuleA.dll");
         var modB = _fixture.FindDebuggedModule("UnrealEditor-ModuleB.dll");
@@ -69,6 +82,12 @@ public sealed class EndToEndDebuggerTests
 
         _fixture.StopDebuggingIfActive();
         _fixture.ClearAllBreakpoints();
+
+        // Verify lease and baseline are released when session ends
+        var (postLeasePath, _) = _fixture.FindLeaseFileForCurrentProcess();
+        Assert.True(string.IsNullOrWhiteSpace(postLeasePath), "Expected lease file to be removed when debug session ends.");
+        var (postBaselinePath, _) = _fixture.FindBaselineFile();
+        Assert.True(string.IsNullOrWhiteSpace(postBaselinePath), "Expected baseline.json to be deleted and settings restored when last lease ends.");
     }
 
     public void Test03_CrashInUnsymbolizedModule_LoadsSymbolsAndSetsContextAndOpensSourceFile()
@@ -188,54 +207,60 @@ public sealed class EndToEndDebuggerTests
         _fixture.ClearAllBreakpoints();
     }
 
-    public void Test05_SolutionCloseAndCrashRecovery_RestoresOriginalSymbolSettings()
+    public void Test05_SessionLifecycleAndCrashRecovery_ManagesBaselineAndPrunesDeadLeases()
     {
-        var dte = _fixture.PrepareMiniUnrealTest();
+        var dte = _fixture.PrepareMiniUnrealTest("wait_for_bp_mod_b");
 
-        var (backupPathBeforeClose, _) = _fixture.FindBackupFileForCurrentProcess();
-        Assert.False(string.IsNullOrWhiteSpace(backupPathBeforeClose), "Expected backup file to exist while solution is open.");
+        // 1. Launch debug target and verify baseline and lease exist during active debugging
+        Console.WriteLine("  -> Starting debugger (Debug.Start) to create active lease...");
+        dte.ExecuteCommand("Debug.Start");
+        bool running = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgRunMode, TimeSpan.FromSeconds(15));
+        Assert.True(running, "Expected target to be running in dbgRunMode.");
 
-        Console.WriteLine("  -> Closing MiniUnreal.sln to verify clean settings restore...");
-        dte.Solution.Close(SaveFirst: false);
+        var (activeBaselinePath, _) = _fixture.FindBaselineFile();
+        var (activeLeasePath, _) = _fixture.FindLeaseFileForCurrentProcess();
+        Assert.False(string.IsNullOrWhiteSpace(activeBaselinePath), "Expected baseline.json during active debugging.");
+        Assert.False(string.IsNullOrWhiteSpace(activeLeasePath), "Expected active lease during debugging.");
 
-        bool restoredOnClose = _fixture.WaitUntilOutputContains(
-            "Solution closed; restored original symbol settings.",
-            TimeSpan.FromSeconds(15),
-            out string closeLog);
+        // 2. Stop debugging and verify clean release of lease and baseline
+        Console.WriteLine("  -> Stopping debugger to verify clean session end release...");
+        _fixture.StopDebuggingIfActive();
 
-        Assert.True(restoredOnClose, $"Expected solution close restore message in Output pane, but got:\n{closeLog}");
-        Assert.False(File.Exists(backupPathBeforeClose!), "Expected backup JSON file to be deleted after solution close.");
+        var (postStopLease, _) = _fixture.FindLeaseFileForCurrentProcess();
+        var (postStopBaseline, _) = _fixture.FindBaselineFile();
+        Assert.True(string.IsNullOrWhiteSpace(postStopLease), "Expected lease deleted after session end.");
+        Assert.True(string.IsNullOrWhiteSpace(postStopBaseline), "Expected baseline deleted after last session end.");
 
-        // Now test crash recovery: reopen solution so backup file is written, kill devenv.exe, and relaunch
-        Console.WriteLine("  -> Reopening MiniUnreal.sln and simulating devenv.exe crash (Kill)...");
-        _fixture.EnsureMiniUnrealSolutionOpen();
+        // 3. Test crash recovery: start debug session so lease and baseline are created, then force-kill devenv.exe
+        Console.WriteLine("  -> Starting debugger again and simulating devenv.exe crash (Kill)...");
+        dte.ExecuteCommand("Debug.Start");
+        _fixture.WaitForDebuggerMode(dbgDebugMode.dbgRunMode, TimeSpan.FromSeconds(15));
 
-        var (crashBackupPath, _) = _fixture.FindBackupFileForCurrentProcess();
-        Assert.False(string.IsNullOrWhiteSpace(crashBackupPath), "Expected backup file to exist before simulated crash.");
+        var (crashLeasePath, _) = _fixture.FindLeaseFileForCurrentProcess();
+        var (crashBaselinePath, _) = _fixture.FindBaselineFile();
+        Assert.False(string.IsNullOrWhiteSpace(crashLeasePath), "Expected lease before simulated crash.");
+        Assert.False(string.IsNullOrWhiteSpace(crashBaselinePath), "Expected baseline before simulated crash.");
 
-        // Force-kill devenv.exe so backup file is orphaned on disk
+        // Force-kill devenv.exe. OS closes the file handle immediately, but file remains on disk until pruned.
         _fixture.KillCurrentInstanceIfRunning();
-        Assert.True(File.Exists(crashBackupPath!), "Expected orphaned backup file to remain on disk after devenv.exe crash.");
+        Assert.True(File.Exists(crashLeasePath!), "Expected lease file on disk after devenv.exe kill.");
+        Assert.True(File.Exists(crashBaselinePath!), "Expected baseline file on disk after devenv.exe kill.");
 
-        // Launch a new Experimental instance and open the solution so the package loads and runs RecoverFromCrashIfNeeded()
+        // 4. Launch a new Experimental instance: startup crash recovery prunes dead lease and restores baseline
+        Console.WriteLine("  -> Restarting devenv and opening solution to trigger startup dead-lease pruning...");
         _fixture.StartAndAttach();
         var restartedDte = _fixture.Dte ?? throw new InvalidOperationException("DTE not attached after restart.");
         restartedDte.Solution.Open(_fixture.MiniUnrealSolutionPath);
 
-        bool recovered = _fixture.WaitUntilOutputContains(
-            "Restored symbol settings after a previous unexpected exit",
+        bool detected = _fixture.WaitUntilOutputContains(
+            "Unreal solution detected",
             TimeSpan.FromSeconds(30),
-            out string recoveryLog);
+            out string _);
+        Assert.True(detected, "Expected package to load and initialize after restart.");
 
-        Assert.True(recovered, $"Expected crash recovery warning in Output pane after restart, but got:\n{recoveryLog}");
-
-        // Close the solution so the Experimental hive is left in a restored state for subsequent suites (e.g. LyraProfilingTests)
-        restartedDte.Solution.Close(SaveFirst: false);
-        bool restoredAfterRecovery = _fixture.WaitUntilOutputContains(
-            "Solution closed; restored original symbol settings.",
-            TimeSpan.FromSeconds(15),
-            out string postRecoveryCloseLog);
-        Assert.True(restoredAfterRecovery, $"Expected clean restore when closing solution after crash recovery, but got:\n{postRecoveryCloseLog}");
+        // Verify dead lease was pruned and baseline restored
+        Assert.False(File.Exists(crashLeasePath!), "Expected dead lease file to be pruned by startup crash recovery.");
+        Assert.False(File.Exists(crashBaselinePath!), "Expected baseline to be restored and deleted after dead lease pruned.");
     }
 
     private static (string? FullName, int Line) WaitForActiveDocumentAndLine(EnvDTE80.DTE2 dte, TimeSpan timeout)

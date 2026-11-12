@@ -132,6 +132,8 @@ We will quantify moments where the AI struggled, repeated actions, or burned cyc
    - Instances where the agent read the exact same 500-line source file 4 times in a single session instead of remembering its structure.
 4. **Deep Thinking Duration vs. Output Value:**
    - Correlating character length of `thinking` blocks with code change quality. Did 5,000-character reasoning traces produce better code than 800-character traces, or did long traces indicate the model was second-guessing itself in circles?
+5. **Fresh Session Splits vs. Continuing Existing Sessions:**
+   - Was the pilot's decision to start a new session rather than continuing in an existing one effective? Compare short/surgical sessions and deliberate handoffs (e.g., `S14` → `S15`) against long/mega-sessions (`S10`, `S21`) on cost, error rate, and compaction decay.
 
 ---
 
@@ -157,6 +159,7 @@ Using official token rates (standard API pricing per million tokens):
    - Integration Testing & Profiling (MiniUnreal / Lyra): \$W
 3. **Prompt Cache Savings:** Calculate how many thousands of dollars prompt caching saved across 409M cached tokens compared to un-cached API calls.
 4. **Cost of Errors:** Calculate the direct dollar cost of tool error loops in Sessions 10 and 21.
+5. **Effectiveness of Mid-Session Model Switching:** Evaluate all 7 sessions with mid-session model switches (`S03`, `S10`, `S11`, `S27`, `S43`, `S44`, `S51`). Did escalating to Argon or Opus mid-session resolve blockers faster, or did inheriting a bloated context inflate cost without proportionate gain—and what model-routing strategy would have been more effective?
 
 ---
 
@@ -168,6 +171,7 @@ Sessions 05, 06, 07, 08, 09, 25, and 26 were autonomous subagent runs spawned by
 - **Task Specialization:** Did delegating read-only codebase exploration in `D:\UnrealEngine` to subagents (Sessions 05–09) prevent context window pollution in the parent session?
 - **Prompt Precision in Delegation:** Did subagents return concise, structured facts or unstructured dumps?
 - **Subagent Success Rate:** How frequently did a subagent return an output that required zero follow-up corrections from the parent?
+- **Subagent Utilization & Orchestrator Potential:** Was overall subagent usage effective, and why did subagent delegation drop to zero for coding/investigation after Session 09 (`S10–S51`, except `S25–S26` image generation)? Could an **orchestrator + subagent/swarm** pattern (cheap read-only explorers + scoped implementation/review workers) have prevented mega-sessions like `S10`, `S21`, and `S51`?
 
 ---
 

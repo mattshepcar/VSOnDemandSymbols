@@ -44,7 +44,87 @@ public sealed class VisualStudioExpFixture : IDisposable
 
         EnsureMiniUnrealBuilt();
         DeployLatestBuildToExpHive();
+        CleanupOrphanedCoordinationState();
         StartAndAttach();
+    }
+
+    private void CleanupOrphanedCoordinationState()
+    {
+        try
+        {
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrWhiteSpace(localAppData))
+            {
+                localAppData = Path.GetTempPath();
+            }
+
+            string root = Path.Combine(localAppData, "OnDemandSymbols");
+            if (!Directory.Exists(root))
+            {
+                return;
+            }
+
+            foreach (string coordDir in Directory.GetDirectories(root, "*Exp*"))
+            {
+                string leasesDir = Path.Combine(coordDir, "leases");
+                if (Directory.Exists(leasesDir))
+                {
+                    foreach (string leaseFile in Directory.GetFiles(leasesDir, "*.json"))
+                    {
+                        try
+                        {
+                            string pidStr = Path.GetFileNameWithoutExtension(leaseFile);
+                            if (int.TryParse(pidStr, out int pid))
+                            {
+                                try
+                                {
+                                    var proc = System.Diagnostics.Process.GetProcessById(pid);
+                                    if (proc.HasExited)
+                                    {
+                                        File.Delete(leaseFile);
+                                    }
+                                }
+                                catch (ArgumentException)
+                                {
+                                    File.Delete(leaseFile);
+                                }
+                            }
+                        }
+                        catch
+                        {
+                        }
+                    }
+                }
+
+                bool hasLiveLeases = false;
+                if (Directory.Exists(leasesDir))
+                {
+                    hasLiveLeases = Directory.GetFiles(leasesDir, "*.json").Length > 0;
+                }
+
+                if (!hasLiveLeases)
+                {
+                    string baselinePath = Path.Combine(coordDir, "baseline.json");
+                    var cleanBaseline = new BaselineDto
+                    {
+                        ActiveSinceUtc = DateTime.UtcNow,
+                        Snapshot = new SymbolSettingsSnapshot
+                        {
+                            IsManualLoad = false,
+                            IsLoadAdjacent = true,
+                            AutomaticSymbolLoad = true,
+                            IncludeList = new List<SymbolOptionBackupDto>()
+                        }
+                    };
+                    File.WriteAllText(baselinePath, JsonConvert.SerializeObject(cleanBaseline, Formatting.Indented));
+                    Console.WriteLine($"[Fixture] Seeded clean default baseline into {baselinePath}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Fixture] Warning: CleanupOrphanedCoordinationState: {ex.Message}");
+        }
     }
 
     private void DeployLatestBuildToExpHive()
@@ -223,33 +303,33 @@ public sealed class VisualStudioExpFixture : IDisposable
 
     /// <summary>
     /// If a previous crashed test run left the Experimental instance's persisted user settings
-    /// in manual-load mode, resets the backup DTO to Visual Studio's default ("Load all modules")
+    /// in manual-load mode, resets the baseline DTO to Visual Studio's default ("Load all modules")
     /// and restarts the Experimental instance so <c>RecoverFromCrashIfNeeded</c> restores clean defaults.
     /// </summary>
     public void ResetDirtyExpBackupSettingsIfNeeded(string reopenSolutionPath, string expectedSolutionName)
     {
-        var (backupPath, backupDto) = FindBackupFileForCurrentProcess();
-        if (backupDto == null)
+        var (baselinePath, baselineDto) = FindBaselineFile();
+        if (baselineDto == null || string.IsNullOrWhiteSpace(baselinePath))
         {
             return;
         }
 
         Console.WriteLine(
-            $"  -> [Exp Backup Settings] IsManualLoad={backupDto.IsManualLoad}, " +
-            $"IsLoadAdjacent={backupDto.IsLoadAdjacent}, AutomaticSymbolLoad={backupDto.AutomaticSymbolLoad}, " +
-            $"IncludeList=[{string.Join(", ", backupDto.IncludeList.Select(x => $"{x.Name}:{x.IsEnabled}"))}]");
+            $"  -> [Exp Baseline Settings] IsManualLoad={baselineDto.Snapshot.IsManualLoad}, " +
+            $"IsLoadAdjacent={baselineDto.Snapshot.IsLoadAdjacent}, AutomaticSymbolLoad={baselineDto.Snapshot.AutomaticSymbolLoad}, " +
+            $"IncludeList=[{string.Join(", ", baselineDto.Snapshot.IncludeList.Select(x => $"{x.Name}:{x.IsEnabled}"))}]");
 
-        if (!backupDto.IsManualLoad || string.IsNullOrWhiteSpace(backupPath))
+        if (!baselineDto.Snapshot.IsManualLoad)
         {
             return;
         }
 
-        Console.WriteLine("  -> [Exp Backup Settings] Resetting dirty Exp symbol settings to VS defaults (Load all modules)...");
-        backupDto.IsManualLoad = false;
-        backupDto.IsLoadAdjacent = true;
-        backupDto.AutomaticSymbolLoad = true;
-        backupDto.IncludeList.Clear();
-        File.WriteAllText(backupPath, JsonConvert.SerializeObject(backupDto, Formatting.Indented));
+        Console.WriteLine("  -> [Exp Baseline Settings] Resetting dirty Exp symbol settings to VS defaults (Load all modules)...");
+        baselineDto.Snapshot.IsManualLoad = false;
+        baselineDto.Snapshot.IsLoadAdjacent = true;
+        baselineDto.Snapshot.AutomaticSymbolLoad = true;
+        baselineDto.Snapshot.IncludeList.Clear();
+        File.WriteAllText(baselinePath!, JsonConvert.SerializeObject(baselineDto, Formatting.Indented));
 
         KillCurrentInstanceIfRunning();
         StartAndAttach();
@@ -517,7 +597,7 @@ public sealed class VisualStudioExpFixture : IDisposable
         string root = Path.Combine(localAppData, "OnDemandSymbols");
         if (Directory.Exists(root))
         {
-            foreach (string dir in Directory.GetDirectories(root, "*_Exp"))
+            foreach (string dir in Directory.GetDirectories(root, "*Exp*"))
             {
                 return dir;
             }
@@ -528,25 +608,37 @@ public sealed class VisualStudioExpFixture : IDisposable
 
     public (string? BaselinePath, BaselineDto? Dto) FindBaselineFile()
     {
-        string coordDir = GetCoordinationDirectory();
-        string baselinePath = Path.Combine(coordDir, "baseline.json");
-        if (!File.Exists(baselinePath))
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
         {
-            return (null, null);
+            localAppData = Path.GetTempPath();
         }
 
-        try
+        string root = Path.Combine(localAppData, "OnDemandSymbols");
+        if (Directory.Exists(root))
         {
-            using var stream = new FileStream(baselinePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(stream);
-            string json = reader.ReadToEnd();
-            var dto = JsonConvert.DeserializeObject<BaselineDto>(json);
-            return (baselinePath, dto);
+            foreach (string coordDir in Directory.GetDirectories(root, "*Exp*"))
+            {
+                string baselinePath = Path.Combine(coordDir, "baseline.json");
+                if (File.Exists(baselinePath))
+                {
+                    try
+                    {
+                        using var stream = new FileStream(baselinePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        using var reader = new StreamReader(stream);
+                        string json = reader.ReadToEnd();
+                        var dto = JsonConvert.DeserializeObject<BaselineDto>(json);
+                        return (baselinePath, dto);
+                    }
+                    catch
+                    {
+                        return (baselinePath, null);
+                    }
+                }
+            }
         }
-        catch
-        {
-            return (baselinePath, null);
-        }
+
+        return (null, null);
     }
 
     public (string? LeasePath, SessionLeaseDto? Dto) FindLeaseFileForCurrentProcess()
@@ -556,25 +648,37 @@ public sealed class VisualStudioExpFixture : IDisposable
             return (null, null);
         }
 
-        string coordDir = GetCoordinationDirectory();
-        string leasePath = Path.Combine(coordDir, "leases", $"{DevenvProcess.Id}.json");
-        if (!File.Exists(leasePath))
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppData))
         {
-            return (null, null);
+            localAppData = Path.GetTempPath();
         }
 
-        try
+        string root = Path.Combine(localAppData, "OnDemandSymbols");
+        if (Directory.Exists(root))
         {
-            using var stream = new FileStream(leasePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(stream);
-            string json = reader.ReadToEnd();
-            var dto = JsonConvert.DeserializeObject<SessionLeaseDto>(json);
-            return (leasePath, dto);
+            foreach (string coordDir in Directory.GetDirectories(root, "*Exp*"))
+            {
+                string leasePath = Path.Combine(coordDir, "leases", $"{DevenvProcess.Id}.json");
+                if (File.Exists(leasePath))
+                {
+                    try
+                    {
+                        using var stream = new FileStream(leasePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        using var reader = new StreamReader(stream);
+                        string json = reader.ReadToEnd();
+                        var dto = JsonConvert.DeserializeObject<SessionLeaseDto>(json);
+                        return (leasePath, dto);
+                    }
+                    catch
+                    {
+                        return (leasePath, null);
+                    }
+                }
+            }
         }
-        catch
-        {
-            return (leasePath, null);
-        }
+
+        return (null, null);
     }
 
     public (string? Path, SymbolSettingsBackupDto? Dto) FindBackupFileForCurrentProcess()

@@ -31,7 +31,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private readonly UnrealModuleResolver _resolver;
     private readonly ILogger _logger;
 
-    private readonly CommandEvents _launchCommandEvents;
+    private readonly List<CommandEvents> _launchCommandEvents = new();
     private readonly DebuggerEvents _debuggerEvents;
     private readonly HashSet<string> _loadedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _symbolizedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
@@ -78,15 +78,15 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         ThreadHelper.ThrowIfNotOnUIThread();
 
-        // Intercept F5 / Debug.Start as fallback pre-launch hook (ADR-15 Spike S2).
-        // Uses Standard Command Set 97 (guidVSStd97 from stdidcmd.h) and cmdidStart (295).
-        _launchCommandEvents = _dte.Events.get_CommandEvents(
-            VSConstants.CMDSETID.StandardCommandSet97_string,
-            (int)VSConstants.VSStd97CmdID.Start);
-        _launchCommandEvents.BeforeExecute += OnBeforeLaunch;
+        // Intercept debug launch commands as just-in-time pre-launch hook (ADR-15).
+        SubscribeLaunchCommand(VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.Start);
+        SubscribeLaunchCommand(VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.StepInto);
+        SubscribeLaunchCommand(VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.StepOver);
+        SubscribeLaunchCommand(VSConstants.CMDSETID.StandardCommandSet97_string, (int)VSConstants.VSStd97CmdID.RunToCursor);
 
         // Debugger event subscriptions (SPEC.md §4.1)
         _debuggerEvents = _dte.Events.DebuggerEvents;
+        _debuggerEvents.OnEnterRunMode += OnEnterRunMode;
         _debuggerEvents.OnEnterBreakMode += OnEnterBreakMode;
         _debuggerEvents.OnEnterDesignMode += OnEnterDesignMode;
         _debuggerEvents.OnContextChanged += OnContextChanged;
@@ -382,6 +382,24 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     }
 
 
+    private void SubscribeLaunchCommand(string commandGroup, int commandId)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        try
+        {
+            var cmdEvents = _dte.Events.get_CommandEvents(commandGroup, commandId);
+            if (cmdEvents != null)
+            {
+                cmdEvents.BeforeExecute += OnBeforeLaunch;
+                _launchCommandEvents.Add(cmdEvents);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning($"Could not subscribe to launch command {commandId}: {ex.Message}");
+        }
+    }
+
     private void OnBeforeLaunch(string guid, int id, object customIn, object customOut, ref bool cancelDefault)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
@@ -391,6 +409,22 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         }
 
         UpdateIncludeListFromBreakpoints("before launch");
+    }
+
+    private void OnEnterRunMode(dbgEventReason reason)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        // If an Unreal session was launched via an alternate path (e.g. attach or custom toolbar),
+        // ensure settings are reconciled for the session.
+        if (!_settings.IsApplied)
+        {
+            UpdateIncludeListFromBreakpoints("enter run mode");
+        }
     }
 
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
@@ -1149,7 +1183,19 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
-            _launchCommandEvents.BeforeExecute -= OnBeforeLaunch;
+            foreach (var cmdEvents in _launchCommandEvents)
+            {
+                try
+                {
+                    cmdEvents.BeforeExecute -= OnBeforeLaunch;
+                }
+                catch
+                {
+                }
+            }
+            _launchCommandEvents.Clear();
+
+            _debuggerEvents.OnEnterRunMode -= OnEnterRunMode;
             _debuggerEvents.OnEnterBreakMode -= OnEnterBreakMode;
             _debuggerEvents.OnEnterDesignMode -= OnEnterDesignMode;
             _debuggerEvents.OnContextChanged -= OnContextChanged;

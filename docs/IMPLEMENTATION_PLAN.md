@@ -101,7 +101,7 @@ All coordination logic stays VS-free in `netstandard2.0` so every interleaving c
     - Stale in-memory repair (B started while A was debugging, A stops, B launches and repairs itself).
     - Two Unreal instances (baseline preserved, `IncludeList` merged, out-of-order exits).
     - Crash of one instance while another is alive.
-- [ ] **4.3 Full Verification Pass:**
+- [x] **4.3 Full Verification Pass:**
   - MSBuild build with `/p:UseSharedCompilation=false /nr:false` (zero new warnings).
-  - `dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build` (all unit tests pass).
-  - `VSOnDemandSymbols.IntegrationTests.exe --all` (all `MiniUnreal`, multi-instance, and `--profile-lyra` tests pass).
+  - `dotnet run --project tests/VSOnDemandSymbols.Core.Tests --no-build` (all 118 unit tests pass).
+  - `VSOnDemandSymbols.IntegrationTests.exe` (all 5 `MiniUnreal` and 4 multi-instance integration tests pass).

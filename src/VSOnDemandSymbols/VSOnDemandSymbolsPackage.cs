@@ -35,8 +35,6 @@ namespace VSOnDemandSymbols;
         "SolutionHasProjectFlavor:{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
     })]
 [ProvideSettingsManifest(PackageRelativeManifestFile = @"Settings\registration.json")]
-[ProvideObject(typeof(SymbolSettingsLaunchHook))]
-[ProvideDebugLaunchHook(typeof(SymbolSettingsLaunchHook), SymbolSettingsLaunchHook.HookRegistrationName)]
 [Guid(PackageGuidString)]
 public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
 {

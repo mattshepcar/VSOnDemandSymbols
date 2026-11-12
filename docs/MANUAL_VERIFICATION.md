@@ -44,20 +44,20 @@ tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.Inte
 
 ## 2. Test Cases
 
-### Test Case 1: Unreal Engine Solution Detection & IncludeList Setup
+### Test Case 1: Unreal Engine Solution Detection (No Settings Change on Open)
 1. In the Experimental instance, open an Unreal Engine solution (e.g. `D:\UnrealEngine\Samples\Games\Lyra\Lyra.slnx` or any UE5 project containing a `*.uproject`).
 2. Open **View > Output** and select **On-Demand Symbols** from the *Show output from* dropdown.
 3. **Verify:**
    - The Output pane logs:
      ```
      [Info] Unreal solution detected: '<SolutionName>.slnx'. On-Demand Symbols active.
-     [Info] IncludeList updated (solution opened (active breakpoints: 0)): 1 wanted binaries + <N> user entries.
      ```
-   - In **Tools > Options > Debugging > Symbols**:
-     - "Load only specified modules" is selected (`IsManualLoad = true`).
-     - "Always load symbols located next to modules" is unchecked (`IsLoadAdjacent = false`).
-     - Visual Studio's backup file exists at `%LOCALAPPDATA%\OnDemandSymbols\<VS_INSTANCE_EXP>\symbol-settings-backup.json`.
-     - Your pre-existing include list entries are preserved, and `UnrealEditor*.exe` has been added.
+   - **Tools > Options > Debugging > Symbols** is unchanged from your own settings (ADR-15: settings are applied only at launch).
+   - No `baseline.json` and no `leases\` entries exist under `%LOCALAPPDATA%\OnDemandSymbols\<VS_HIVE>\`.
+4. Press **F5**, then check the symbol settings while the editor is running:
+   - "Load only specified modules" is selected (`IsManualLoad = true`) and "Always load symbols located next to modules" is unchecked.
+   - Your pre-existing include list entries are preserved, and `UnrealEditor*.exe` has been added.
+   - `baseline.json` (`State: Active`) and `leases\<devenv PID>.json` (`Kind: Unreal`) exist.
 
 ---
 
@@ -103,34 +103,69 @@ tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.Inte
    - The extension detects that the solution does not contain a `*.uproject` or `Engine/Build/Build.version`.
    - The extension remains completely inactive.
    - User symbol settings in **Tools > Options > Debugging > Symbols** remain untouched.
-   - No backup file is created.
+   - No `baseline.json` or `leases\` entries are created.
 
 ---
 
-### Test Case 6: Clean Restore on Solution Close
-1. Open an Unreal solution so On-Demand Symbols is active.
-2. Close the solution via **File > Close Solution**.
-3. **Verify:**
-   - The Output pane logs:
-     ```
-     [Info] Solution closed; restored original symbol settings.
-     ```
-   - In **Tools > Options > Debugging > Symbols**, the user's original settings and IncludeList are completely restored (**Golden Rule #1**).
-   - The backup JSON file in `%LOCALAPPDATA%\OnDemandSymbols\<VS_INSTANCE_EXP>\` is deleted.
+### Test Case 6: Clean Restore on Session End and Solution Close
+1. Open an Unreal solution, press **F5**, then stop debugging (**Shift+F5**).
+2. **Verify:**
+   - The Output pane logs `[Info] Restored original symbol settings.`
+   - **Tools > Options > Debugging > Symbols** shows your original settings and IncludeList (**Golden Rule #1**).
+   - `baseline.json` is `Released` and `leases\` is empty.
+3. Start debugging again, then close the solution via **File > Close Solution** while the session is still running (VS stops debugging first). Verify the same result.
 
 ---
 
 ### Test Case 7: Crash Recovery
-1. Open an Unreal solution so On-Demand Symbols is active (backup file exists on disk).
-2. Force-kill the Visual Studio process (`devenv.exe`) via Task Manager or `taskkill /F /IM devenv.exe`.
+1. Open an Unreal solution and press **F5** so a lease and an active baseline exist.
+2. Force-kill the Visual Studio process (`devenv.exe`) via Task Manager or `taskkill /F /PID <pid>`.
 3. Re-launch the Experimental instance.
 4. **Verify:**
-   - On package load, `RecoverFromCrashIfNeeded()` detects the orphaned backup file from the terminated PID.
+   - On package load, `Reconcile(null)` prunes the dead lease (PID no longer alive or start time mismatch).
    - The Output pane logs:
      ```
-     [Warning] Restored symbol settings after a previous unexpected exit (IsManualLoad=..., IsLoadAdjacent=..., AutomaticSymbolLoad=..., IncludeList.Count=...).
+     [Warning] Pruned lease from exited process <pid>; restored original symbol settings.
      ```
-   - Symbol settings are restored to their pre-crash original state, and the orphaned backup file is deleted.
+   - Symbol settings are restored to their pre-crash original state and the baseline is `Released`.
+5. Repeat, but kill `devenv.exe` while stopped at a breakpoint inside a `LocalOnly` load pass (lease has `ServerMaskActive: true`). Verify that symbol server flags and `SymbolPaths` are restored too.
+
+---
+
+## 3. Multi-Instance Test Cases (ADR-16)
+
+Use two instances of the **same** hive (for example two `devenv.exe /rootsuffix Exp` windows). "A" opens an Unreal solution; "B" opens a non-Unreal C++ (or C#) solution, unless stated otherwise. Before each case, confirm both instances show your original symbol settings.
+
+### Test Case 10: B Starts While A Is Idle
+1. A opens the Unreal solution (no debugging). Start B.
+2. **Verify:** B shows your original settings. No baseline or lease files exist.
+
+### Test Case 11: B Starts and Debugs While A Is Debugging
+1. A presses **F5** (editor running). Start B, then press **F5** in B with a breakpoint in B's code.
+2. **Verify:**
+   - B's Output pane logs that it wrote a `Baseline` lease and restored the baseline.
+   - B's breakpoint binds and B's modules load symbols per your original settings.
+   - A keeps debugging. Breakpoints added in A still bind (ADR-04 path). A logs a single warning about P1.
+3. Stop B's session. **Verify:** A's manual mode is written back (the only remaining lease is `Unreal`).
+4. Stop A's session. **Verify:** the original settings are restored and the baseline is `Released`.
+
+### Test Case 12: Stale In-Memory Repair After A Has Finished
+1. A presses **F5**. Start B while A is debugging. Do not debug in B.
+2. Stop A's session (baseline released). Then press **F5** in B.
+3. **Verify:** B's launch hook detects that B started inside a recorded dirty window, writes the baseline once, and B debugs with your original settings.
+
+### Test Case 13: Two Unreal Instances
+1. A opens Lyra, B opens a second Unreal project (or a second copy of Lyra). Set breakpoints in different modules in each.
+2. Press **F5** in A, then in B.
+3. **Verify:**
+   - `baseline.json` was captured once (by A). Its `IncludeList` equals your original list, **not** A's modified list.
+   - The live `IncludeList` contains both instances' wanted patterns. Breakpoints bind in both.
+4. Stop A first, then B (then repeat stopping in the opposite order). **Verify:** after the first stop the other instance's wanted set remains; after the second stop the original settings are restored.
+
+### Test Case 14: Out-of-Order Exit and Crash
+1. A and B both debugging Unreal. Kill A's `devenv.exe`.
+2. **Verify:** On B's next reconcile (session end, breakpoint add, or solution close), A's lease is pruned. When B finishes, the original settings are restored.
+3. Kill both instances while debugging, then start a fresh instance. **Verify:** package load restores the original settings.
 
 ---
 

@@ -4,7 +4,7 @@
 
 **On-Demand Symbols** is a lightweight, zero-maintenance Visual Studio extension designed specifically to speed up debugging large native Unreal Engine 5 applications (ballpark ~1,000 DLLs).
 
-The solution contains two projects and only **6 core source files**:
+The solution contains two projects and a small set of core source files:
 
 ```
 VSOnDemandSymbols/
@@ -13,21 +13,24 @@ VSOnDemandSymbols/
 ├── docs/                                   # Architectural and design documentation
 │   ├── ARCHITECTURE.md                     # This document (system architecture & design rationale)
 │   ├── DECISIONS.md                        # Architecture Decision Records (ADR)
+│   ├── IMPLEMENTATION_PLAN.md              # Active implementation plan (multi-instance coordination)
 │   ├── MANUAL_VERIFICATION.md              # Manual test procedures in Experimental instance
 │   ├── MODULE_RESOLUTION.md                # Unreal module naming and resolution reference
 │   └── SPEC.md                             # Architectural and functional specification
 │
 ├── src/
 │   ├── VSOnDemandSymbols.Core/             # netstandard2.0 (Pure .NET, zero VS dependencies)
-│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock
+│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock, IProcessInfo
 │   │   ├── Modules/
 │   │   │   └── UnrealModuleResolver.cs     # *.Build.cs directory walk-up & candidate DLL generator
 │   │   ├── Policy/
 │   │   │   ├── BreakSymbolLoadMode.cs      # Break-mode symbol load policy (Off, LocalOnly, All)
 │   │   │   └── WildcardPattern.cs          # Path sanitization & wildcard matching
 │   │   └── State/
-│   │       ├── SymbolSettingsBackupDto.cs  # Backup DTO schema
-│   │       └── SymbolSettingsBackupStore.cs# JSON persistence & PID crash recovery
+│   │       ├── SymbolSettingsSnapshot.cs   # Managed-field snapshot DTO
+│   │       ├── CoordinationDtos.cs         # BaselineDto, SessionLeaseDto, DirtyWindowDto
+│   │       ├── CoordinationStore.cs        # Baseline / leases / dirty windows, dead-lease pruning
+│   │       └── EffectiveSettingsPolicy.cs  # Pure decision function over baseline + live leases
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, standard NuGet references)
 │       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context auto-load, lifecycle
@@ -36,8 +39,10 @@ VSOnDemandSymbols/
 │       ├── Debugger/
 │       │   ├── IVsDebuggerSymbolSettings161.cs # COM interop for UseNugetSymbolServers
 │       │   ├── IVsDebuggerSymbolSettings170.cs # COM interop for AutomaticSymbolLoad
-│       │   ├── SymbolSettingsManager.cs    # Reads/writes IVsDebuggerSymbolSettings120A & disk backup
-│       │   └── DebuggerSessionMonitor.cs   # BeforeExecute (F5) hook, Breakpoints, OnEnterBreakMode
+│       │   ├── SymbolSettingsManager.cs    # Sole writer of IVsDebuggerSymbolSettings120A; Reconcile()
+│       │   ├── SymbolSettingsLaunchHook.cs # IVsDebugLaunchHook: just-in-time reconcile on every launch
+│       │   ├── HiveLock.cs                 # Named mutex per VS hive
+│       │   └── DebuggerSessionMonitor.cs   # Breakpoints, bind errors, OnEnterBreakMode, OnEnterDesignMode
 │       └── Logging/
 │           └── OutputLog.cs                # "On-Demand Symbols" Output pane logger
 │
@@ -55,25 +60,32 @@ VSOnDemandSymbols/
 flowchart TD
     subgraph VS_IDE["Visual Studio IDE / VSIX Package"]
         PKG["VSOnDemandSymbolsPackage<br/>(AsyncPackage & Solution Events)"]
-        SSM["SymbolSettingsManager<br/>(IVsDebuggerSymbolSettings120A)"]
-        DSM["DebuggerSessionMonitor<br/>(DTE CommandEvents & DebuggerEvents)"]
+        HOOK["SymbolSettingsLaunchHook<br/>(IVsDebugLaunchHook)"]
+        SSM["SymbolSettingsManager<br/>(IVsDebuggerSymbolSettings120A, Reconcile)"]
+        LOCK["HiveLock<br/>(named mutex)"]
+        DSM["DebuggerSessionMonitor<br/>(DebuggerEvents & AD7 callbacks)"]
         OUT["OutputLog<br/>(On-Demand Symbols Pane)"]
     end
 
     subgraph CORE_LIB["VSOnDemandSymbols.Core (netstandard2.0)"]
         UMR["UnrealModuleResolver<br/>(*.Build.cs walk-up & candidate binaries)"]
-        STORE["SymbolSettingsBackupStore<br/>(JSON disk backup & PID crash recovery)"]
+        STORE["CoordinationStore<br/>(baseline, leases, dirty windows)"]
+        POL["EffectiveSettingsPolicy<br/>(pure decision function)"]
     end
 
     PKG --> SSM
     PKG --> DSM
     PKG --> OUT
+    HOOK --> DSM
+    HOOK --> SSM
 
     DSM --> UMR
     DSM --> SSM
     DSM --> OUT
 
+    SSM --> LOCK
     SSM --> STORE
+    SSM --> POL
     SSM --> OUT
 ```
 
@@ -81,11 +93,14 @@ flowchart TD
 
 | Component | Project | Responsibility | Primary APIs Used |
 |---|---|---|---|
-| **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. | `AsyncPackage`, `IVsSolutionEvents` |
-| **`SymbolSettingsManager`** | VSIX | Single point of contact for symbol settings. Backs up original settings before any modification; applies manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`); merges breakpoint module binaries into `IncludeList`; cleanly restores original settings on close, disable, or crash recovery. | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
-| **`DebuggerSessionMonitor`** | VSIX | Subscribes to `DTE.CommandEvents` before launch (F5) to resolve breakpoints (both enabled and disabled, ADR-03) and update `IncludeList`. Observes AD7 `IDebugBreakpointErrorEvent2` to load symbols on demand when breakpoints are added while running. Subscribes to `DTE.DebuggerEvents.OnEnterBreakMode` to inspect call-stack frames and load missing symbols on demand. | `EnvDTE80.DTE2`, `CommandEvents`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
+| **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. Unreal detection arms the monitor only; it never writes settings. Calls `Reconcile(null)` on init (crash recovery), solution close, and dispose. | `AsyncPackage`, `IVsSolutionEvents` |
+| **`SymbolSettingsLaunchHook`** | VSIX | Runs synchronously inside every `LaunchDebugTargets` in every instance. Unreal target: `Reconcile(Unreal lease)` with wanted binaries. Other targets: `Reconcile(Baseline lease)` only if settings may be leaked into this process; otherwise zero-touch. Always forwards to the next hook (ADR-15). | `IVsDebugLaunchHook` |
+| **`SymbolSettingsManager`** | VSIX | Sole writer of symbol settings. `Reconcile(selfLease)` takes the hive lock, prunes dead leases, captures the baseline if needed, updates its own lease, writes the output of `EffectiveSettingsPolicy` only if it differs from current settings, and releases the baseline after a verified restore. Flags `ServerMaskActive` during break-mode masking (ADR-16). | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
+| **`HiveLock`** | VSIX | Cross-process critical section `Local\VSOnDemandSymbols.<VS_HIVE>` with 2 s timeout; abandoned mutex counts as acquired; timeout means "leave settings untouched". | `System.Threading.Mutex` |
+| **`DebuggerSessionMonitor`** | VSIX | Resolves breakpoints (both enabled and disabled, ADR-03) to wanted binaries for the launch hook. Observes AD7 `IDebugBreakpointErrorEvent2` to refresh the lease and load symbols on demand when breakpoints are added while running. Subscribes to `OnEnterBreakMode` for call-stack loading and to `OnEnterDesignMode` to release the lease. | `EnvDTE80.DTE2`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
 | **`UnrealModuleResolver`** | Core | Resolves source files to module names by walking up the directory tree to find `{Module}.Build.cs` (handling intermediate UHT and unity paths). Generates candidate DLL names (`UnrealEditor-{Module}*.dll`). Detects Unreal solutions (`*.uproject` or `Engine/Build/Build.version`). | `IFileSystem`, `ConcurrentDictionary` cache |
-| **`SymbolSettingsBackupStore`** | Core | Serializes symbol settings backups to `%LOCALAPPDATA%/OnDemandSymbols/<VS_INSTANCE>/symbol-settings-backup.json`. Checks PID on startup to detect and recover from previous Visual Studio crashes. | `Newtonsoft.Json`, `IFileSystem` |
+| **`CoordinationStore`** | Core | Atomic JSON persistence for `baseline.json`, `leases/<pid>.json`, and `dirty-windows.json` under `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/`. Prunes dead leases (PID + process start time). Migrates the legacy `symbol-settings-backup.json`. | `Newtonsoft.Json`, `IFileSystem`, `IProcessInfo`, `IClock` |
+| **`EffectiveSettingsPolicy`** | Core | Pure function `(baseline, liveLeases) → effective settings + release decision`. Encodes priority rules P1 (Baseline lease wins) and P2 (Unreal wanted sets merge). | — |
 | **`OutputLog`** | VSIX | Thread-safe logger outputting to the dedicated "On-Demand Symbols" pane in the Visual Studio Output window. | `IVsOutputWindowPane` |
 
 ---
@@ -116,28 +131,33 @@ During initial exploration (Phases 0–4), three complex subsystems were evaluat
 
 ## 4. Key Execution Sequences
 
-### 4.1 Launch (F5) with Breakpoints
+### 4.1 Launch (any launch path) with Breakpoints
 
 ```mermaid
 sequenceDiagram
     participant User
     participant VS as Visual Studio
+    participant Hook as SymbolSettingsLaunchHook
     participant DSM as DebuggerSessionMonitor
     participant UMR as UnrealModuleResolver
     participant SSM as SymbolSettingsManager
+    participant Store as CoordinationStore
     participant Dbg as Native Debug Engine
 
-    User->>VS: Press F5 (Launch)
-    VS->>DSM: CommandEvents.BeforeExecute (cmdidStart)
-    DSM->>VS: Query active breakpoints (DTE.Debugger.Breakpoints)
+    User->>VS: F5 / F11 / Restart / Start New Instance
+    VS->>Hook: IVsDebugLaunchHook.OnLaunchDebugTargets
+    Hook->>DSM: ResolveWantedBinariesFromBreakpoints()
     loop For each breakpoint
         DSM->>UMR: ResolveModuleFromSource(bp.File)
-        UMR-->>DSM: Return module name (e.g. MyGame)
-        DSM->>UMR: GetCandidateBinaries("MyGame")
         UMR-->>DSM: UnrealEditor-MyGame*.dll
     end
-    DSM->>SSM: ApplyManualMode(wantedBinaries)
-    SSM->>VS: Write to IncludeList & SaveSymbolSettings()
+    Hook->>SSM: Reconcile(Unreal lease, wanted)
+    SSM->>SSM: Acquire HiveLock
+    SSM->>Store: Prune dead leases, capture baseline if none, write own lease
+    SSM->>SSM: EffectiveSettingsPolicy.Compute(baseline, live leases)
+    SSM->>VS: SaveSymbolSettings (only if different from current)
+    SSM->>SSM: Release HiveLock
+    Hook->>VS: Forward to next hook
     VS->>Dbg: Launch UnrealEditor.exe
     loop For each of ~1,000 DLLs mapped
         Dbg->>Dbg: Is DLL name in IncludeList?
@@ -189,7 +209,7 @@ sequenceDiagram
     DSM->>VS: Query active breakpoints (DTE.Debugger.Breakpoints)
     DSM->>UMR: ResolveModuleFromSource(bp.File) -> "MyGame"
     UMR-->>DSM: Candidate pattern: UnrealEditor-MyGame*.dll
-    DSM->>SSM: ApplyManualMode(wantedBinaries) -> Update IncludeList
+    DSM->>SSM: Reconcile(Unreal lease, refreshed wanted) -> Update IncludeList
     alt Module already loaded in process
         DSM->>VS: Locate EnvDTE90.Module (UnrealEditor-MyGame.dll)
         DSM->>VS: Call mod.LoadSymbols("")
@@ -201,31 +221,61 @@ sequenceDiagram
     end
 ```
 
-### 4.4 Solution Close (Clean Settings Restore)
+### 4.4 Session End / Solution Close (Last Lease Restores)
 
 ```mermaid
 sequenceDiagram
-    participant User
     participant VS as Visual Studio
-    participant Pkg as VSOnDemandSymbolsPackage
+    participant DSM as DebuggerSessionMonitor
     participant SSM as SymbolSettingsManager
+    participant Store as CoordinationStore
     participant Log as OutputLog
 
-    User->>VS: Close Solution
-    VS->>Pkg: IVsSolutionEvents.OnBeforeCloseSolution()
-    Pkg->>SSM: RestoreOriginalSettings()
-    SSM->>SSM: Restore user flags & IncludeList from disk backup
-    SSM->>SSM: Delete symbol-settings-backup.json
-    Pkg->>Log: Log "Solution closed, restored original symbol settings."
-    VS-->>User: Visual Studio returned to user's original symbol settings
+    VS->>DSM: DebuggerEvents.OnEnterDesignMode (or solution close / dispose)
+    DSM->>SSM: Reconcile(null)
+    SSM->>SSM: Acquire HiveLock
+    SSM->>Store: Delete own lease, prune dead leases
+    alt Other live Unreal leases remain
+        SSM->>VS: Write manual mode with union of remaining wanted sets
+    else No live leases remain
+        SSM->>VS: Write baseline flags & IncludeList
+        SSM->>VS: Read back and verify
+        SSM->>Store: Mark baseline Released, close dirty window
+        SSM->>Log: "Restored original symbol settings."
+    end
+    SSM->>SSM: Release HiveLock
+```
+
+### 4.5 Multi-Instance: Non-Unreal Instance Launches While Unreal Is Debugging
+
+```mermaid
+sequenceDiagram
+    participant A as Instance A (Unreal)
+    participant Store as CoordinationStore
+    participant Reg as Shared VS hive settings
+    participant B as Instance B (non-Unreal)
+
+    A->>Store: Unreal lease + baseline captured
+    A->>Reg: Manual mode + Unreal IncludeList
+    Note over B: B starts and may load manual mode into memory
+    B->>B: User presses F5 (launch hook)
+    B->>Store: Baseline Active, so write Baseline lease
+    B->>Reg: Restore baseline managed fields (P1: correctness beats speed)
+    B->>B: Launch proceeds with user's settings
+    Note over A: A keeps debugging; on-demand paths still load symbols
+    B->>Store: Session end: delete Baseline lease
+    B->>Reg: Only Unreal lease remains, so write manual mode again
+    A->>Store: Session end: delete Unreal lease (last lease)
+    A->>Reg: Restore baseline, verify, release baseline
 ```
 
 ---
 
 ## 5. Golden Rules & Thread Safety
 
-1. **Golden Rule #1 (Settings Safety):** All modifications to Visual Studio symbol settings go strictly through `SymbolSettingsManager`. Settings are backed up to disk before any modification and restored on solution close, extension disable, VS exit, or startup crash recovery. Symbol search paths, cache directory, and symbol servers are never modified.
-2. **Golden Rule #2 (Never Break Debugging):** Every debugger event handler is wrapped in `try / catch`. Any unexpected error logs a diagnostic message and allows Visual Studio to continue uninterrupted.
-3. **Threading Guidelines:**
+1. **Golden Rule #1 (Settings Safety):** All modifications to Visual Studio symbol settings go strictly through `SymbolSettingsManager.Reconcile`, under the hive lock. The user's settings are captured once to a shared baseline before any modification, modified only during Unreal debug sessions, and restored by whichever instance releases the last lease (including dead-lease pruning after a crash). Symbol search paths, cache directory, exclude list, and symbol servers are never persistently modified.
+2. **Multi-Instance Safety:** Symbol settings are shared by all instances of a VS hive. Instances coordinate through the baseline, leases, and dirty windows (SPEC §4.2), so any order of start, debug, crash, and exit leaves each debug session correct.
+3. **Golden Rule #2 (Never Break Debugging):** Every debugger event handler and the launch hook are wrapped in `try / catch`. Any unexpected error logs a diagnostic message and allows Visual Studio to continue uninterrupted.
+4. **Threading Guidelines:**
    - Always call `await JoinableTaskFactory.SwitchToMainThreadAsync()` before interacting with DTE, COM, or Visual Studio shell services.
    - Core library (`VSOnDemandSymbols.Core`) remains 100% free of Visual Studio dependencies and runs safely on any thread.

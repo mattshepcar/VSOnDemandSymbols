@@ -80,19 +80,20 @@ public sealed class VSOnDemandSymbolsPackage : AsyncPackage, IVsSolutionEvents
                 return;
             }
 
-            string backupFilePath = SymbolSettingsManager.ResolveDefaultBackupFilePath(vsShell);
-            var backupStore = new SymbolSettingsBackupStore(
+            string hiveId = SymbolSettingsManager.ResolveDefaultHiveId(vsShell);
+            string hiveDir = SymbolSettingsManager.ResolveDefaultHiveDirectory(vsShell);
+            var coordinator = new HiveCoordinator(
                 PhysicalFileSystem.Instance,
-                SystemClock.Instance,
                 _logger);
 
             _symbolSettingsManager = new SymbolSettingsManager(
                 settingsManager,
-                backupStore,
+                coordinator,
                 _logger,
-                backupFilePath);
+                hiveDir,
+                hiveId);
 
-            // SPEC.md §1.2: If a backup file exists from a previous crash, restore it immediately.
+            // SPEC.md §4.1: Prune dead leases and restore baseline if no live sessions remain (crash recovery)
             _symbolSettingsManager.RecoverFromCrashIfNeeded();
 
             _resolver = new UnrealModuleResolver(PhysicalFileSystem.Instance);

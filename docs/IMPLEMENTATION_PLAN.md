@@ -47,11 +47,11 @@ All coordination logic stays VS-free in `netstandard2.0` so every interleaving c
 
 ## Phase 2: Hive Lock & `SymbolSettingsManager` Refactor (`VSOnDemandSymbols`)
 
-- [ ] **2.1 `HiveLock` (`Debugger/HiveLock.cs`):**
+- [x] **2.1 `HiveLock` (`Debugger/HiveLock.cs`):**
   - Wraps named `Mutex` `Local\VSOnDemandSymbols.<VS_HIVE>` with a 2,000 ms timeout.
   - Treats `AbandonedMutexException` as acquired (previous holder crashed).
   - Returns `null` / `false` on timeout so callers fail safe without blocking debug launch (P3).
-- [ ] **2.2 Refactor `SymbolSettingsManager` (`Debugger/SymbolSettingsManager.cs`):**
+- [x] **2.2 Refactor `SymbolSettingsManager` (`Debugger/SymbolSettingsManager.cs`):**
   - Replace `ApplyManualMode`, `RestoreOriginalSettings`, and `RecoverFromCrashIfNeeded` with `Reconcile(IEnumerable<string>? wantedBinaries)`.
   - Inside `Reconcile` (under `HiveLock`):
     1. Migrate legacy backup; prune dead leases via try-delete.

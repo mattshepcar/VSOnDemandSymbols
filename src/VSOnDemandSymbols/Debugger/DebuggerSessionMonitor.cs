@@ -1105,6 +1105,15 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         _lastAd7EventThread = null;
         _loadedModulesThisSession.Clear();
         _symbolizedModulesThisSession.Clear();
+
+        try
+        {
+            _settings.Reconcile(null, "session ended");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to release symbol settings lease on session end.", ex);
+        }
     }
 
     public void Dispose()

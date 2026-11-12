@@ -221,3 +221,4 @@ public class HiveCoordinatorTests
         Assert.Equal("LegacyModule.dll", baseline.Snapshot.IncludeList[0].Name);
     }
 }
+

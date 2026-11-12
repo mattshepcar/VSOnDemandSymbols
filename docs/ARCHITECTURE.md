@@ -91,7 +91,7 @@ flowchart TD
 | Component | Project | Responsibility | Primary APIs Used |
 |---|---|---|---|
 | **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. Unreal detection arms the monitor only; it never writes settings. Calls `Reconcile(null)` on init (crash recovery), solution close, and dispose. | `AsyncPackage`, `IVsSolutionEvents` |
-| **`SymbolSettingsLaunchHook`** | VSIX | Runs synchronously inside every `LaunchDebugTargets` in every instance. Unreal target: `Reconcile(wantedBinaries)`. Non-Unreal targets: if baseline exists, `Reconcile(null)` restores user baseline settings; otherwise zero-touch. Always forwards to next hook (ADR-15). | `IVsDebugLaunchHook` |
+| **`Launch Interceptors`** | VSIX | Runs synchronously before launch on debug command events (`cmdidStart`, `cmdidStepInto`, etc.) and `OnEnterRunMode`. Unreal target: `Reconcile(wantedBinaries)`. Non-Unreal targets: if baseline exists, `Reconcile(null)` restores user baseline settings; otherwise zero-touch (ADR-15). | `DTE.Events.CommandEvents`, `DebuggerEvents` |
 | **`SymbolSettingsManager`** | VSIX | Sole writer of symbol settings. `Reconcile(wantedBinaries)` takes the hive lock, prunes dead leases via kernel lock checks, captures baseline if needed, acquires/releases own lease file handle, writes effective settings if different from current, and deletes baseline when no leases remain. Flags `ServerMaskActive` during break-mode masking (ADR-16). | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
 | **`HiveLock`** | VSIX | Cross-process critical section `Local\VSOnDemandSymbols.<VS_HIVE>` with 2 s timeout; abandoned mutex counts as acquired; timeout means "leave settings untouched". | `System.Threading.Mutex` |
 | **`DebuggerSessionMonitor`** | VSIX | Resolves breakpoints (both enabled and disabled, ADR-03) to wanted binaries for the launch hook. Observes AD7 `IDebugBreakpointErrorEvent2` to refresh the lease and load symbols on demand when breakpoints are added while running. Subscribes to `OnEnterBreakMode` for call-stack loading and to `OnEnterDesignMode` to release the lease. | `EnvDTE80.DTE2`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
@@ -133,27 +133,25 @@ During initial exploration (Phases 0–4), three complex subsystems were evaluat
 sequenceDiagram
     participant User
     participant VS as Visual Studio
-    participant Hook as SymbolSettingsLaunchHook
     participant DSM as DebuggerSessionMonitor
     participant UMR as UnrealModuleResolver
     participant SSM as SymbolSettingsManager
     participant Coord as HiveCoordinator
     participant Dbg as Native Debug Engine
 
-    User->>VS: F5 / F11 / Restart / Start New Instance
-    VS->>Hook: IVsDebugLaunchHook.OnLaunchDebugTargets
-    Hook->>DSM: ResolveWantedBinariesFromBreakpoints()
+    User->>VS: F5 / F11 / F10 / Run To Cursor
+    VS->>DSM: BeforeExecute / OnEnterRunMode
+    DSM->>DSM: ResolveWantedBinariesFromBreakpoints()
     loop For each breakpoint
         DSM->>UMR: ResolveModuleFromSource(bp.File)
         UMR-->>DSM: UnrealEditor-MyGame*.dll
     end
-    Hook->>SSM: Reconcile(wantedBinaries)
+    DSM->>SSM: Reconcile(wantedBinaries)
     SSM->>SSM: Acquire HiveLock
     SSM->>Coord: Prune dead leases, capture baseline if none, open lease file handle
     SSM->>Coord: ComputeEffectiveSettings(baseline, live leases)
     SSM->>VS: SaveSymbolSettings (only if different from current)
     SSM->>SSM: Release HiveLock
-    Hook->>VS: Forward to next hook
     VS->>Dbg: Launch UnrealEditor.exe
     loop For each of ~1,000 DLLs mapped
         Dbg->>Dbg: Is DLL name in IncludeList?

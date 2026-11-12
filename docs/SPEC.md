@@ -53,7 +53,7 @@ This architecture incorporates critical empirical lessons learned across develop
 6. **Symbol settings are global per VS hive, not per instance (ADR-16):**
    `IVsDebuggerSymbolSettingsManager120A.SaveSymbolSettings` persists to the installation's private registry hive (`privateregistry.bin`), which every `devenv.exe` of that installation shares. No public API scopes `IsManualLoad`, `AutomaticSymbolLoad`, or `IncludeList` to one instance, one solution, or one launch profile. Isolation is therefore achieved cooperatively (§4.2) rather than by the platform.
 7. **Settings are modified only while an Unreal debug session needs them (ADR-15):**
-   The extension applies manual-load mode just-in-time from an `IVsDebugLaunchHook` (which runs synchronously for every launch path: F5, F11, Run To Cursor, Restart, Start New Instance, attach) and reconciles back at session end. Opening, editing, or building an Unreal solution never touches symbol settings.
+   The extension applies manual-load mode just-in-time from pre-launch command interceptors (`BeforeExecute` on `cmdidStart`, `cmdidStepInto`, `cmdidStepOver`, `cmdidRunToCursor`) combined with `OnEnterRunMode` for alternate launch paths (e.g. attach or custom runners) and reconciles back at session end. Opening, editing, or building an Unreal solution never touches symbol settings.
 
 ---
 
@@ -65,8 +65,8 @@ flowchart TD
         SO["Unreal Solution Opened"] --> ARM["Arm session monitor (no symbol settings written)"]
     end
 
-    subgraph S2["2. Launch (any launch path) — IVsDebugLaunchHook"]
-        F5["F5 / F11 / Restart / Start New Instance / Attach"] --> LCK["Acquire hive lock, prune dead leases"]
+    subgraph S2["2. Launch (any launch path) — Just-in-Time Interceptor"]
+        F5["F5 / F11 / F10 / Run To Cursor / Enter Run Mode"] --> LCK["Acquire hive lock, prune dead leases"]
         LCK --> BL["Capture shared baseline if none exists"]
         BL --> LEASE["Write own lease (Unreal + wanted binaries)"]
         LEASE --> REC["Reconcile: write effective settings (manual mode + baseline IncludeList ∪ all live wanted sets)"]
@@ -172,10 +172,11 @@ VSOnDemandSymbols/
 * `ExecuteWithCandidateModules(...)` (break-mode masking) flags `ServerMaskActive` on its lease under `HiveLock`.
 * Restores never touch `SymbolPaths` or server flags except for crash recovery of `ServerMaskActive` leases. User edits to paths and servers made during a session are preserved.
 
-#### 3a. `SymbolSettingsLaunchHook` (VSIX)
-* Implements the public `Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook` (`OnLaunchDebugTargets` / `SetNextHook` / `IsProcessRecycleRequired`), registered via pkgdef under the hive's `Debugger\LaunchHooks110` key. Runs synchronously on the UI thread for **every** debug launch in **every** instance (F5, F11/F10 start, Run To Cursor, Restart, Start New Instance, UnrealVS, attach), before the engine reads symbol settings. Always forwards to the next hook.
-* Unreal solution open and extension enabled: resolve breakpoints $\to$ wanted binaries, `Reconcile(wantedBinaries)`.
-* Otherwise (non-Unreal launch): if `baseline.json` exists, `Reconcile(null)` restores user baseline settings so non-Unreal projects debug with clean original settings (Rule P1: correctness beats speed). If `baseline.json` does not exist, zero-touch.
+#### 3a. Launch Interceptors & Session Triggers (VSIX)
+* Subscribes to debug launch command events (`BeforeExecute` on `cmdidStart`, `cmdidStepInto`, `cmdidStepOver`, `cmdidRunToCursor`) as well as `DebuggerEvents.OnEnterRunMode` (ADR-15).
+* Runs synchronously on the UI thread before the native debug engine maps DLLs or reads symbol settings.
+* Resolves breakpoints $\to$ wanted binaries, and calls `Reconcile(wantedBinaries)`.
+* If a non-Unreal project launches in an instance while an active baseline exists in the hive, `Reconcile(null)` restores user baseline settings so non-Unreal projects debug with clean original settings (Rule P1: correctness beats speed). If `baseline.json` does not exist, zero-touch.
 
 #### 4. `DebuggerSessionMonitor` (VSIX)
 * Provides `ResolveWantedBinariesFromBreakpoints()` to the launch hook:

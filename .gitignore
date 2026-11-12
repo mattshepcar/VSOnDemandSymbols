@@ -21,6 +21,13 @@ testsettings.local.json
 ## Scratch & Temp
 scratch/
 
+## Extracted chat history
+chat_history/[0-9][0-9]_*/
+chat_history/artifacts/
+chat_history/summary_metrics.json
+chat_history/INDEX.md
+chat_history/README.md
+
 ## OS
 Thumbs.db
 .DS_Store

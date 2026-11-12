@@ -103,7 +103,7 @@ The codebase consists of two projects and a small set of core source files:
 VSOnDemandSymbols/
 ├── src/
 │   ├── VSOnDemandSymbols.Core/             # netstandard2.0 (Pure .NET, zero VS dependencies)
-│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock, IProcessInfo
+│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock
 │   │   ├── Modules/
 │   │   │   └── UnrealModuleResolver.cs     # *.Build.cs walk-up, candidate DLL generator, Unreal solution check
 │   │   ├── Policy/
@@ -111,9 +111,8 @@ VSOnDemandSymbols/
 │   │   │   └── WildcardPattern.cs          # Wildcard pattern matcher (*, ?)
 │   │   └── State/
 │   │       ├── SymbolSettingsSnapshot.cs   # Managed-field snapshot DTO (flags, IncludeList, servers, paths)
-│   │       ├── CoordinationDtos.cs         # BaselineDto, SessionLeaseDto, DirtyWindowDto
-│   │       ├── CoordinationStore.cs        # Baseline / lease / dirty-window files, dead-lease pruning
-│   │       └── EffectiveSettingsPolicy.cs  # Pure function: (baseline, live leases, self) → settings to write
+│   │       ├── CoordinationDtos.cs         # BaselineDto, SessionLeaseDto
+│   │       └── HiveCoordinator.cs          # Baseline, OS file-handle locks, dead-lease pruning, effective settings
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, pure NuGet references)
 │       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context rule, lifecycle
@@ -142,38 +141,41 @@ VSOnDemandSymbols/
 * Solution detection:
   * `IsUnrealSolution(dir)`: checks for `*.uproject` or `Engine/Build/Build.version` (walking up for nested project files).
 
-#### 2. `CoordinationStore` and `EffectiveSettingsPolicy` (Core)
+#### 2. `HiveCoordinator` (Core)
 * Directory: `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/`, where `<VS_HIVE>` is the last segment of `VSSPROPID_VirtualRegistryRoot` (for example `17.0_abcd1234` or `17.0_abcd1234Exp`). Every `devenv.exe` that shares a private registry hive (and therefore shares symbol settings) resolves the same directory; different installations and root suffixes resolve different directories.
-* Files (all written atomically: temp file + `File.Replace`):
-  * `baseline.json` — **the user's settings before any instance modified them.** Captured once when the first lease is created; never overwritten while it is `Active`. Holds `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList`, `UseMSSymbolServers`, `UseNugetSymbolServers`, `SymbolPaths`, `State` (`Active` / `Released`), `ActiveSinceUtc`, `ReleasedUtc`.
-  * `leases/<pid>.json` — one per live instance that needs a specific state. Holds `ProcessId`, `ProcessStartTimeUtc` (guards against PID reuse), `Kind` (`Unreal` = wants manual mode, `Baseline` = debugging a non-Unreal target and needs the user's settings), `WantedBinaries`, `ServerMaskActive`, `UpdatedUtc`.
-  * `dirty-windows.json` — the last 20 `[ActiveSinceUtc, ReleasedUtc)` intervals during which the shared settings were modified, plus the baseline that was restored at the end of each. Lets an instance that started during a dirty window repair its own possibly stale in-memory settings later, even after `baseline.json` has been released.
+* Files:
+  * `baseline.json` — **the user's settings before any instance modified them.** Captured once when the first lease is created; never overwritten while active. Holds `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList`, `UseMSSymbolServers`, `UseNugetSymbolServers`, `SymbolPaths`, and timestamp. Deleted when the last lease is released.
+  * `leases/<pid>.json` — one per active debug session. Holds `ProcessId`, `Kind` (`Unreal` with wanted binaries), `ServerMaskActive`, and timestamp.
   * Legacy `symbol-settings-backup.json` (pre-ADR-16) is migrated into `baseline.json` on first contact, then deleted.
-* `PruneDeadLeases()`: a lease is live only if a process with that PID exists, is named `devenv`, and its start time matches `ProcessStartTimeUtc` (±2 s). Dead leases are deleted; if any dead lease had `ServerMaskActive = true`, the next reconcile also restores server flags and `SymbolPaths` from the baseline (crash during break-mode masking).
-* `EffectiveSettingsPolicy.Compute(baseline, liveLeases)` — pure, unit-tested, and the **only** place that decides what the shared settings should be:
-
-  | Live leases | Effective settings |
-  |---|---|
-  | none | baseline; release the baseline after verified write |
-  | ≥1 `Baseline` lease (someone is debugging a non-Unreal target) | baseline managed fields (correctness beats speed; see §4.2 rule P1) |
-  | only `Unreal` leases | `IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`, `IncludeList = baseline.IncludeList ∪ (union of all live wanted sets)` |
+* **Kernel-Enforced Liveness via OS File Locks:**
+  * While actively debugging, an instance holds an open `FileStream` on its `leases/<pid>.json` file with `FileShare.Read`. Other instances can read `WantedBinaries`, but cannot write or delete it.
+  * When the process exits normally or crashes, the Windows kernel automatically releases the file handle.
+  * **Dead-Lease Pruning:** Any instance can check whether a lease is live simply by attempting to delete `leases/<pid>.json` (or opening with `FileShare.None`). If the delete succeeds, the owning process has exited and the dead lease is pruned. If an `IOException` (sharing violation) is thrown, the process is alive. No manual PID inspection or start-time heuristics are required.
+* `ComputeEffectiveSettings(baseline, liveLeases)`:
+  * If no live leases remain: returns the baseline snapshot (restores user settings).
+  * If $\ge 1$ live `Unreal` leases: returns manual-load mode (`IsManualLoad=true`, `IsLoadAdjacent=false`, `AutomaticSymbolLoad=false`) with `IncludeList = baseline.IncludeList ∪ (union of all live wanted sets)`.
+  * If server mask recovery is needed (a dead lease had `ServerMaskActive=true`), also signals restoring server flags and `SymbolPaths`.
 
 #### 3. `SymbolSettingsManager` (VSIX)
-* Single writer of Visual Studio symbol settings (`SVsShellDebugger` $\to$ `IVsDebuggerSymbolSettingsManager120A`). Every write happens inside `Reconcile(selfLease)`:
+* Single writer of Visual Studio symbol settings (`SVsShellDebugger` $\to$ `IVsDebuggerSymbolSettingsManager120A`). Every write happens inside `Reconcile(wantedBinaries)` under `HiveLock`:
   1. Acquire `HiveLock` (named mutex `Local\VSOnDemandSymbols.<VS_HIVE>`, 2 s timeout; `AbandonedMutexException` counts as acquired). On timeout: log a warning and leave settings untouched (never block a launch).
-  2. Migrate legacy backup; prune dead leases.
-  3. If `selfLease` needs a state and no `Active` baseline exists, capture one from `GetCurrentSymbolSettings()` and open a dirty window.
-  4. Write / update / delete own lease.
-  5. Compute effective settings; read current settings; write only if they differ (`loadSymbolsNow: false`). No cached "already applied" short-circuit: current settings are always re-read, because another process may have changed them.
-  6. If no leases remain: read back and verify the baseline was written, then mark the baseline `Released` and close the dirty window. If verification fails, keep the baseline `Active` so the next reconcile retries.
-* `ExecuteWithCandidateModules(...)` (break-mode masking) sets `ServerMaskActive` on its lease before masking and clears it in `finally`, under the lock.
+  2. Migrate legacy backup; prune dead leases via kernel lock checks.
+  3. If starting an Unreal debug session:
+     - If no `baseline.json` exists, capture one from `GetCurrentSymbolSettings()`.
+     - Acquire the open lease file handle (`FileShare.Read`) for `leases/<selfPid>.json`.
+  4. If ending a debug session:
+     - Close and delete own lease file handle.
+  5. Compute effective settings; read current settings; write only if they differ (`loadSymbolsNow: false`).
+  6. If no live leases remain and `baseline.json` exists:
+     - Restore baseline settings to Visual Studio.
+     - Delete `baseline.json`.
+* `ExecuteWithCandidateModules(...)` (break-mode masking) flags `ServerMaskActive` on its lease under `HiveLock`.
 * Restores never touch `SymbolPaths` or server flags except for crash recovery of `ServerMaskActive` leases. User edits to paths and servers made during a session are preserved.
 
 #### 3a. `SymbolSettingsLaunchHook` (VSIX)
 * Implements the public `Microsoft.VisualStudio.Shell.Interop.IVsDebugLaunchHook` (`OnLaunchDebugTargets` / `SetNextHook` / `IsProcessRecycleRequired`), registered via pkgdef under the hive's `Debugger\LaunchHooks110` key. Runs synchronously on the UI thread for **every** debug launch in **every** instance (F5, F11/F10 start, Run To Cursor, Restart, Start New Instance, UnrealVS, attach), before the engine reads symbol settings. Always forwards to the next hook.
-* Unreal solution open and extension enabled: resolve breakpoints $\to$ wanted binaries, `Reconcile(Unreal lease)`.
-* Otherwise: if a baseline is `Active` **or** this process started inside a recorded dirty window and has not yet repaired itself, `Reconcile(Baseline lease)` (plus a one-time write of the window's restored baseline into this process). Else do nothing: no file is created and no setting is written.
-* Fallback if the launch hook cannot be registered (spike S2): DTE `CommandEvents.BeforeExecute` for the full launch command set plus a late reconcile at `OnEnterRunMode` with `loadSymbolsNow: true`.
+* Unreal solution open and extension enabled: resolve breakpoints $\to$ wanted binaries, `Reconcile(wantedBinaries)`.
+* Otherwise (non-Unreal launch): if `baseline.json` exists, `Reconcile(null)` restores user baseline settings so non-Unreal projects debug with clean original settings (Rule P1: correctness beats speed). If `baseline.json` does not exist, zero-touch.
 
 #### 4. `DebuggerSessionMonitor` (VSIX)
 * Provides `ResolveWantedBinariesFromBreakpoints()` to the launch hook:
@@ -207,16 +209,16 @@ VSOnDemandSymbols/
 All `devenv.exe` processes of one VS installation and root suffix share one private registry hive, so they share one copy of the symbol settings. The extension cannot isolate settings per instance; instead, every instance follows these rules:
 
 * **R1. Just-in-time only.** Settings are modified only between an Unreal launch and the end of that debug session (ADR-15). Outside that window the shared settings equal the baseline.
-* **R2. One baseline.** The first instance that needs a modified state captures the baseline. Later instances reuse it and never re-capture while it is `Active`, so a second Unreal instance can never record the first instance's manual mode as "the user's settings".
-* **R3. Leases, not ownership.** Each instance declares what it needs in `leases/<pid>.json`. Every write is the output of `EffectiveSettingsPolicy` over all live leases, computed under the hive lock. Whoever releases the last lease restores the baseline, whatever the order of exits.
-* **R4. Dead processes clean up automatically.** Any reconcile in any instance prunes leases whose process is gone (PID + start time), so a crashed instance cannot leave the shared settings modified past the next launch, solution close, or package load of any instance.
-* **R5. Stale in-memory copies are repaired at launch.** An instance that started while the settings were modified may hold the modified values in memory. Its launch hook detects this from `baseline.json` or `dirty-windows.json` and writes the baseline before the launch proceeds.
+* **R2. One baseline.** The first instance that needs a modified state captures `baseline.json`. Later instances reuse it and never overwrite it while active.
+* **R3. Kernel-enforced lease liveness.** Each active debug session opens its lease file (`leases/<pid>.json`) with `FileShare.Read`. The Windows kernel automatically releases the file handle the instant the process exits or crashes.
+* **R4. Self-healing dead lease pruning.** An instance checks lease liveness by attempting to delete `leases/<pid>.json`. If it succeeds, the owner was dead and is now cleaned up. If it throws `IOException` (sharing violation), the owner is alive.
+* **R5. Non-Unreal launch safety.** When any instance launches a non-Unreal project, if `baseline.json` exists it restores the baseline settings before launch proceeds (Rule P1: correctness beats speed).
 
 Priority rules for genuinely concurrent sessions:
 
-* **P1. Correctness beats speed.** While any instance is debugging a non-Unreal target (`Baseline` lease), the effective state is the baseline. A concurrent Unreal session keeps working (breakpoints bind and stacks resolve through the on-demand paths) but startup of later modules is no longer filtered. The Unreal instance logs a warning once.
+* **P1. Correctness beats speed.** If a non-Unreal target launches while an Unreal session is running, the baseline is restored so the non-Unreal project gets standard symbol loading. An already-running Unreal session continues debugging normally (symbols already loaded never unload, and mid-session break loads use DTE).
 * **P2. Unreal sessions merge.** Two concurrent Unreal sessions (same or different solutions) share one effective `IncludeList`: the union of both wanted sets on top of the baseline.
-* **P3. Fail safe.** If the hive lock cannot be acquired, a file cannot be read or written, or verification fails, the extension leaves settings unchanged, keeps the baseline `Active`, and logs. The launch always proceeds.
+* **P3. Fail safe.** If the hive lock cannot be acquired or file I/O fails, the extension leaves settings untouched and logs a warning. The launch always proceeds uninterrupted.
 
 Known limitation: if the user edits the managed fields (`IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList`) in Tools > Options while a baseline is `Active`, those edits are overwritten when the baseline is restored. Edits to symbol paths, servers, cache, and exclude list are always preserved.
 

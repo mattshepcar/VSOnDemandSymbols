@@ -112,23 +112,23 @@ tests\VSOnDemandSymbols.IntegrationTests\bin\Debug\net472\VSOnDemandSymbols.Inte
 2. **Verify:**
    - The Output pane logs `[Info] Restored original symbol settings.`
    - **Tools > Options > Debugging > Symbols** shows your original settings and IncludeList (**Golden Rule #1**).
-   - `baseline.json` is `Released` and `leases\` is empty.
+   - `baseline.json` and your lease file are deleted.
 3. Start debugging again, then close the solution via **File > Close Solution** while the session is still running (VS stops debugging first). Verify the same result.
 
 ---
 
 ### Test Case 7: Crash Recovery
-1. Open an Unreal solution and press **F5** so a lease and an active baseline exist.
+1. Open an Unreal solution and press **F5** so a lease and `baseline.json` exist.
 2. Force-kill the Visual Studio process (`devenv.exe`) via Task Manager or `taskkill /F /PID <pid>`.
 3. Re-launch the Experimental instance.
 4. **Verify:**
-   - On package load, `Reconcile(null)` prunes the dead lease (PID no longer alive or start time mismatch).
+   - On package load, `Reconcile(null)` prunes the dead lease (kernel handle was released on process exit).
    - The Output pane logs:
      ```
      [Warning] Pruned lease from exited process <pid>; restored original symbol settings.
      ```
-   - Symbol settings are restored to their pre-crash original state and the baseline is `Released`.
-5. Repeat, but kill `devenv.exe` while stopped at a breakpoint inside a `LocalOnly` load pass (lease has `ServerMaskActive: true`). Verify that symbol server flags and `SymbolPaths` are restored too.
+   - Symbol settings are restored to their pre-crash original state and `baseline.json` is deleted.
+5. Repeat, but kill `devenv.exe` while stopped at a breakpoint inside a `LocalOnly` load pass (lease had `ServerMaskActive: true`). Verify that symbol server flags and `SymbolPaths` are restored too.
 
 ---
 
@@ -143,28 +143,22 @@ Use two instances of the **same** hive (for example two `devenv.exe /rootsuffix 
 ### Test Case 11: B Starts and Debugs While A Is Debugging
 1. A presses **F5** (editor running). Start B, then press **F5** in B with a breakpoint in B's code.
 2. **Verify:**
-   - B's Output pane logs that it wrote a `Baseline` lease and restored the baseline.
+   - B's launch hook sees `baseline.json` exists, restores baseline settings before launch, and B debugs with clean user settings.
    - B's breakpoint binds and B's modules load symbols per your original settings.
-   - A keeps debugging. Breakpoints added in A still bind (ADR-04 path). A logs a single warning about P1.
-3. Stop B's session. **Verify:** A's manual mode is written back (the only remaining lease is `Unreal`).
-4. Stop A's session. **Verify:** the original settings are restored and the baseline is `Released`.
+   - A keeps debugging. Breakpoints added in A still bind (ADR-04 path).
+3. Stop A's session. **Verify:** when all leases are closed, `baseline.json` is cleaned up.
 
-### Test Case 12: Stale In-Memory Repair After A Has Finished
-1. A presses **F5**. Start B while A is debugging. Do not debug in B.
-2. Stop A's session (baseline released). Then press **F5** in B.
-3. **Verify:** B's launch hook detects that B started inside a recorded dirty window, writes the baseline once, and B debugs with your original settings.
-
-### Test Case 13: Two Unreal Instances
+### Test Case 12: Two Unreal Instances
 1. A opens Lyra, B opens a second Unreal project (or a second copy of Lyra). Set breakpoints in different modules in each.
 2. Press **F5** in A, then in B.
 3. **Verify:**
    - `baseline.json` was captured once (by A). Its `IncludeList` equals your original list, **not** A's modified list.
    - The live `IncludeList` contains both instances' wanted patterns. Breakpoints bind in both.
-4. Stop A first, then B (then repeat stopping in the opposite order). **Verify:** after the first stop the other instance's wanted set remains; after the second stop the original settings are restored.
+4. Stop A first, then B (then repeat stopping in the opposite order). **Verify:** after the first stop the other instance's wanted set remains; after the second stop the original settings are restored and `baseline.json` is deleted.
 
-### Test Case 14: Out-of-Order Exit and Crash
+### Test Case 13: Out-of-Order Exit and Crash
 1. A and B both debugging Unreal. Kill A's `devenv.exe`.
-2. **Verify:** On B's next reconcile (session end, breakpoint add, or solution close), A's lease is pruned. When B finishes, the original settings are restored.
+2. **Verify:** On B's next reconcile (session end, breakpoint add, or solution close), A's lease is pruned. When B finishes, original settings are restored.
 3. Kill both instances while debugging, then start a fresh instance. **Verify:** package load restores the original settings.
 
 ---

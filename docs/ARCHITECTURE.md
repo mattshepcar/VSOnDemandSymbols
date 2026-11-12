@@ -20,7 +20,7 @@ VSOnDemandSymbols/
 │
 ├── src/
 │   ├── VSOnDemandSymbols.Core/             # netstandard2.0 (Pure .NET, zero VS dependencies)
-│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock, IProcessInfo
+│   │   ├── Abstractions/                   # IFileSystem, ILogger, IClock
 │   │   ├── Modules/
 │   │   │   └── UnrealModuleResolver.cs     # *.Build.cs directory walk-up & candidate DLL generator
 │   │   ├── Policy/
@@ -28,9 +28,8 @@ VSOnDemandSymbols/
 │   │   │   └── WildcardPattern.cs          # Path sanitization & wildcard matching
 │   │   └── State/
 │   │       ├── SymbolSettingsSnapshot.cs   # Managed-field snapshot DTO
-│   │       ├── CoordinationDtos.cs         # BaselineDto, SessionLeaseDto, DirtyWindowDto
-│   │       ├── CoordinationStore.cs        # Baseline / leases / dirty windows, dead-lease pruning
-│   │       └── EffectiveSettingsPolicy.cs  # Pure decision function over baseline + live leases
+│   │       ├── CoordinationDtos.cs         # BaselineDto, SessionLeaseDto
+│   │       └── HiveCoordinator.cs          # Baseline, OS file-handle locks, dead-lease pruning, effective settings
 │   │
 │   └── VSOnDemandSymbols/                  # net472 (Thin VS adapter, standard NuGet references)
 │       ├── VSOnDemandSymbolsPackage.cs     # AsyncPackage, UI context auto-load, lifecycle
@@ -69,8 +68,7 @@ flowchart TD
 
     subgraph CORE_LIB["VSOnDemandSymbols.Core (netstandard2.0)"]
         UMR["UnrealModuleResolver<br/>(*.Build.cs walk-up & candidate binaries)"]
-        STORE["CoordinationStore<br/>(baseline, leases, dirty windows)"]
-        POL["EffectiveSettingsPolicy<br/>(pure decision function)"]
+        COORD["HiveCoordinator<br/>(baseline, file-handle leases, pruning, effective settings)"]
     end
 
     PKG --> SSM
@@ -84,8 +82,7 @@ flowchart TD
     DSM --> OUT
 
     SSM --> LOCK
-    SSM --> STORE
-    SSM --> POL
+    SSM --> COORD
     SSM --> OUT
 ```
 
@@ -94,13 +91,12 @@ flowchart TD
 | Component | Project | Responsibility | Primary APIs Used |
 |---|---|---|---|
 | **`VSOnDemandSymbolsPackage`** | VSIX | Background package initialization, UI context auto-load on C++ solutions, solution open/close listener. Unreal detection arms the monitor only; it never writes settings. Calls `Reconcile(null)` on init (crash recovery), solution close, and dispose. | `AsyncPackage`, `IVsSolutionEvents` |
-| **`SymbolSettingsLaunchHook`** | VSIX | Runs synchronously inside every `LaunchDebugTargets` in every instance. Unreal target: `Reconcile(Unreal lease)` with wanted binaries. Other targets: `Reconcile(Baseline lease)` only if settings may be leaked into this process; otherwise zero-touch. Always forwards to the next hook (ADR-15). | `IVsDebugLaunchHook` |
-| **`SymbolSettingsManager`** | VSIX | Sole writer of symbol settings. `Reconcile(selfLease)` takes the hive lock, prunes dead leases, captures the baseline if needed, updates its own lease, writes the output of `EffectiveSettingsPolicy` only if it differs from current settings, and releases the baseline after a verified restore. Flags `ServerMaskActive` during break-mode masking (ADR-16). | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
+| **`SymbolSettingsLaunchHook`** | VSIX | Runs synchronously inside every `LaunchDebugTargets` in every instance. Unreal target: `Reconcile(wantedBinaries)`. Non-Unreal targets: if baseline exists, `Reconcile(null)` restores user baseline settings; otherwise zero-touch. Always forwards to next hook (ADR-15). | `IVsDebugLaunchHook` |
+| **`SymbolSettingsManager`** | VSIX | Sole writer of symbol settings. `Reconcile(wantedBinaries)` takes the hive lock, prunes dead leases via kernel lock checks, captures baseline if needed, acquires/releases own lease file handle, writes effective settings if different from current, and deletes baseline when no leases remain. Flags `ServerMaskActive` during break-mode masking (ADR-16). | `IVsDebuggerSymbolSettingsManager120A`, `IVsDebuggerSymbolSettings170` |
 | **`HiveLock`** | VSIX | Cross-process critical section `Local\VSOnDemandSymbols.<VS_HIVE>` with 2 s timeout; abandoned mutex counts as acquired; timeout means "leave settings untouched". | `System.Threading.Mutex` |
 | **`DebuggerSessionMonitor`** | VSIX | Resolves breakpoints (both enabled and disabled, ADR-03) to wanted binaries for the launch hook. Observes AD7 `IDebugBreakpointErrorEvent2` to refresh the lease and load symbols on demand when breakpoints are added while running. Subscribes to `OnEnterBreakMode` for call-stack loading and to `OnEnterDesignMode` to release the lease. | `EnvDTE80.DTE2`, `DebuggerEvents`, `IDebugEventCallback2`, `EnvDTE90.Module` |
 | **`UnrealModuleResolver`** | Core | Resolves source files to module names by walking up the directory tree to find `{Module}.Build.cs` (handling intermediate UHT and unity paths). Generates candidate DLL names (`UnrealEditor-{Module}*.dll`). Detects Unreal solutions (`*.uproject` or `Engine/Build/Build.version`). | `IFileSystem`, `ConcurrentDictionary` cache |
-| **`CoordinationStore`** | Core | Atomic JSON persistence for `baseline.json`, `leases/<pid>.json`, and `dirty-windows.json` under `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/`. Prunes dead leases (PID + process start time). Migrates the legacy `symbol-settings-backup.json`. | `Newtonsoft.Json`, `IFileSystem`, `IProcessInfo`, `IClock` |
-| **`EffectiveSettingsPolicy`** | Core | Pure function `(baseline, liveLeases) → effective settings + release decision`. Encodes priority rules P1 (Baseline lease wins) and P2 (Unreal wanted sets merge). | — |
+| **`HiveCoordinator`** | Core | Manages atomic JSON persistence for `baseline.json` and `leases/<pid>.json` under `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/`. Uses kernel file handle locking (`FileShare.Read`) for active leases; prunes dead leases via try-delete; computes effective settings (merging wanted sets). Migrates legacy `symbol-settings-backup.json`. | `Newtonsoft.Json`, `IFileSystem`, `IClock` |
 | **`OutputLog`** | VSIX | Thread-safe logger outputting to the dedicated "On-Demand Symbols" pane in the Visual Studio Output window. | `IVsOutputWindowPane` |
 
 ---
@@ -141,7 +137,7 @@ sequenceDiagram
     participant DSM as DebuggerSessionMonitor
     participant UMR as UnrealModuleResolver
     participant SSM as SymbolSettingsManager
-    participant Store as CoordinationStore
+    participant Coord as HiveCoordinator
     participant Dbg as Native Debug Engine
 
     User->>VS: F5 / F11 / Restart / Start New Instance
@@ -151,10 +147,10 @@ sequenceDiagram
         DSM->>UMR: ResolveModuleFromSource(bp.File)
         UMR-->>DSM: UnrealEditor-MyGame*.dll
     end
-    Hook->>SSM: Reconcile(Unreal lease, wanted)
+    Hook->>SSM: Reconcile(wantedBinaries)
     SSM->>SSM: Acquire HiveLock
-    SSM->>Store: Prune dead leases, capture baseline if none, write own lease
-    SSM->>SSM: EffectiveSettingsPolicy.Compute(baseline, live leases)
+    SSM->>Coord: Prune dead leases, capture baseline if none, open lease file handle
+    SSM->>Coord: ComputeEffectiveSettings(baseline, live leases)
     SSM->>VS: SaveSymbolSettings (only if different from current)
     SSM->>SSM: Release HiveLock
     Hook->>VS: Forward to next hook
@@ -228,19 +224,18 @@ sequenceDiagram
     participant VS as Visual Studio
     participant DSM as DebuggerSessionMonitor
     participant SSM as SymbolSettingsManager
-    participant Store as CoordinationStore
+    participant Coord as HiveCoordinator
     participant Log as OutputLog
 
     VS->>DSM: DebuggerEvents.OnEnterDesignMode (or solution close / dispose)
     DSM->>SSM: Reconcile(null)
     SSM->>SSM: Acquire HiveLock
-    SSM->>Store: Delete own lease, prune dead leases
+    SSM->>Coord: Close/delete own lease handle, prune dead leases
     alt Other live Unreal leases remain
         SSM->>VS: Write manual mode with union of remaining wanted sets
     else No live leases remain
-        SSM->>VS: Write baseline flags & IncludeList
-        SSM->>VS: Read back and verify
-        SSM->>Store: Mark baseline Released, close dirty window
+        SSM->>VS: Restore baseline settings
+        SSM->>Coord: Delete baseline.json
         SSM->>Log: "Restored original symbol settings."
     end
     SSM->>SSM: Release HiveLock
@@ -251,22 +246,19 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant A as Instance A (Unreal)
-    participant Store as CoordinationStore
+    participant Coord as HiveCoordinator
     participant Reg as Shared VS hive settings
     participant B as Instance B (non-Unreal)
 
-    A->>Store: Unreal lease + baseline captured
+    A->>Coord: Capture baseline.json + acquire lease handle
     A->>Reg: Manual mode + Unreal IncludeList
-    Note over B: B starts and may load manual mode into memory
-    B->>B: User presses F5 (launch hook)
-    B->>Store: Baseline Active, so write Baseline lease
-    B->>Reg: Restore baseline managed fields (P1: correctness beats speed)
+    Note over B: B starts and user presses F5 (launch hook)
+    B->>Coord: baseline.json exists
+    B->>Reg: Restore baseline settings (Rule P1: correctness beats speed)
     B->>B: Launch proceeds with user's settings
     Note over A: A keeps debugging; on-demand paths still load symbols
-    B->>Store: Session end: delete Baseline lease
-    B->>Reg: Only Unreal lease remains, so write manual mode again
-    A->>Store: Session end: delete Unreal lease (last lease)
-    A->>Reg: Restore baseline, verify, release baseline
+    A->>Coord: Session end: close lease handle
+    A->>Coord: No live leases remain -> delete baseline.json
 ```
 
 ---

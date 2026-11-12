@@ -10,6 +10,7 @@ public sealed class InMemoryFileSystem : IFileSystem
 {
     private readonly Dictionary<string, string> _files = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _directories = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _lockedFiles = new(StringComparer.OrdinalIgnoreCase);
 
     public bool FileExists(string path) => _files.ContainsKey(path);
     public bool DirectoryExists(string path) => _directories.Contains(path);
@@ -22,6 +23,8 @@ public sealed class InMemoryFileSystem : IFileSystem
         }
         return content;
     }
+
+    public string ReadSharedText(string path) => ReadAllText(path);
 
     public void WriteAllText(string path, string contents)
     {
@@ -36,6 +39,31 @@ public sealed class InMemoryFileSystem : IFileSystem
     public void DeleteFile(string path)
     {
         _files.Remove(path);
+        _lockedFiles.Remove(path);
+    }
+
+    public bool TryDeleteFile(string path)
+    {
+        if (_lockedFiles.Contains(path))
+        {
+            // Simulated sharing violation (file locked by active lease)
+            return false;
+        }
+
+        _files.Remove(path);
+        return true;
+    }
+
+    public IFileLease? TryAcquireLease(string path, string contents)
+    {
+        if (_lockedFiles.Contains(path))
+        {
+            return null;
+        }
+
+        WriteAllText(path, contents);
+        _lockedFiles.Add(path);
+        return new InMemoryFileLease(this, path);
     }
 
     public void ReplaceFile(string sourceFileName, string destinationFileName, string? destinationBackupFileName)
@@ -102,5 +130,31 @@ public sealed class InMemoryFileSystem : IFileSystem
         string escaped = Regex.Escape(pattern).Replace(@"\*", ".*").Replace(@"\?", ".");
         return new Regex("^" + escaped + "$", RegexOptions.IgnoreCase);
     }
-}
 
+    private sealed class InMemoryFileLease : IFileLease
+    {
+        private readonly InMemoryFileSystem _fs;
+        private readonly string _path;
+        private bool _disposed;
+
+        public InMemoryFileLease(InMemoryFileSystem fs, string path)
+        {
+            _fs = fs;
+            _path = path;
+        }
+
+        public void Update(string contents)
+        {
+            if (_disposed) return;
+            _fs.WriteAllText(_path, contents);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _fs._lockedFiles.Remove(_path);
+            _fs._files.Remove(_path);
+        }
+    }
+}

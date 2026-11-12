@@ -127,3 +127,4 @@ public sealed class SymbolSettingsSnapshot
         return setA.Count == b.Count;
     }
 }
+

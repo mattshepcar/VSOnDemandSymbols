@@ -96,3 +96,4 @@ public class SymbolSettingsSnapshotTests
         Assert.False(a.ServerSettingsEqual(b));
     }
 }
+

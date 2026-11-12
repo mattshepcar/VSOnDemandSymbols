@@ -3,25 +3,25 @@ using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
 using VSOnDemandSymbols.Core.Abstractions;
+using VSOnDemandSymbols.Core.Policy;
 
 namespace VSOnDemandSymbols.Core.State;
 
 /// <summary>
-/// Manages atomic JSON persistence for the per-VS-hive coordination directory (ADR-16):
-/// <c>%LOCALAPPDATA%/OnDemandSymbols/&lt;VS_HIVE&gt;/</c>
-/// Stores: <c>baseline.json</c>, <c>leases/&lt;pid&gt;.json</c>, and <c>dirty-windows.json</c>.
+/// Coordinates multi-instance symbol settings per Visual Studio hive (ADR-16).
+/// Uses Windows kernel file handle locks (FileShare.Read) on <c>leases/&lt;pid&gt;.json</c>
+/// to track live debug sessions and self-heal dead leases without process inspection.
 /// </summary>
-public sealed class CoordinationStore
+public sealed class HiveCoordinator
 {
     public const string BaselineFileName = "baseline.json";
-    public const string DirtyWindowsFileName = "dirty-windows.json";
     public const string LeasesFolderName = "leases";
     public const string LegacyBackupFileName = "symbol-settings-backup.json";
 
     private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
 
-    public CoordinationStore(IFileSystem fileSystem, ILogger logger)
+    public HiveCoordinator(IFileSystem fileSystem, ILogger logger)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -80,34 +80,46 @@ public sealed class CoordinationStore
 
     #endregion
 
-    #region Leases
+    #region Leases & Liveness
 
-    public SessionLeaseDto? TryLoadLease(string hiveDir, int processId)
+    public IFileLease? TryAcquireLease(
+        string hiveDir,
+        int processId,
+        IEnumerable<string>? wantedBinaries,
+        bool serverMaskActive,
+        IClock clock)
     {
         string path = GetLeaseFilePath(hiveDir, processId);
-        return TryReadJson<SessionLeaseDto>(path);
-    }
-
-    public void SaveLease(string hiveDir, SessionLeaseDto lease)
-    {
-        if (lease == null)
+        var dto = new SessionLeaseDto
         {
-            throw new ArgumentNullException(nameof(lease));
-        }
+            ProcessId = processId,
+            WantedBinaries = wantedBinaries != null ? new List<string>(wantedBinaries) : new List<string>(),
+            ServerMaskActive = serverMaskActive,
+            UpdatedUtc = clock.UtcNow
+        };
 
-        string path = GetLeaseFilePath(hiveDir, lease.ProcessId);
-        WriteJsonAtomic(path, lease);
+        string json = JsonConvert.SerializeObject(dto, Formatting.Indented);
+        return _fileSystem.TryAcquireLease(path, json);
     }
 
-    public void DeleteLease(string hiveDir, int processId)
+    public static string SerializeLeaseContent(
+        int processId,
+        IEnumerable<string>? wantedBinaries,
+        bool serverMaskActive,
+        IClock clock)
     {
-        string path = GetLeaseFilePath(hiveDir, processId);
-        DeleteFileSafe(path);
+        var dto = new SessionLeaseDto
+        {
+            ProcessId = processId,
+            WantedBinaries = wantedBinaries != null ? new List<string>(wantedBinaries) : new List<string>(),
+            ServerMaskActive = serverMaskActive,
+            UpdatedUtc = clock.UtcNow
+        };
+        return JsonConvert.SerializeObject(dto, Formatting.Indented);
     }
 
     public IReadOnlyList<SessionLeaseDto> PruneAndListLiveLeases(
         string hiveDir,
-        IProcessInfo processInfo,
         out bool anyPrunedServerMaskActive)
     {
         anyPrunedServerMaskActive = false;
@@ -132,27 +144,29 @@ public sealed class CoordinationStore
 
         foreach (string file in files)
         {
-            var lease = TryReadJson<SessionLeaseDto>(file);
-            if (lease == null)
-            {
-                DeleteFileSafe(file);
-                continue;
-            }
+            var lease = TryReadSharedJson<SessionLeaseDto>(file);
 
-            bool isAlive = processInfo.IsDevenvProcessAlive(lease.ProcessId, lease.ProcessStartTimeUtc);
-            if (isAlive)
+            // Attempt to delete the file.
+            // If the owning devenv.exe is still alive, it holds an open handle (FileShare.ReadWrite)
+            // and TryDeleteFile will return false (sharing violation).
+            // If the process has exited or crashed, the OS kernel released the handle and TryDeleteFile succeeds!
+            bool deleted = _fileSystem.TryDeleteFile(file);
+            if (deleted)
             {
-                liveLeases.Add(lease);
-            }
-            else
-            {
-                if (lease.ServerMaskActive)
+                // File was deleted -> dead lease from crashed process was successfully pruned!
+                if (lease != null && lease.ServerMaskActive)
                 {
                     anyPrunedServerMaskActive = true;
                 }
-
-                _logger.Warning($"Pruned dead lease for PID {lease.ProcessId} (kind={lease.Kind}, serverMaskActive={lease.ServerMaskActive}).");
-                DeleteFileSafe(file);
+                _logger.Warning($"Pruned dead lease '{Path.GetFileName(file)}' (serverMaskActive={lease?.ServerMaskActive ?? false}).");
+            }
+            else
+            {
+                // File is locked by an actively running process -> lease is LIVE
+                if (lease != null)
+                {
+                    liveLeases.Add(lease);
+                }
             }
         }
 
@@ -166,67 +180,72 @@ public sealed class CoordinationStore
 
     #endregion
 
-    #region Dirty Windows
+    #region Effective Settings Calculation
 
-    public DirtyWindowLogDto LoadDirtyWindows(string hiveDir)
+    public SymbolSettingsSnapshot ComputeEffectiveSettings(
+        BaselineDto baseline,
+        IReadOnlyList<SessionLeaseDto>? liveLeases,
+        bool recoverServerSettings = false)
     {
-        string path = Path.Combine(hiveDir, DirtyWindowsFileName);
-        return TryReadJson<DirtyWindowLogDto>(path) ?? new DirtyWindowLogDto();
-    }
-
-    public void RecordDirtyWindow(
-        string hiveDir,
-        DateTime activeSinceUtc,
-        DateTime releasedUtc,
-        SymbolSettingsSnapshot restoredBaseline)
-    {
-        var log = LoadDirtyWindows(hiveDir);
-        log.Windows.Add(new DirtyWindowDto
+        if (baseline == null)
         {
-            ActiveSinceUtc = activeSinceUtc,
-            ReleasedUtc = releasedUtc,
-            RestoredBaseline = restoredBaseline?.Clone() ?? new SymbolSettingsSnapshot()
-        });
-
-        // Cap at MaxEntries (keep newest)
-        if (log.Windows.Count > DirtyWindowLogDto.MaxEntries)
-        {
-            log.Windows.RemoveRange(0, log.Windows.Count - DirtyWindowLogDto.MaxEntries);
+            throw new ArgumentNullException(nameof(baseline));
         }
 
-        string path = Path.Combine(hiveDir, DirtyWindowsFileName);
-        WriteJsonAtomic(path, log);
-    }
+        var baselineSnapshot = baseline.Snapshot ?? new SymbolSettingsSnapshot();
 
-    public SymbolSettingsSnapshot? FindOverlappingDirtyWindow(string hiveDir, DateTime processStartTimeUtc)
-    {
-        if (processStartTimeUtc == DateTime.MinValue)
+        // If no live leases remain -> restore baseline settings
+        if (liveLeases == null || liveLeases.Count == 0)
         {
-            return null;
+            return baselineSnapshot.Clone();
         }
 
-        // 1. Check if baseline is currently Active and the process started after ActiveSinceUtc
-        var baseline = TryLoadBaseline(hiveDir);
-        if (baseline != null && baseline.State == BaselineState.Active)
+        // Live Unreal leases exist -> apply manual mode and merge wanted binaries
+        var merged = baselineSnapshot.Clone();
+        merged.IsManualLoad = true;
+        merged.IsLoadAdjacent = false;
+        merged.AutomaticSymbolLoad = false;
+
+        var existingNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var opt in merged.IncludeList)
         {
-            if (processStartTimeUtc >= baseline.ActiveSinceUtc)
+            if (!string.IsNullOrWhiteSpace(opt.Name))
             {
-                return baseline.Snapshot;
+                existingNames.Add(opt.Name);
             }
         }
 
-        // 2. Check historical dirty windows
-        var log = LoadDirtyWindows(hiveDir);
-        for (int i = log.Windows.Count - 1; i >= 0; i--)
+        foreach (var lease in liveLeases)
         {
-            var w = log.Windows[i];
-            if (processStartTimeUtc >= w.ActiveSinceUtc && processStartTimeUtc <= w.ReleasedUtc)
+            if (lease.WantedBinaries != null)
             {
-                return w.RestoredBaseline;
+                foreach (string binary in lease.WantedBinaries)
+                {
+                    string clean = WildcardPattern.ExtractFileNameSafe(binary);
+                    if (!string.IsNullOrWhiteSpace(clean) && existingNames.Add(clean))
+                    {
+                        merged.IncludeList.Add(new SymbolOptionBackupDto
+                        {
+                            Name = clean,
+                            IsEnabled = true
+                        });
+                    }
+                }
             }
         }
 
-        return null;
+        if (recoverServerSettings)
+        {
+            merged.UseMsSymbolServers = baselineSnapshot.UseMsSymbolServers;
+            merged.UseNugetSymbolServers = baselineSnapshot.UseNugetSymbolServers;
+            merged.SymbolPaths = new List<SymbolOptionBackupDto>(baselineSnapshot.SymbolPaths.Count);
+            foreach (var p in baselineSnapshot.SymbolPaths)
+            {
+                merged.SymbolPaths.Add(new SymbolOptionBackupDto { Name = p.Name, IsEnabled = p.IsEnabled });
+            }
+        }
+
+        return merged;
     }
 
     #endregion
@@ -251,7 +270,6 @@ public sealed class CoordinationStore
                 {
                     var baseline = new BaselineDto
                     {
-                        State = BaselineState.Active,
                         ActiveSinceUtc = legacy.TimestampUtc != default ? legacy.TimestampUtc : clock.UtcNow,
                         Snapshot = new SymbolSettingsSnapshot
                         {
@@ -299,6 +317,25 @@ public sealed class CoordinationStore
         catch (Exception ex)
         {
             _logger.Warning($"Failed to read JSON file '{filePath}': {ex.Message}");
+            return null;
+        }
+    }
+
+    private T? TryReadSharedJson<T>(string filePath) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !_fileSystem.FileExists(filePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            string json = _fileSystem.ReadSharedText(filePath);
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning($"Failed to read shared JSON file '{filePath}': {ex.Message}");
             return null;
         }
     }

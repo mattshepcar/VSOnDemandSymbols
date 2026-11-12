@@ -23,35 +23,25 @@ Before refactoring the production classes, verify the two Visual Studio host ass
 
 ---
 
-## Phase 1: Core State, Policy & Coordination Store (`VSOnDemandSymbols.Core`)
+## Phase 1: Core State & Hive Coordinator (`VSOnDemandSymbols.Core`)
 
 All coordination logic stays VS-free in `netstandard2.0` so every interleaving can be deterministically unit-tested.
 
-- [x] **1.1 Process abstraction (`Abstractions/IProcessInfo.cs` & `SystemProcessInfo.cs`):**
-  - `int CurrentProcessId { get; }`
-  - `DateTime CurrentProcessStartTimeUtc { get; }`
-  - `bool IsDevenvProcessAlive(int pid, DateTime expectedStartTimeUtc)` — verifies PID exists, process name is `devenv`, and `StartTime.ToUniversalTime()` matches within ±2 seconds (guards against OS PID reuse).
-- [x] **1.2 Snapshot & Coordination DTOs (`State/SymbolSettingsSnapshot.cs`, `State/CoordinationDtos.cs`):**
+- [x] **1.1 Snapshot & Coordination DTOs (`State/SymbolSettingsSnapshot.cs`, `State/CoordinationDtos.cs`):**
   - `SymbolSettingsSnapshot`: `IsManualLoad`, `IsLoadAdjacent`, `AutomaticSymbolLoad`, `IncludeList`, `UseMsSymbolServers`, `UseNugetSymbolServers`, `SymbolPaths`, plus structural equality helpers for managed fields vs. server fields.
-  - `BaselineDto`: `State` (`Active` | `Released`), `ActiveSinceUtc`, `ReleasedUtc`, `Snapshot`.
-  - `SessionLeaseDto`: `ProcessId`, `ProcessStartTimeUtc`, `Kind` (`Unreal` | `Baseline`), `WantedBinaries`, `ServerMaskActive`, `UpdatedUtc`.
-  - `DirtyWindowDto` / `DirtyWindowLogDto`: last 20 `[ActiveSinceUtc, ReleasedUtc)` intervals with `RestoredBaseline`.
-- [x] **1.3 `CoordinationStore` (`State/CoordinationStore.cs`):**
-  - Resolves `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/` (`baseline.json`, `leases/<pid>.json`, `dirty-windows.json`).
-  - Atomic writes (`WriteAllText` temp file + `ReplaceFile`).
-  - `MigrateLegacyBackupIfNeeded(...)`: converts pre-ADR-16 `symbol-settings-backup.json` into an `Active` `baseline.json` and deletes the legacy file.
-  - `PruneDeadLeases(...)`: deletes leases whose process is dead; returns whether any pruned lease had `ServerMaskActive == true` (crash during break-mode masking).
-  - `AppendDirtyWindow(...)` / `HasOverlappingDirtyWindow(DateTime processStartTimeUtc)`.
-- [x] **1.4 `EffectiveSettingsPolicy` (`State/EffectiveSettingsPolicy.cs`):**
-  - Pure function `Compute(BaselineDto baseline, IReadOnlyList<SessionLeaseDto> liveLeases, bool recoverServerSettings)`.
-  - Encodes:
-    - No live leases $\to$ restore `baseline` managed fields (and server fields if `recoverServerSettings`), mark `ShouldReleaseBaseline = true`.
-    - $\ge 1$ `Baseline` lease $\to$ force `baseline` managed fields (Priority rule P1: correctness beats speed).
-    - Only `Unreal` leases $\to$ `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`, `IncludeList = baseline.IncludeList ∪ union(all live WantedBinaries)` (Priority rule P2).
-- [x] **1.5 Unit Tests (`VSOnDemandSymbols.Core.Tests`):**
-  - `EffectiveSettingsPolicyTests`: empty leases, single Unreal, two Unreal (merged IncludeList), Unreal + Baseline (Baseline wins), server recovery flag.
-  - `CoordinationStoreTests`: atomic round-trips, dead-lease pruning, PID reuse mismatch, `ServerMaskActive` crash detection, dirty-window capping (20 entries) and overlap queries, legacy `symbol-settings-backup.json` migration.
-  - `SymbolSettingsSnapshotTests`: cloning and equality checking.
+  - `BaselineDto`: `ActiveSinceUtc`, `Snapshot`.
+  - `SessionLeaseDto`: `ProcessId`, `WantedBinaries`, `ServerMaskActive`, `UpdatedUtc`.
+- [x] **1.2 `HiveCoordinator` (`State/HiveCoordinator.cs`):**
+  - Resolves `%LOCALAPPDATA%/OnDemandSymbols/<VS_HIVE>/` (`baseline.json`, `leases/<pid>.json`).
+  - Kernel-enforced lease liveness: holds open `FileStream` on `leases/<pid>.json` (`FileShare.Read`) during active debug session.
+  - Dead-lease pruning: attempts `File.Delete` on lease files. If it succeeds, the dead lease is pruned. If it throws `IOException` (sharing violation), the owner is alive. Detects if any pruned lease had `ServerMaskActive == true` (crash recovery).
+  - Effective settings calculation:
+    - If no live leases: restore baseline settings.
+    - If $\ge 1$ live Unreal leases: `IsManualLoad = true`, `IsLoadAdjacent = false`, `AutomaticSymbolLoad = false`, `IncludeList = baseline.IncludeList ∪ union(all live WantedBinaries)`.
+  - Legacy migration: converts pre-ADR-16 `symbol-settings-backup.json` to `baseline.json` and deletes legacy file.
+- [x] **1.3 Unit Tests (`VSOnDemandSymbols.Core.Tests`):**
+  - `HiveCoordinatorTests`: atomic baseline save/load/delete, file-handle locking and dead-lease pruning (sharing violation vs. deletion), wanted binaries union, server-mask crash detection, legacy migration.
+  - `SymbolSettingsSnapshotTests`: cloning, equality checking.
 
 ---
 
@@ -62,16 +52,19 @@ All coordination logic stays VS-free in `netstandard2.0` so every interleaving c
   - Treats `AbandonedMutexException` as acquired (previous holder crashed).
   - Returns `null` / `false` on timeout so callers fail safe without blocking debug launch (P3).
 - [ ] **2.2 Refactor `SymbolSettingsManager` (`Debugger/SymbolSettingsManager.cs`):**
-  - Replace `ApplyManualMode`, `RestoreOriginalSettings`, and `RecoverFromCrashIfNeeded` with `Reconcile(SessionLeaseRequest? selfLease, bool forceBaselineWrite = false)`.
+  - Replace `ApplyManualMode`, `RestoreOriginalSettings`, and `RecoverFromCrashIfNeeded` with `Reconcile(IEnumerable<string>? wantedBinaries)`.
   - Inside `Reconcile` (under `HiveLock`):
-    1. Migrate legacy backup; prune dead leases.
-    2. If `selfLease != null` and no `Active` baseline exists, capture baseline from `GetCurrentSymbolSettings()` and open a dirty window.
-    3. Write/update or delete `leases/<selfPid>.json`.
-    4. Compute effective settings via `EffectiveSettingsPolicy.Compute(...)`.
-    5. Always re-read `GetCurrentSymbolSettings()` (no cached `_isApplied` short-circuit) and call `SaveSymbolSettings(updated, loadSymbolsNow: false)` only if managed (or recovery) fields differ, or if `forceBaselineWrite` is set for in-memory repair (R5).
-    6. If `ShouldReleaseBaseline`: read back `GetCurrentSymbolSettings()` to verify the baseline was written; only then mark `baseline.json` `Released` and close the dirty window.
+    1. Migrate legacy backup; prune dead leases via try-delete.
+    2. If `wantedBinaries != null`:
+       - If no `baseline.json` exists, capture baseline from `GetCurrentSymbolSettings()`.
+       - Acquire/update own lease file handle (`FileShare.Read`) for `leases/<selfPid>.json`.
+    3. If `wantedBinaries == null`:
+       - Release/delete own lease file handle.
+    4. Compute effective settings and apply to Visual Studio only if changed (`loadSymbolsNow: false`).
+    5. If no live leases remain and `baseline.json` exists:
+       - Restore baseline settings to Visual Studio.
+       - Delete `baseline.json`.
   - Update `ExecuteWithCandidateModules(...)` to set/clear `ServerMaskActive` on this instance's lease under `HiveLock`.
-  - Expose `NeedsDirtyWindowRepair()` (checks `dirty-windows.json` against current process start time, tracked via a per-process `_repairedDirtyWindow` flag).
 
 ---
 
@@ -79,15 +72,14 @@ All coordination logic stays VS-free in `netstandard2.0` so every interleaving c
 
 - [ ] **3.1 `SymbolSettingsLaunchHook` (`Debugger/SymbolSettingsLaunchHook.cs`):**
   - Implements `IVsDebugLaunchHook` (`OnLaunchDebugTargets`, `SetNextHook`, `IsProcessRecycleRequired`) and registers via `[ProvideObject]` / `.pkgdef` under `Debugger\LaunchHooks110`.
-  - If Unreal solution is open and extension is enabled: resolves breakpoints via `DebuggerSessionMonitor.ResolveWantedBinariesFromBreakpoints()` and calls `Reconcile(Unreal lease)`.
-  - Otherwise: if `baseline` is `Active` or `NeedsDirtyWindowRepair()` is true, calls `Reconcile(Baseline lease, forceBaselineWrite: true)`; else zero-touch.
+  - If Unreal solution is open and extension is enabled: resolves breakpoints via `DebuggerSessionMonitor.ResolveWantedBinariesFromBreakpoints()` and calls `Reconcile(wantedBinaries)`.
+  - Otherwise (non-Unreal launch): if `baseline.json` exists, calls `Reconcile(null)` to restore baseline settings before launch proceeds (Rule P1: correctness beats speed); else zero-touch.
   - Always forwards to `_nextHook?.OnLaunchDebugTargets(...)` inside `try/catch` (Golden Rule #2).
 - [ ] **3.2 Update `DebuggerSessionMonitor` (`Debugger/DebuggerSessionMonitor.cs`):**
   - Expose `ResolveWantedBinariesFromBreakpoints()`.
   - Remove `CommandEvents.BeforeExecute (cmdidStart)` subscription (unless retained as S2 fallback).
-  - Update `OnBreakpointBindError` to call `Reconcile(Unreal lease)` with the refreshed wanted binaries.
+  - Update `OnBreakpointBindError` to call `Reconcile(refreshedWantedBinaries)`.
   - Update `OnEnterDesignMode` to release this instance's lease via `Reconcile(null)`.
-  - Log a single warning per session if an Unreal session detects its manual mode was overridden by a `Baseline` lease (P1).
 - [ ] **3.3 Update `VSOnDemandSymbolsPackage` (`VSOnDemandSymbolsPackage.cs`):**
   - Remove `_sessionMonitor?.UpdateIncludeListFromBreakpoints("solution opened")` from `EvaluateOpenSolution()`. Detection only sets `IsEnabled = true`.
   - In `InitializeAsync`: call `Reconcile(null)` (crash recovery / dead-lease prune).

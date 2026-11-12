@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="blue-skies">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>On Demand Symbols — Building a VS Extension with AI</title>
+  <style>
+    /* ==========================================================================
+       THEMES (4 projection-ready palettes, Keynote Dark default)
+       ========================================================================== */
+    :root,
+    [data-theme="keynote-dark"] {
+      --bg: #09090b;
+      --bg-glow: radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.10), transparent 55%);
+      --ink: #fafafa;
+      --muted: #a1a1aa;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.14);
+      --danger: #f43f5e;
+      --bar-muted: #27272a;
+      --rule: #27272a;
+      --nav-bg: rgba(24, 24, 27, 0.85);
+      --notes-bg: #111114;
+    }
+
+    [data-theme="swiss-light"] {
+      --bg: #fafaf9;
+      --bg-glow: none;
+      --ink: #09090b;
+      --muted: #52525b;
+      --accent: #dc2626;
+      --accent-soft: rgba(220, 38, 38, 0.10);
+      --danger: #ea580c;
+      --bar-muted: #e4e4e7;
+      --rule: #d4d4d8;
+      --nav-bg: rgba(255, 255, 255, 0.90);
+      --notes-bg: #f4f4f5;
+    }
+
+    [data-theme="linear-slate"] {
+      --bg: #0f172a;
+      --bg-glow: radial-gradient(circle at 50% -15%, rgba(16, 185, 129, 0.14), transparent 55%);
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #10b981;
+      --accent-soft: rgba(16, 185, 129, 0.14);
+      --danger: #f43f5e;
+      --bar-muted: #1e293b;
+      --rule: #1e293b;
+      --nav-bg: rgba(15, 23, 42, 0.88);
+      --notes-bg: #0b1120;
+    }
+
+    [data-theme="warm-paper"] {
+      --bg: #f5f2eb;
+      --bg-glow: none;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.10);
+      --danger: #dc2626;
+      --bar-muted: #e7e5e4;
+      --rule: #d6d3d1;
+      --nav-bg: rgba(245, 242, 235, 0.92);
+      --notes-bg: #ebe6dc;
+    }
+
+    [data-theme="blue-skies"] {
+      --bg: #e0f2fe;
+      --bg-glow: linear-gradient(180deg, #bae6fd 0%, #f0f9ff 65%, #ffffff 100%);
+      --ink: #0c2340;
+      --muted: #3b5b7c;
+      --accent: #0284c7;
+      --accent-soft: rgba(2, 132, 199, 0.12);
+      --danger: #e11d48;
+      --bar-muted: #bae6fd;
+      --rule: #93c5fd;
+      --nav-bg: rgba(240, 249, 255, 0.90);
+      --notes-bg: #dbeafe;
+    }
+
+    [data-theme="blue-skies"] .toggle-btn.active {
+      color: #ffffff;
+    }
+
+    /* ==========================================================================
+       BASE & PROJECTION TYPOGRAPHY
+       ========================================================================== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      background-image: var(--bg-glow);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      padding: 7vh 8vw 11vh 8vw;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: clamp(1.75rem, 3.8vh, 3.25rem);
+    }
+
+    .slide.active {
+      display: flex;
+      animation: fadeIn 0.22s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Projection-scale headings (36-48pt+) */
+    h1 {
+      font-size: clamp(2.8rem, 5.4vw, 5.2rem);
+      font-weight: 800;
+      line-height: 1.06;
+      letter-spacing: -0.035em;
+      max-width: 100%;
+    }
+
+    h2 {
+      font-size: clamp(2.3rem, 4.3vw, 4.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      max-width: 100%;
+    }
+
+    .accent { color: var(--accent); }
+    .danger { color: var(--danger); }
+    .muted { color: var(--muted); }
+
+    .subtitle {
+      font-size: clamp(1.5rem, 2.4vw, 2.25rem);
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.35;
+      max-width: 100%;
+    }
+
+    .takeaway {
+      font-size: clamp(1.45rem, 2.2vw, 2rem);
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.35;
+      max-width: 100%;
+    }
+
+    .takeaway strong { color: var(--ink); }
+
+    /* ==========================================================================
+       SLIDE 1: TITLE HERO WITH VSIX ICON
+       ========================================================================== */
+    .title-hero {
+      display: flex;
+      align-items: center;
+      gap: clamp(2rem, 5vw, 4.5rem);
+    }
+
+    .vsix-icon {
+      width: clamp(110px, 14vw, 180px);
+      height: clamp(110px, 14vw, 180px);
+      flex-shrink: 0;
+    }
+
+    /* ==========================================================================
+       STAT BLOCKS & COMPARISONS (Large, uncluttered)
+       ========================================================================== */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: clamp(2rem, 4vw, 4.5rem);
+      align-items: start;
+    }
+
+    .stats-grid-2x2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2rem, 4.5vh, 3.5rem) clamp(2.5rem, 6vw, 6rem);
+      align-items: start;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .stat-num {
+      font-size: clamp(3.6rem, 7.2vw, 6.8rem);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .stat-label {
+      font-size: clamp(1.35rem, 1.95vw, 1.85rem);
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    /* Two-column contrast */
+    .split-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2.5rem, 6vw, 6rem);
+      align-items: center;
+    }
+
+    .contrast-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding-left: 1.75rem;
+      border-left: 6px solid var(--rule);
+    }
+
+    .contrast-block.highlight {
+      border-left-color: var(--accent);
+    }
+
+    .contrast-kicker {
+      font-size: clamp(1.25rem, 1.7vw, 1.6rem);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .contrast-block.highlight .contrast-kicker {
+      color: var(--accent);
+    }
+
+    /* ==========================================================================
+       HORIZONTAL BAR CHARTS (Clean, zero chartjunk)
+       ========================================================================== */
+    .bars {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1.5rem, 3.2vh, 2.5rem);
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .bar-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      font-size: clamp(1.4rem, 2.1vw, 2rem);
+      font-weight: 700;
+    }
+
+    .bar-track {
+      width: 100%;
+      height: clamp(26px, 3.6vh, 38px);
+      background: var(--bar-muted);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--muted);
+      transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .bar-fill.accent-bg {
+      background: var(--accent);
+    }
+
+    .bar-fill.danger-bg {
+      background: var(--danger);
+    }
+
+    /* ==========================================================================
+       CLEAN LISTS (Max 3-5 items, 24pt+ equivalent)
+       ========================================================================== */
+    .big-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(1.1rem, 2.4vh, 1.9rem);
+      width: 100%;
+      max-width: 100%;
+    }
+
+    .big-list li {
+      font-size: clamp(1.45rem, 2.15vw, 2.05rem);
+      line-height: 1.35;
+      display: flex;
+      align-items: baseline;
+      gap: 1.1rem;
+    }
+
+    .list-num {
+      font-weight: 800;
+      color: var(--accent);
+      flex-shrink: 0;
+      min-width: 2ch;
+    }
+
+    /* ==========================================================================
+       PROGRESS BAR & MINIMAL CONTROLS
+       ========================================================================== */
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      background: var(--accent);
+      transition: width 0.25s ease;
+      z-index: 30;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--nav-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      padding: 0.35rem 0.6rem;
+      z-index: 30;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .controls button,
+    .controls select {
+      background: transparent;
+      border: none;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      padding: 0.3rem 0.55rem;
+      border-radius: 999px;
+    }
+
+    .controls button:hover,
+    .controls select:hover {
+      background: var(--accent-soft);
+    }
+
+    .controls select option {
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .counter {
+      padding: 0 0.45rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       SPEAKER NOTES DRAWER (Toggle with 'N' key)
+       ========================================================================== */
+    .notes-drawer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--notes-bg);
+      border-top: 2px solid var(--accent);
+      padding: 1.25rem 8vw 1.5rem 8vw;
+      z-index: 25;
+      display: none;
+      max-height: 32vh;
+      overflow-y: auto;
+    }
+
+    .notes-drawer.open { display: block; }
+
+    .notes-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+    }
+
+    .notes-text {
+      font-size: 1.05rem;
+      line-height: 1.55;
+      color: var(--ink);
+      max-width: 78ch;
+    }
+
+    /* ==========================================================================
+       7-DAY STORY ARC TIMELINE (Diagonal staircase for larger text)
+       ========================================================================== */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.85rem, 1.9vh, 1.45rem);
+      width: 100%;
+    }
+
+    .tl-step {
+      display: flex;
+      align-items: baseline;
+      gap: 1.15rem;
+      padding-left: 1rem;
+      border-left: 4px solid var(--rule);
+    }
+
+    .tl-step:nth-child(1) { margin-left: 0%; }
+    .tl-step:nth-child(2) { margin-left: 4%; }
+    .tl-step:nth-child(3) { margin-left: 8%; }
+    .tl-step:nth-child(4) { margin-left: 12%; }
+    .tl-step:nth-child(5) { margin-left: 16%; }
+
+    .tl-step.accent-step { border-left-color: var(--accent); }
+    .tl-step.danger-step { border-left-color: var(--danger); }
+
+    .tl-dot {
+      display: none;
+    }
+
+    .tl-day {
+      font-size: clamp(1.2rem, 1.6vw, 1.55rem);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      min-width: 9.5ch;
+      flex-shrink: 0;
+    }
+
+    .tl-step.accent-step .tl-day { color: var(--accent); }
+    .tl-step.danger-step .tl-day { color: var(--danger); }
+
+    .tl-title {
+      font-size: clamp(1.5rem, 2.25vw, 2.15rem);
+      font-weight: 800;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    .tl-desc {
+      font-size: clamp(1.3rem, 1.8vw, 1.7rem);
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    /* ==========================================================================
+       PILOT QUOTES
+       ========================================================================== */
+    .quotes-list {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.75rem, 1.5vh, 1.15rem);
+    }
+
+    .quote-card {
+      padding-left: 1.25rem;
+      border-left: 4px solid var(--accent);
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .quote-text {
+      font-size: clamp(1.15rem, 1.6vw, 1.48rem);
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .quote-meta {
+      font-size: clamp(0.92rem, 1.2vw, 1.12rem);
+      color: var(--muted);
+    }
+
+    /* ==========================================================================
+       INTERACTIVE TOGGLE (TOKEN ECONOMICS)
+       ========================================================================== */
+    .slide-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .toggle-group {
+      display: inline-flex;
+      background: var(--bar-muted);
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      padding: 0.25rem;
+      gap: 0.25rem;
+    }
+
+    .toggle-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font: inherit;
+      font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toggle-btn.active {
+      background: var(--accent);
+      color: #09090b;
+    }
+
+    /* ==========================================================================
+       SLIDE OVERVIEW GRID (Toggle with 'G' or 'Esc')
+       ========================================================================== */
+    .overview-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 9, 11, 0.92);
+      backdrop-filter: blur(10px);
+      z-index: 40;
+      display: none;
+      padding: 4vh 5vw;
+      overflow-y: auto;
+    }
+
+    .overview-overlay.open { display: block; }
+
+    .overview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.75rem;
+      color: #fafafa;
+    }
+
+    .overview-header h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+    }
+
+    .overview-close {
+      background: #27272a;
+      color: #fafafa;
+      border: none;
+      border-radius: 999px;
+      padding: 0.45rem 1rem;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+    }
+
+    .overview-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem;
+      text-align: left;
+      color: #fafafa;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    .overview-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .overview-card.current {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .overview-num {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .overview-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    /* ==========================================================================
+       ACT DIVIDER SLIDES (Animated artwork + emoji badge)
+       ========================================================================== */
+    .act-slide {
+      align-items: flex-start;
+      gap: 1.4rem;
+    }
+
+    .act-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.55rem 1.25rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      font-size: clamp(1.1rem, 1.6vw, 1.45rem);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .act-emoji {
+      font-size: 1.35em;
+      display: inline-block;
+      animation: actFloat 2.4s ease-in-out infinite;
+    }
+
+    .act-rule {
+      width: 0;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .slide.active .act-rule {
+      animation: ruleGrow 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .act-art {
+      position: absolute;
+      right: 7vw;
+      top: 50%;
+      transform: translateY(-50%);
+      width: clamp(180px, 24vw, 340px);
+      height: clamp(180px, 24vw, 340px);
+      opacity: 0.16;
+      pointer-events: none;
+    }
+
+    .slide.active .act-art {
+      animation: actArtIn 0.7s ease-out forwards;
+    }
+
+    @keyframes actFloat {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(6deg); }
+    }
+
+    @keyframes ruleGrow {
+      from { width: 0; }
+      to { width: clamp(120px, 18vw, 240px); }
+    }
+
+    @keyframes actArtIn {
+      from { opacity: 0; transform: translateY(-46%) scale(0.92); }
+      to { opacity: 0.18; transform: translateY(-50%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress" id="progress"></div>
+
+  <main class="deck" id="deck">
+
+    <section class="slide active" data-notes="Opening (~0.5 min): This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. Over 7 days, it turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of API spend—resulting in a working VSIX extension. Here is what happened and the playbook we extracted.">
+      <div class="title-hero">
+        <svg class="vsix-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="On Demand Symbols Icon">
+          <defs>
+            <filter id="shadow" x="-20%" y="-20%" width="150%" height="150%">
+              <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.45"/>
+            </filter>
+            <filter id="bolt-shadow" x="-20%" y="-20%" width="150%" height="150%">
+              <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5"/>
+            </filter>
+            <linearGradient id="greenGrad" x1="10%" y1="0%" x2="90%" y2="100%">
+              <stop offset="0%" stop-color="#3CD070"/>
+              <stop offset="45%" stop-color="#22B14C"/>
+              <stop offset="100%" stop-color="#148038"/>
+            </linearGradient>
+            <linearGradient id="goldGrad" x1="15%" y1="0%" x2="85%" y2="100%">
+              <stop offset="0%" stop-color="#FFFBE0"/>
+              <stop offset="30%" stop-color="#FFD700"/>
+              <stop offset="100%" stop-color="#FF9500"/>
+            </linearGradient>
+            <linearGradient id="glossGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+          <path d="M 112,76 L 412,240 A 20,20 0 0 1 412,272 L 112,436 A 20,20 0 0 1 80,418 L 80,94 A 20,20 0 0 1 112,76 Z"
+                fill="url(#greenGrad)" stroke="#0F5E28" stroke-width="5" filter="url(#shadow)" />
+          <path d="M 86,98 L 390,250 L 86,250 Z" fill="url(#glossGrad)" />
+          <path d="M 252,126 L 328,126 L 236,264 L 316,264 L 148,488 L 212,304 L 140,304 Z"
+                fill="url(#goldGrad)" stroke="#1E1E1E" stroke-width="7" stroke-linejoin="round" filter="url(#bolt-shadow)" />
+        </svg>
+        <div>
+          <h1>From a Weekend Idea<br />to a <span class="accent">Working VSIX</span></h1>
+          <p class="subtitle" style="margin-top: 1.25rem;">~50 AI sessions &nbsp;·&nbsp; 7 days &nbsp;·&nbsp; ~$100</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ACT I DIVIDER -->
+    <section class="slide act-slide" data-notes="Act I (~0.2 min): Let's start with what we built, the scale of the experiment, and how the 7 days played out.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M25 155 Q90 60 175 45" stroke-dasharray="7 7"/>
+        <path d="M175 45 L145 38 L155 52 L148 64 Z" fill="currentColor" stroke="none"/>
+        <circle cx="25" cy="155" r="5" fill="currentColor"/>
+      </svg>
+      <div class="act-badge"><span class="act-emoji">🛫</span> Act I</div>
+      <h1>Cleared for <span class="accent">Takeoff</span></h1>
+      <div class="act-rule"></div>
+      <p class="subtitle">Fixing slow Unreal debugging—and accidentally logging <strong>4,000+ turns</strong> in the cockpit. 🛫</p>
+    </section>
+
+    <!-- THE PROBLEM: UE5 SYMBOL LOADING -->
+    <section class="slide" data-notes="The Problem (~1 min): If you've ever launched Unreal Engine 5 Editor under the Visual Studio debugger, you know the pain—it takes ages to start up. On a project like Lyra, UE5 maps over 1,000 DLLs and 26+ GB of PDB debug symbols. By default, Visual Studio eagerly loads ~950 PDBs at startup—even though you only have breakpoints in a tiny fraction of them.">
+      <h2>UE5 + F5 = <span class="danger">Tea break time</span> 🍵</h2>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-num" data-count="1062" data-comma="true">1,062</div>
+          <div class="stat-label">DLLs mapped when launching UE5 Lyra</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num danger">26+ GB</div>
+          <div class="stat-label">Debug symbols (PDBs) sitting on disk</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" data-count="950">950</div>
+          <div class="stat-label">PDBs Visual Studio loads eagerly at startup</div>
+        </div>
+      </div>
+      <p class="takeaway">A huge chunk of UE5’s startup wait is <strong>loading symbols you’ll never touch</strong>.</p>
+    </section>
+
+<section class="slide" data-notes="The Solution (~1 min): On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (e.g., 22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
+      <h2>On Demand Symbols: <span class="accent" data-count="11">11</span> PDBs instead of <span class="accent" data-count="950">950</span>.</h2>
+      <div class="split-2">
+        <div class="contrast-block">
+          <div class="contrast-kicker">Without Extension</div>
+          <div class="stat-num">22.1s</div>
+          <div class="stat-label">950 / 1,062 PDBs loaded at launch</div>
+        </div>
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">On Demand Symbols</div>
+          <div class="stat-num accent">8.5s</div>
+          <div class="stat-label">11 / 1,062 PDBs &nbsp;·&nbsp; <strong>30%–62% faster</strong></div>
+        </div>
+      </div>
+      <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
+    </section>
+
+<section class="slide" data-notes="By the Numbers (~1 min): Across 7 calendar days (~50 sessions), we logged ~27 hours of active AI + pilot time (excluding idle gaps >10 min). Token volume hit 450M total: 21M uncached input, 426M cached read (95% cache hit rate, saving $205), and 2.5M output. The AI made 4,553 tool calls—and 20% (915) failed on the first try. Total bill: ~$100 ($98.88).">
+      <h2>The project <span class="accent">by the numbers</span>.</h2>
+      <div class="stats-grid-2x2">
+        <div class="stat">
+          <div class="stat-num accent">~27 hrs</div>
+          <div class="stat-label">Active AI + pilot time across 7 days</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num"><span data-count="450" data-suffix="M">450M</span></div>
+          <div class="stat-label">Tokens (21M in · 426M cached · 2.5M out)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" data-count="4553" data-comma="true">4,553</div>
+          <div class="stat-label">Tool calls (20% failed on first try)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num accent">~$100</div>
+          <div class="stat-label">Total spend (95% cache saved $205)</div>
+        </div>
+      </div>
+    </section>
+
+<section class="slide" data-notes="The 7-Day Story Arc (~1 min): Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product for just $12. Days 5-6 added automated real-world benchmarking and performance tuning. Day 7 tackled multi-instance edge cases, which we caught and simplified mid-flight.">
+      <h2>Seven days, <span class="accent">one sharp reset</span>.</h2>
+      <div class="timeline">
+        <div class="tl-step">
+          <div class="tl-dot"></div>
+          <div class="tl-day">Day 1</div>
+          <div class="tl-title">Spec &amp; Research</div>
+          <div class="tl-desc">Big upfront design &amp; SDK discovery (~$20)</div>
+        </div>
+        <div class="tl-step danger-step">
+          <div class="tl-dot"></div>
+          <div class="tl-day">Day 2</div>
+          <div class="tl-title">Dead End &amp; Reset</div>
+          <div class="tl-desc">V1 stalled ($31) → clean-slate purge (-7,255 LOC)</div>
+        </div>
+        <div class="tl-step accent-step">
+          <div class="tl-dot"></div>
+          <div class="tl-day">Days 3–4</div>
+          <div class="tl-title">Lean V2 Build</div>
+          <div class="tl-desc">Core features, settings &amp; polish (~$12)</div>
+        </div>
+        <div class="tl-step accent-step">
+          <div class="tl-dot"></div>
+          <div class="tl-day">Days 5–6</div>
+          <div class="tl-title">Self-Test &amp; Perf</div>
+          <div class="tl-desc">Automated benchmarking &amp; speedup</div>
+        </div>
+        <div class="tl-step">
+          <div class="tl-dot"></div>
+          <div class="tl-day">Day 7</div>
+          <div class="tl-title">Edge-Case Hardening</div>
+          <div class="tl-desc">Overbuilt ($18) → simplified -925 LOC</div>
+        </div>
+      </div>
+      <p class="takeaway">Once we <strong>bailed out of V1</strong> on Day 2, <strong>shipping V2 cost only ~$12</strong>. 🪂</p>
+    </section>
+
+    <!-- ACT II DIVIDER -->
+    <section class="slide act-slide" data-notes="Act II (~0.2 min): Before looking at what went wrong, here are the two places where AI felt like a genuine superpower.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="110,15 45,115 95,115 85,185 155,85 105,85"/>
+      </svg>
+      <div class="act-badge"><span class="act-emoji">⚡</span> Act II</div>
+      <h1>Catching a <span class="accent">Tailwind</span></h1>
+      <div class="act-rule"></div>
+      <p class="subtitle">Where AI gave us lift—cracking undocumented APIs and building its own autopilot.</p>
+    </section>
+
+<section class="slide" data-notes="Why AI made it possible (~1.5 min): I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. A human would normally spend weeks hunting Microsoft docs and dead forum threads. Instead, the AI reflected directly on VS's installed DLLs (214 .NET Reflection probes + 19 ildasm.exe disassemblies) to pull exact COM signatures like IVsDebuggerSymbolSettingsManager120A and IVsDebugLaunchHook, reserving 168 web searches for declarative JSON schemas like Unified Settings registration.json. Doing that solo would easily take 2-3 weeks.">
+      <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-num accent">214 + 19</div>
+          <div class="stat-label">.NET Reflection &amp; <code>ildasm</code> probes of VS binaries</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">168</div>
+          <div class="stat-label">Web searches for undocumented schemas (<code>registration.json</code>)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">~3 wks</div>
+          <div class="stat-label">Solo SDK trial-and-error saved</div>
+        </div>
+      </div>
+      <p class="takeaway">Humans hunt sparse docs; AI <strong>disassembled VS 17.14</strong> for exact COM signatures.</p>
+    </section>
+
+<section class="slide" data-notes="Playbook 4 (~1.5 min): For weeks, testing meant me pressing F5 in Visual Studio, loading UE5 Lyra, and pasting Output logs back to the AI. Normally a developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, writing its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
+      <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-test.</h2>
+      <div class="split-2">
+        <div class="contrast-block">
+          <div class="contrast-kicker">Human-in-the-Loop</div>
+          <div class="stat-num">Manual F5</div>
+          <div class="stat-label">You launch VS, load UE5, and paste logs back</div>
+        </div>
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">AI-Built Harness</div>
+          <div class="stat-num accent">Autopilot</div>
+          <div class="stat-label">AI drives VS via ROT COM and benchmarks Lyra itself</div>
+        </div>
+      </div>
+      <p class="takeaway">Ask the AI to <strong>build its own test harness</strong>—even for GUI apps.</p>
+    </section>
+
+    <!-- ACT III DIVIDER -->
+    <section class="slide act-slide" data-notes="Act III (~0.2 min): Now the flip side—when code is free to generate, you hit two huge traps: massive churn and runaway token bills.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M30 40 L170 40 L120 160 L80 160 Z"/>
+        <circle cx="100" cy="95" r="18" stroke-dasharray="4 4"/>
+      </svg>
+      <div class="act-badge"><span class="act-emoji">🌩️</span> Act III</div>
+      <h1><span class="danger">Turbulence</span> &amp; Headwinds</h1>
+      <div class="act-rule"></div>
+      <p class="subtitle">What happens when autopilot builds the wrong thing—and burns half your fuel.</p>
+    </section>
+
+<section class="slide" data-notes="Timeline & Output (~1 min): Built Nov 5 to Nov 12 across 51 sessions (44 main, 7 subagents), 4,386 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC. Nearly 60% of all code ever written was deleted.">
+      <h2><span class="accent">60%</span> of all code written was deleted.</h2>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-num">7 days</div>
+          <div class="stat-label">~50 sessions &nbsp;·&nbsp; 71 commits</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num accent">+26k / -15k</div>
+          <div class="stat-label">Lines added vs. deleted</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">10.8k</div>
+          <div class="stat-label">Net lines in the working VSIX</div>
+        </div>
+      </div>
+      <p class="takeaway">Across <strong>4,400 turns</strong>, pruning mattered more than generating.</p>
+    </section>
+
+<section class="slide" data-notes="Why the deletions happened (~1 min): AI has near-zero friction for building whatever you put in the spec—even bad ideas. Three root causes drove nearly two-thirds of the code being deleted: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not questioning the model's choices soon enough. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions. Lesson: start with the smallest possible spec and add complexity only when proven necessary.">
+      <h2>Why did we delete <span class="accent">⅔</span> of the code?</h2>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Overspecifying on Day 1</strong> — AI has zero friction for building speculative features.</span></li>
+        <li><span class="list-num">02</span><span><strong>Early overengineering</strong> — AI defaults to complex custom architectures.</span></li>
+        <li><span class="list-num">03</span><span><strong>Not asking “why?”</strong> — letting the model go down a blind alley unchallenged.</span></li>
+      </ul>
+      <p class="takeaway">Start minimal, then iterate—surgical edits averaged <strong>$0.08</strong> and <strong>0 compactions</strong>.</p>
+    </section>
+
+<section class="slide" data-notes="The Meta-Lesson (~1 min): AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 before we deleted 7,255 lines; V2 rebuilt it cleanly for $4.50). Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
+      <h2>AI generates abstractions. <span class="accent">You delete them.</span></h2>
+      <div class="split-2">
+        <div class="contrast-block">
+          <div class="contrast-kicker">V1 Speculative Stack</div>
+          <div class="stat-num">$33</div>
+          <div class="stat-label">7,255 lines deleted in V2 clean-slate</div>
+        </div>
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">V2 Native Rebuild</div>
+          <div class="stat-num accent">$4.50</div>
+          <div class="stat-label">Lean, fast, 10.8k net LOC</div>
+        </div>
+      </div>
+      <p class="takeaway">Your biggest win is asking: <strong>“Is this actually needed?”</strong></p>
+    </section>
+
+    <!-- RESETTING IS CHEAP WITH AI -->
+    <section class="slide" data-notes="Resetting is Cheap (~1 min): Normally, throwing away 7,255 lines of code is agonizing—sunk cost, ego, days of typing. With AI, resetting is cheap. I felt zero attachment to the V1 code because it was only a few hours of work anyway. Better yet, the AI itself knew what to keep: it documented all the hard-won lessons (the sandbox build flags, what APIs failed, what actually worked) and handed them off cleanly to the fresh V2 branch.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <path d="M35 85 A65 65 0 0 1 165 85 Z"/>
+        <path d="M35 85 L100 165 M78 85 L100 165 M122 85 L100 165 M165 85 L100 165"/>
+        <rect x="92" y="165" width="16" height="14" rx="3"/>
+      </svg>
+      <h2>Resetting is <span class="accent">cheap</span> with AI.</h2>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Zero attachment</strong> — throwing away 7,255 lines didn’t hurt; it was only a few hours’ work.</span></li>
+        <li><span class="list-num">02</span><span><strong>Hard-won lessons preserved</strong> — the AI itself documented what failed and what to keep.</span></li>
+        <li><span class="list-num">03</span><span><strong>Clean handoff</strong> — the fresh branch started with all the wisdom and none of the cruft.</span></li>
+      </ul>
+      <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
+    </section>
+
+<section class="slide" data-notes="Model Usage Breakdown (~2 min): Exact spend was $98.88 (~$100). Gemini 3.8 Flash handled 80% of all turns (3,514) for just $10.23 (10% of spend) and was also the fastest: 6.2s avg / 12s p90 per tool-turn. Gemini 4 Argon handled 18% of turns (804) for $38.80 (12.9s avg / 25s p90—2x slower). Claude Opus 5.5 handled 1.5% of turns (64) yet cost $49.65 (30.2s avg / 81s p90—5x slower). Once the plan is locked, Flash saves both money and wall-clock time. Toggle 'Without Cache' to see prompt caching savings ($303.44 down to $98.88).">
+      <div class="slide-header-row">
+        <h2 id="costHeading"><span class="accent">80%</span> of turns cost $10.<br /><span class="danger">1.5%</span> cost <span class="danger">$50</span>.</h2>
+        <div class="toggle-group" role="group" aria-label="Cost view toggle">
+          <button class="toggle-btn active" data-cost-mode="actual">Actual ($99)</button>
+          <button class="toggle-btn" data-cost-mode="uncached">Without Cache ($303)</button>
+        </div>
+      </div>
+      <div class="bars" id="costBars">
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>Gemini 3.8 Flash &nbsp;<span class="muted">(80% of turns · 6.2s/turn)</span></span>
+            <span class="accent" data-actual="$10" data-uncached="$34">$10</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill accent-bg" data-width="20%" data-actual-width="20%" data-uncached-width="25%" style="width: 20%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>Gemini 4 Argon &nbsp;<span class="muted">(18% of turns · 12.9s/turn)</span></span>
+            <span data-actual="$39" data-uncached="$131">$39</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" data-width="78%" data-actual-width="78%" data-uncached-width="95%" style="width: 78%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>Claude Opus 5.5 &nbsp;<span class="muted">(1.5% of turns · 30.2s/turn)</span></span>
+            <span class="danger" data-actual="$50" data-uncached="$138">$50</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" data-actual-width="100%" data-uncached-width="100%" style="width: 100%;"></div></div>
+        </div>
+      </div>
+      <p class="takeaway" id="costTakeaway">Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.</p>
+    </section>
+
+<section class="slide" data-notes="Playbook 2 (~1.5 min): Only 5 of 51 sessions crossed context compaction, yet they caused 52% of total spend ($52.23) and 35% of all tool errors (316/915). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
+      <h2><span class="accent">5</span> compacted sessions caused <span class="accent">52%</span> of spend.</h2>
+      <div class="split-2">
+        <div class="contrast-block">
+          <div class="contrast-kicker">5 Compacted Sessions</div>
+          <div class="stat-num">52%</div>
+          <div class="stat-label">of total cost &nbsp;·&nbsp; <strong>35%</strong> of all tool errors</div>
+        </div>
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">Short Sessions (≤40 turns)</div>
+          <div class="stat-num accent">$0.12</div>
+          <div class="stat-label">average cost &nbsp;·&nbsp; <strong>0</strong> compactions</div>
+        </div>
+      </div>
+      <p class="takeaway">Watch the <strong>fuel gauge</strong>—split early, stop after <strong>3 retries</strong>, and log quirks in <strong>AGENTS.md</strong>. ⛽</p>
+    </section>
+
+    <!-- ACT IV DIVIDER -->
+    <section class="slide act-slide" data-notes="Act IV (~0.5 min): I actually asked the AI after reading all 51 transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through 51 sessions of transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' So here is the playbook for flying an AI.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <circle cx="100" cy="100" r="78"/>
+        <path d="M32 108 L168 92" stroke-dasharray="6 5"/>
+        <path d="M72 100 L90 100 L100 110 L110 100 L128 100" stroke-width="3.5"/>
+        <path d="M100 22 L100 36 M45 45 L55 55 M155 45 L145 55"/>
+      </svg>
+      <div class="act-badge"><span class="act-emoji">👨‍✈️</span> Act IV</div>
+      <h1>Aviate, Navigate, <span class="accent">Communicate</span></h1>
+      <div class="act-rule"></div>
+      <p class="subtitle">“You were the pilot steering us away from the mountain!”</p>
+    </section>
+
+<section class="slide" data-notes="Playbook 1 (~1.5 min): Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
+      <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
+      <div class="split-2">
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">Fresh Session</div>
+          <div class="stat-num accent">$0.15–$1.80</div>
+          <div class="stat-label">Gemini 3.8 Flash for coding; Frontier for clean specs</div>
+        </div>
+        <div class="contrast-block">
+          <div class="contrast-kicker">Mid-Bloat Escalation</div>
+          <div class="stat-num">$38</div>
+          <div class="stat-label">Burned in 42 Opus turns re-reading old context</div>
+        </div>
+      </div>
+      <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
+    </section>
+
+<section class="slide" data-notes="Playbook 3 (~1.5 min): Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. Three high-ROI pilot habits: (1) Design Gate—ask for options before editing code; (2) Telemetry-Backed Bugs—paste exact output/timing logs ($2.16 perf fix); (3) Challenge complexity early.">
+      <h2>Single-focus prompts cost <span class="accent">4× less</span>.</h2>
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>Single-Focus Prompt</span>
+            <span class="accent">$1.64</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill accent-bg" data-width="24%" style="width: 24%;"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-header">
+            <span>Bundled Multi-Part Prompt</span>
+            <span class="danger">$6.93</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" style="width: 100%;"></div></div>
+        </div>
+      </div>
+      <p class="takeaway">Use a <strong>Design Gate</strong> before coding, and paste exact <strong>output logs</strong> for bugs.</p>
+    </section>
+
+<section class="slide" data-notes="Refocusing Prompts (~1 min): Reading back through 202 prompts, keeping the AI on track didn't require fancy prompt engineering—just blunt human reality checks. Whether it was catching hung builds, interrupting a 44-search spiral, noticing zombie references to deleted features, critiquing an off-center icon, or questioning 925 lines of over-engineering.">
+      <h2>Mid-flight <span class="accent">course corrections</span>. 🎛️</h2>
+      <div class="quotes-list">
+        <div class="quote-card">
+          <div class="quote-text">“Has the build got stuck?”</div>
+          <div class="quote-meta">Early builds — Caught silent MSBuild sandbox hangs.</div>
+        </div>
+        <div class="quote-card">
+          <div class="quote-text">“Woah, what’s with all the searching? Isn’t this a straightforward task?”</div>
+          <div class="quote-meta">Settings migration — Interrupted a 44-search spiral on Unified Settings.</div>
+        </div>
+        <div class="quote-card">
+          <div class="quote-text">“How do you know about the MRU/pinning stuff? I thought we’d expunged that from the repo?”</div>
+          <div class="quote-meta">Post-cleanup — Caught ghost context from deleted features.</div>
+        </div>
+        <div class="quote-card">
+          <div class="quote-text">“The lightning bolt isn’t centred, it needs to move down a bit!”</div>
+          <div class="quote-meta">VSIX icon — Even AI-generated icons need human QA.</div>
+        </div>
+        <div class="quote-card">
+          <div class="quote-text">“Can you just check that this session manager stuff is the optimal way?”</div>
+          <div class="quote-meta">Multi-instance lock — Cut 925 lines of over-engineering mid-flight.</div>
+        </div>
+      </div>
+    </section>
+
+<section class="slide" data-notes="Closing (~1 min): Five tips for Monday morning: (1) Use AI as a research engine first; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—split early and prompt single-focus; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion.">
+      <h2>5 <span class="accent">pre-flight</span> tips for your next AI project. 📋</h2>
+      <ul class="big-list">
+        <li><span class="list-num">1.</span><span><strong>Research first</strong> — cheap subagents beat weeks of guessing.</span></li>
+        <li><span class="list-num">2.</span><span><strong>Fast workhorse models by default</strong> — frontier only in fresh sessions.</span></li>
+        <li><span class="list-num">3.</span><span><strong>Fear compaction</strong> — split early, prompt single-focus.</span></li>
+        <li><span class="list-num">4.</span><span><strong>Start minimal, iterate</strong> — surgical edits cost pennies; giant specs churn.</span></li>
+        <li><span class="list-num">5.</span><span><strong>Your highest-leverage skill is deletion.</strong></span></li>
+      </ul>
+    </section>
+
+<section class="slide" data-notes="Outro (~0.5 min): One last confession—this was my very first time 'vibe coding' a real project in anger, so take these as early field notes, not commandments. Also, every single stat in this talk came from the AI reading its own 51 chat transcripts, and yes—even these slides were 'vibe decked.' Thanks! Questions? (If they're too hard, I'll spin up a Flash subagent.)">
+      <h2>Full disclosure: I’m still <span class="accent">winging it</span>. 🤷‍♂️</h2>
+      <ul class="big-list">
+        <li><span class="list-num">🔥</span><span><strong>First time “vibe coding” in anger</strong> — early field notes, not gospel.</span></li>
+        <li><span class="list-num">🤖</span><span><strong>100% AI-analyzed</strong> — the bots read all 51 transcripts and graded their own homework.</span></li>
+        <li><span class="list-num">✨</span><span><strong>Even these slides were “vibe decked”</strong> — HTML, animations, and self-deprecation included.</span></li>
+      </ul>
+      <p class="takeaway">Questions? 🙋‍♂️ <strong>(If they’re hard, I’ll spin up a Flash subagent.)</strong></p>
+    </section>
+
+  </main>
+
+  <!-- SPEAKER NOTES DRAWER -->
+  <aside class="notes-drawer" id="notesDrawer">
+    <div class="notes-label">Speaker Notes (N to hide)</div>
+    <div class="notes-text" id="notesText"></div>
+  </aside>
+
+  <!-- SLIDE OVERVIEW GRID (Toggle with 'G' or 'Esc') -->
+  <div class="overview-overlay" id="overviewOverlay" aria-hidden="true">
+    <div class="overview-header">
+      <h3>All Slides (click to jump)</h3>
+      <button class="overview-close" id="overviewClose">Close (Esc)</button>
+    </div>
+    <div class="overview-grid" id="overviewGrid"></div>
+  </div>
+
+  <!-- MINIMAL FLOATING CONTROLS -->
+  <nav class="controls" aria-label="Slide controls">
+    <button id="prevBtn" title="Previous (Left Arrow)">←</button>
+    <span class="counter" id="counter">1 / 14</span>
+    <button id="nextBtn" title="Next (Right Arrow / Space)">→</button>
+    <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
+    <button id="notesBtn" title="Toggle Speaker Notes (N)">Notes</button>
+    <select id="themeSelect" title="Switch Theme (T)">
+      <option value="keynote-dark">Keynote Dark</option>
+      <option value="swiss-light">Swiss Light</option>
+      <option value="linear-slate">Product Minimal</option>
+      <option value="warm-paper">Warm Paper</option>
+      <option value="blue-skies" selected>Blue Skies</option>
+    </select>
+  </nav>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const progress = document.getElementById('progress');
+    const counter = document.getElementById('counter');
+    const notesDrawer = document.getElementById('notesDrawer');
+    const notesText = document.getElementById('notesText');
+    const themeSelect = document.getElementById('themeSelect');
+    const overviewOverlay = document.getElementById('overviewOverlay');
+    const overviewGrid = document.getElementById('overviewGrid');
+    const themes = ['keynote-dark', 'swiss-light', 'linear-slate', 'warm-paper', 'blue-skies'];
+
+    let index = 0;
+
+    function animateSlide(slide) {
+      // Animate horizontal bars from 0% to target width
+      slide.querySelectorAll('.bar-fill').forEach((bar) => {
+        const target = bar.dataset.width || bar.style.width;
+        bar.style.width = '0%';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          bar.style.width = target;
+        }));
+      });
+
+      // Subtle count-up animation for hero numbers
+      slide.querySelectorAll('[data-count]').forEach((el) => {
+        const target = parseInt(el.dataset.count, 10);
+        const suffix = el.dataset.suffix || '';
+        const useComma = el.dataset.comma === 'true';
+        const duration = 450;
+        const start = performance.now();
+        function tick(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          const val = Math.round(target * eased);
+          el.textContent = (useComma ? val.toLocaleString() : val) + suffix;
+          if (t < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+
+    function buildOverview() {
+      overviewGrid.innerHTML = '';
+      slides.forEach((s, idx) => {
+        const h = s.querySelector('h1, h2');
+        const title = h ? h.textContent.replace(/\s+/g, ' ').trim() : `Slide ${idx + 1}`;
+        const card = document.createElement('button');
+        card.className = 'overview-card' + (idx === index ? ' current' : '');
+        card.innerHTML = `<span class="overview-num">Slide ${idx + 1}</span><span class="overview-title">${title}</span>`;
+        card.addEventListener('click', () => {
+          overviewOverlay.classList.remove('open');
+          render(idx);
+        });
+        overviewGrid.appendChild(card);
+      });
+    }
+
+    function render(i) {
+      index = Math.max(0, Math.min(slides.length - 1, i));
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+      notesText.textContent = slides[index].dataset.notes || '';
+      animateSlide(slides[index]);
+    }
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      themeSelect.value = theme;
+    }
+
+    // Interactive cost toggle (Actual vs. Without Prompt Cache)
+    document.querySelectorAll('[data-cost-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.costMode;
+        document.querySelectorAll('[data-cost-mode]').forEach((b) => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('#costBars [data-actual]').forEach((el) => {
+          el.textContent = el.dataset[mode];
+        });
+        document.querySelectorAll('#costBars .bar-fill').forEach((bar) => {
+          const w = mode === 'actual' ? bar.dataset.actualWidth : bar.dataset.uncachedWidth;
+          bar.dataset.width = w;
+          bar.style.width = w;
+        });
+        const heading = document.getElementById('costHeading');
+        const takeaway = document.getElementById('costTakeaway');
+        if (mode === 'uncached') {
+          heading.innerHTML = 'Without caching: <span class="danger">$303</span><br />instead of <span class="accent">$99</span>.';
+          takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$205 (67%)</strong> across 450M tokens.';
+        } else {
+          heading.innerHTML = '<span class="accent">80%</span> of turns cost $10.<br /><span class="danger">1.5%</span> cost <span class="danger">$50</span>.';
+          takeaway.innerHTML = 'Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.';
+        }
+      });
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
+    document.getElementById('notesBtn').addEventListener('click', () => notesDrawer.classList.toggle('open'));
+    document.getElementById('gridBtn').addEventListener('click', () => {
+      buildOverview();
+      overviewOverlay.classList.toggle('open');
+    });
+    document.getElementById('overviewClose').addEventListener('click', () => overviewOverlay.classList.remove('open'));
+    themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        if (overviewOverlay.classList.contains('open')) {
+          overviewOverlay.classList.remove('open');
+        } else {
+          buildOverview();
+          overviewOverlay.classList.add('open');
+        }
+        return;
+      }
+      if (overviewOverlay.classList.contains('open')) return;
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        render(index + 1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        render(index - 1);
+      } else if (e.key.toLowerCase() === 'n') {
+        notesDrawer.classList.toggle('open');
+      } else if (e.key.toLowerCase() === 't') {
+        const next = themes[(themes.indexOf(themeSelect.value) + 1) % themes.length];
+        setTheme(next);
+      }
+    });
+
+    render(0);
+  </script>
+</body>
+</html>

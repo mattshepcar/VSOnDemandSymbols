@@ -65,6 +65,7 @@ public sealed class VisualStudioExpFixture : IDisposable
             return;
         }
 
+        bool updatedAny = false;
         foreach (string expDir in Directory.GetDirectories(vsLocalAppData, "*Exp"))
         {
             string extensionsRoot = Path.Combine(expDir, "Extensions");
@@ -95,8 +96,30 @@ public sealed class VisualStudioExpFixture : IDisposable
                     if (File.Exists(srcFile))
                     {
                         File.Copy(srcFile, Path.Combine(targetDir, fileName), overwrite: true);
+                        updatedAny = true;
                     }
                 }
+            }
+        }
+
+        if (updatedAny)
+        {
+            try
+            {
+                Console.WriteLine("[Fixture] Updating Experimental instance configuration (devenv /updateConfiguration)...");
+                var psi = new ProcessStartInfo
+                {
+                    FileName = DevenvPath,
+                    Arguments = "/rootsuffix Exp /updateConfiguration",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+                using var proc = System.Diagnostics.Process.Start(psi);
+                proc?.WaitForExit(30000);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Fixture] Warning: /updateConfiguration failed: {ex.Message}");
             }
         }
     }

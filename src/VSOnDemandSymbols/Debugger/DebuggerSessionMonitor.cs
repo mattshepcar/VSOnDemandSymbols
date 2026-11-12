@@ -31,6 +31,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
     private readonly UnrealModuleResolver _resolver;
     private readonly ILogger _logger;
 
+    private readonly CommandEvents _launchCommandEvents;
     private readonly DebuggerEvents _debuggerEvents;
     private readonly HashSet<string> _loadedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _symbolizedModulesThisSession = new(StringComparer.OrdinalIgnoreCase);
@@ -76,6 +77,13 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         ThreadHelper.ThrowIfNotOnUIThread();
+
+        // Intercept F5 / Debug.Start as fallback pre-launch hook (ADR-15 Spike S2).
+        // Uses Standard Command Set 97 (guidVSStd97 from stdidcmd.h) and cmdidStart (295).
+        _launchCommandEvents = _dte.Events.get_CommandEvents(
+            VSConstants.CMDSETID.StandardCommandSet97_string,
+            (int)VSConstants.VSStd97CmdID.Start);
+        _launchCommandEvents.BeforeExecute += OnBeforeLaunch;
 
         // Debugger event subscriptions (SPEC.md §4.1)
         _debuggerEvents = _dte.Events.DebuggerEvents;
@@ -373,6 +381,17 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
         }
     }
 
+
+    private void OnBeforeLaunch(string guid, int id, object customIn, object customOut, ref bool cancelDefault)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        if (!IsEnabled)
+        {
+            return;
+        }
+
+        UpdateIncludeListFromBreakpoints("before launch");
+    }
 
     private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction)
     {
@@ -1130,6 +1149,7 @@ public sealed class DebuggerSessionMonitor : IDebugEventCallback2, IDisposable
 
         try
         {
+            _launchCommandEvents.BeforeExecute -= OnBeforeLaunch;
             _debuggerEvents.OnEnterBreakMode -= OnEnterBreakMode;
             _debuggerEvents.OnEnterDesignMode -= OnEnterDesignMode;
             _debuggerEvents.OnContextChanged -= OnContextChanged;

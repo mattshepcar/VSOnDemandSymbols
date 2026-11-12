@@ -30,3 +30,4 @@ public sealed class ProvideDebugLaunchHookAttribute : RegistrationAttribute
         context.RemoveValue(@"Debugger\LaunchHooks110", _hookName);
     }
 }
+

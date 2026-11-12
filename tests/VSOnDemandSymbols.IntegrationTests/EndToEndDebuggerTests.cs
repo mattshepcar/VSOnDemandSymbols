@@ -48,40 +48,45 @@ public sealed class EndToEndDebuggerTests
     {
         var dte = _fixture.PrepareMiniUnrealTest("breakpoint_mod_a");
 
-        // Set a breakpoint in ModuleA.cpp at line 8 (RunModuleAWork)
-        dte.Debugger.Breakpoints.Add(File: _fixture.ModuleASourcePath, Line: 8);
+        try
+        {
+            // Set a breakpoint in ModuleA.cpp at line 8 (RunModuleAWork)
+            dte.Debugger.Breakpoints.Add(File: _fixture.ModuleASourcePath, Line: 8);
 
-        Console.WriteLine("  -> Starting debugger (Debug.Start) with breakpoint in ModuleA.cpp...");
-        dte.ExecuteCommand("Debug.Start");
+            Console.WriteLine("  -> Starting debugger (Debug.Start) with breakpoint in ModuleA.cpp...");
+            dte.ExecuteCommand("Debug.Start");
 
-        bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(30));
-        Assert.True(hitBreak, "Expected debugger to hit breakpoint in ModuleA.cpp and enter BreakMode.");
+            bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(30));
+            Assert.True(hitBreak, "Expected debugger to hit breakpoint in ModuleA.cpp and enter BreakMode.");
 
-        // Verify baseline and lease are created upon debug launch
-        var (baselinePath, baselineDto) = _fixture.FindBaselineFile();
-        Assert.False(string.IsNullOrWhiteSpace(baselinePath), "Expected baseline.json to be created upon debug launch.");
-        Assert.NotNull(baselineDto);
+            // Verify baseline and lease are created upon debug launch
+            var (baselinePath, baselineDto) = _fixture.FindBaselineFile();
+            Assert.False(string.IsNullOrWhiteSpace(baselinePath), "Expected baseline.json to be created upon debug launch.");
+            Assert.NotNull(baselineDto);
 
-        var (leasePath, leaseDto) = _fixture.FindLeaseFileForCurrentProcess();
-        Assert.False(string.IsNullOrWhiteSpace(leasePath), "Expected lease file to be created for current devenv PID upon debug launch.");
-        Assert.NotNull(leaseDto);
-        Assert.Equal(_fixture.DevenvProcess!.Id, leaseDto!.ProcessId);
+            var (leasePath, leaseDto) = _fixture.FindLeaseFileForCurrentProcess();
+            Assert.False(string.IsNullOrWhiteSpace(leasePath), "Expected lease file to be created for current devenv PID upon debug launch.");
+            Assert.NotNull(leaseDto);
+            Assert.Equal(_fixture.DevenvProcess!.Id, leaseDto!.ProcessId);
 
-        var modA = _fixture.FindDebuggedModule("UnrealEditor-ModuleA.dll");
-        var modB = _fixture.FindDebuggedModule("UnrealEditor-ModuleB.dll");
-        Assert.NotNull(modA);
-        Assert.NotNull(modB);
+            var modA = _fixture.FindDebuggedModule("UnrealEditor-ModuleA.dll");
+            var modB = _fixture.FindDebuggedModule("UnrealEditor-ModuleB.dll");
+            Assert.NotNull(modA);
+            Assert.NotNull(modB);
 
-        string? modASymbols = modA!.SymbolFile;
-        string? modBSymbols = modB!.SymbolFile;
-        Console.WriteLine($"  -> ModuleA SymbolFile: '{modASymbols}'");
-        Console.WriteLine($"  -> ModuleB SymbolFile: '{modBSymbols}'");
+            string? modASymbols = modA!.SymbolFile;
+            string? modBSymbols = modB!.SymbolFile;
+            Console.WriteLine($"  -> ModuleA SymbolFile: '{modASymbols}'");
+            Console.WriteLine($"  -> ModuleB SymbolFile: '{modBSymbols}'");
 
-        Assert.False(string.IsNullOrWhiteSpace(modASymbols), "Expected UnrealEditor-ModuleA.dll (has breakpoint) to have symbols loaded at launch.");
-        Assert.True(string.IsNullOrWhiteSpace(modBSymbols), "Expected UnrealEditor-ModuleB.dll (no breakpoint, not on stack) to NOT have symbols loaded.");
-
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
+            Assert.False(string.IsNullOrWhiteSpace(modASymbols), "Expected UnrealEditor-ModuleA.dll (has breakpoint) to have symbols loaded at launch.");
+            Assert.True(string.IsNullOrWhiteSpace(modBSymbols), "Expected UnrealEditor-ModuleB.dll (no breakpoint, not on stack) to NOT have symbols loaded.");
+        }
+        finally
+        {
+            _fixture.StopDebuggingIfActive();
+            _fixture.ClearAllBreakpoints();
+        }
 
         // Verify lease and baseline are released when session ends
         var (postLeasePath, _) = _fixture.FindLeaseFileForCurrentProcess();
@@ -105,106 +110,116 @@ public sealed class EndToEndDebuggerTests
         {
         }
 
-        Console.WriteLine("  -> Starting debugger (Debug.Start) in crash_mod_b mode with zero breakpoints...");
-        dte.ExecuteCommand("Debug.Start");
+        try
+        {
+            Console.WriteLine("  -> Starting debugger (Debug.Start) in crash_mod_b mode with zero breakpoints...");
+            dte.ExecuteCommand("Debug.Start");
 
-        bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(30));
-        Assert.True(hitBreak, "Expected debugger to enter BreakMode on crash in ModuleB.");
+            bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(30));
+            Assert.True(hitBreak, "Expected debugger to enter BreakMode on crash in ModuleB.");
 
-        // Wait for OnEnterBreakMode on-demand symbol loading to complete
-        bool loadedOnDemand = _fixture.WaitUntilOutputContains(
-            "[Profile] BreakMode:",
-            TimeSpan.FromSeconds(15),
-            out string logOutput);
+            // Wait for OnEnterBreakMode on-demand symbol loading to complete
+            bool loadedOnDemand = _fixture.WaitUntilOutputContains(
+                "[Profile] BreakMode:",
+                TimeSpan.FromSeconds(15),
+                out string logOutput);
 
-        Console.WriteLine($"  -> Output pane after crash break:\n{logOutput.Trim()}");
-        Assert.True(loadedOnDemand, $"Expected OnEnterBreakMode to log on-demand symbol loading and [Profile] BreakMode telemetry, but got:\n{logOutput}");
+            Console.WriteLine($"  -> Output pane after crash break:\n{logOutput.Trim()}");
+            Assert.True(loadedOnDemand, $"Expected OnEnterBreakMode to log on-demand symbol loading and [Profile] BreakMode telemetry, but got:\n{logOutput}");
 
-        var profile = ProfileMetricsParser.Parse(logOutput);
-        Assert.NotEmpty(profile.BreakModeEvents);
-        var breakMetric = profile.BreakModeEvents[0];
-        Assert.True(breakMetric.ThreadsInspected >= 1, "Expected at least 1 thread inspected in BreakMode profile metric.");
-        Assert.True(breakMetric.ModulesScanned >= 2, "Expected at least 2 modules scanned in BreakMode profile metric.");
-        Assert.True(breakMetric.ModulesLoaded >= 2, "Expected ModuleA and ModuleB loaded in BreakMode profile metric.");
-        Console.WriteLine(
-            $"  -> Parsed BreakMode Profile: total={breakMetric.TotalMs}ms, stackWalk={breakMetric.StackWalkMs}ms " +
-            $"(threads={breakMetric.ThreadsInspected}, frames={breakMetric.FramesInspected}), " +
-            $"moduleScan={breakMetric.ModuleScanMs}ms (modules={breakMetric.ModulesScanned}), " +
-            $"symbolLoad={breakMetric.SymbolLoadMs}ms (loaded={breakMetric.ModulesLoaded}/{breakMetric.CandidateTargetModules}), " +
-            $"contextRefresh={breakMetric.ContextRefreshMs}ms");
+            var profile = ProfileMetricsParser.Parse(logOutput);
+            Assert.NotEmpty(profile.BreakModeEvents);
+            var breakMetric = profile.BreakModeEvents[0];
+            Assert.True(breakMetric.ThreadsInspected >= 1, "Expected at least 1 thread inspected in BreakMode profile metric.");
+            Assert.True(breakMetric.ModulesScanned >= 2, "Expected at least 2 modules scanned in BreakMode profile metric.");
+            Assert.True(breakMetric.ModulesLoaded >= 2, "Expected ModuleA and ModuleB loaded in BreakMode profile metric.");
+            Console.WriteLine(
+                $"  -> Parsed BreakMode Profile: total={breakMetric.TotalMs}ms, stackWalk={breakMetric.StackWalkMs}ms " +
+                $"(threads={breakMetric.ThreadsInspected}, frames={breakMetric.FramesInspected}), " +
+                $"moduleScan={breakMetric.ModuleScanMs}ms (modules={breakMetric.ModulesScanned}), " +
+                $"symbolLoad={breakMetric.SymbolLoadMs}ms (loaded={breakMetric.ModulesLoaded}/{breakMetric.CandidateTargetModules}), " +
+                $"contextRefresh={breakMetric.ContextRefreshMs}ms");
 
-        var modB = _fixture.FindDebuggedModule("UnrealEditor-ModuleB.dll");
-        var modA = _fixture.FindDebuggedModule("UnrealEditor-ModuleA.dll");
-        Assert.NotNull(modB);
-        Assert.NotNull(modA);
-        Assert.False(string.IsNullOrWhiteSpace(modB!.SymbolFile), "Expected UnrealEditor-ModuleB.dll symbols to be loaded on demand on crash.");
-        Assert.False(string.IsNullOrWhiteSpace(modA!.SymbolFile), "Expected UnrealEditor-ModuleA.dll symbols (caller on stack) to be loaded on demand on crash.");
+            var modB = _fixture.FindDebuggedModule("UnrealEditor-ModuleB.dll");
+            var modA = _fixture.FindDebuggedModule("UnrealEditor-ModuleA.dll");
+            Assert.NotNull(modB);
+            Assert.NotNull(modA);
+            Assert.False(string.IsNullOrWhiteSpace(modB!.SymbolFile), "Expected UnrealEditor-ModuleB.dll symbols to be loaded on demand on crash.");
+            Assert.False(string.IsNullOrWhiteSpace(modA!.SymbolFile), "Expected UnrealEditor-ModuleA.dll symbols (caller on stack) to be loaded on demand on crash.");
 
-        var (activeDocFullName, activeSelectionLine) = WaitForActiveDocumentAndLine(dte, TimeSpan.FromSeconds(5));
+            var (activeDocFullName, activeSelectionLine) = WaitForActiveDocumentAndLine(dte, TimeSpan.FromSeconds(5));
 
-        var currentFrame = dte.Debugger.CurrentStackFrame;
-        Assert.NotNull(currentFrame);
+            var currentFrame = dte.Debugger.CurrentStackFrame;
+            Assert.NotNull(currentFrame);
 
-        string frameFunc = currentFrame.FunctionName ?? string.Empty;
-        string frameModule = Path.GetFileName(currentFrame.Module ?? string.Empty);
+            string frameFunc = currentFrame.FunctionName ?? string.Empty;
+            string frameModule = Path.GetFileName(currentFrame.Module ?? string.Empty);
 
-        Console.WriteLine($"  -> CurrentStackFrame: Function='{frameFunc}', Module='{frameModule}'");
-        Console.WriteLine($"  -> ActiveDocument: '{activeDocFullName}' (Line {activeSelectionLine})");
+            Console.WriteLine($"  -> CurrentStackFrame: Function='{frameFunc}', Module='{frameModule}'");
+            Console.WriteLine($"  -> ActiveDocument: '{activeDocFullName}' (Line {activeSelectionLine})");
 
-        Assert.Contains("TriggerCrashInModuleB", frameFunc, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal("UnrealEditor-ModuleB.dll", frameModule, ignoreCase: true);
+            Assert.Contains("TriggerCrashInModuleB", frameFunc, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal("UnrealEditor-ModuleB.dll", frameModule, ignoreCase: true);
 
-        Assert.False(
-            string.IsNullOrWhiteSpace(activeDocFullName),
-            "Expected the crashing source file (ModuleB.cpp) to be open as the ActiveDocument in the debugger, but ActiveDocument was null.");
+            Assert.False(
+                string.IsNullOrWhiteSpace(activeDocFullName),
+                "Expected the crashing source file (ModuleB.cpp) to be open as the ActiveDocument in the debugger, but ActiveDocument was null.");
 
-        Assert.Equal(
-            Path.GetFullPath(_fixture.ModuleBSourcePath),
-            Path.GetFullPath(activeDocFullName!),
-            ignoreCase: true);
-        Assert.Equal(15, activeSelectionLine);
-
-        _fixture.StopDebuggingIfActive();
+            Assert.Equal(
+                Path.GetFullPath(_fixture.ModuleBSourcePath),
+                Path.GetFullPath(activeDocFullName!),
+                ignoreCase: true);
+            Assert.Equal(15, activeSelectionLine);
+        }
+        finally
+        {
+            _fixture.StopDebuggingIfActive();
+        }
     }
 
     public void Test04_AddBreakpointWhileRunning_LoadsSymbolsOnDemandAndBindsBreakpoint()
     {
         var dte = _fixture.PrepareMiniUnrealTest("wait_for_bp_mod_b");
 
-        Console.WriteLine("  -> Starting debugger (Debug.Start) in wait_for_bp_mod_b loop with zero breakpoints...");
-        dte.ExecuteCommand("Debug.Start");
+        try
+        {
+            Console.WriteLine("  -> Starting debugger (Debug.Start) in wait_for_bp_mod_b loop with zero breakpoints...");
+            dte.ExecuteCommand("Debug.Start");
 
-        bool running = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgRunMode, TimeSpan.FromSeconds(15));
-        Assert.True(running, "Expected target to be running in dbgRunMode.");
+            bool running = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgRunMode, TimeSpan.FromSeconds(15));
+            Assert.True(running, "Expected target to be running in dbgRunMode.");
 
-        // Give the process a brief moment to enter the loop with ModuleB unsymbolized
-        System.Threading.Thread.Sleep(500);
+            // Give the process a brief moment to enter the loop with ModuleB unsymbolized
+            System.Threading.Thread.Sleep(500);
 
-        Console.WriteLine("  -> Adding breakpoint in ModuleB.cpp (TickModuleB, line 21) while process is running...");
-        dte.Debugger.Breakpoints.Add(File: _fixture.ModuleBSourcePath, Line: 21);
+            Console.WriteLine("  -> Adding breakpoint in ModuleB.cpp (TickModuleB, line 21) while process is running...");
+            dte.Debugger.Breakpoints.Add(File: _fixture.ModuleBSourcePath, Line: 21);
 
-        bool loadedForBp = _fixture.WaitUntilOutputContains(
-            "[Profile] BreakpointBind:",
-            TimeSpan.FromSeconds(15),
-            out string logOutput);
+            bool loadedForBp = _fixture.WaitUntilOutputContains(
+                "[Profile] BreakpointBind:",
+                TimeSpan.FromSeconds(15),
+                out string logOutput);
 
-        Assert.True(loadedForBp, $"Expected mid-session breakpoint to load symbols for UnrealEditor-ModuleB.dll and emit [Profile] BreakpointBind, but got:\n{logOutput}");
-        Assert.Contains("UnrealEditor-ModuleB.dll — Breakpoint", logOutput, StringComparison.OrdinalIgnoreCase);
+            Assert.True(loadedForBp, $"Expected mid-session breakpoint to load symbols for UnrealEditor-ModuleB.dll and emit [Profile] BreakpointBind, but got:\n{logOutput}");
+            Assert.Contains("UnrealEditor-ModuleB.dll — Breakpoint", logOutput, StringComparison.OrdinalIgnoreCase);
 
-        var profile = ProfileMetricsParser.Parse(logOutput);
-        Assert.NotEmpty(profile.BreakpointBindEvents);
-        var bpMetric = profile.BreakpointBindEvents[0];
-        Assert.True(bpMetric.ModulesLoaded >= 1, "Expected at least 1 module loaded in BreakpointBind profile metric.");
-        Console.WriteLine(
-            $"  -> Parsed BreakpointBind Profile: total={bpMetric.TotalMs}ms, includeList={bpMetric.IncludeListMs}ms, " +
-            $"moduleScan={bpMetric.ModuleScanMs}ms (modules={bpMetric.ModulesScanned}), " +
-            $"symbolLoad={bpMetric.SymbolLoadMs}ms (loaded={bpMetric.ModulesLoaded})");
+            var profile = ProfileMetricsParser.Parse(logOutput);
+            Assert.NotEmpty(profile.BreakpointBindEvents);
+            var bpMetric = profile.BreakpointBindEvents[0];
+            Assert.True(bpMetric.ModulesLoaded >= 1, "Expected at least 1 module loaded in BreakpointBind profile metric.");
+            Console.WriteLine(
+                $"  -> Parsed BreakpointBind Profile: total={bpMetric.TotalMs}ms, includeList={bpMetric.IncludeListMs}ms, " +
+                $"moduleScan={bpMetric.ModuleScanMs}ms (modules={bpMetric.ModulesScanned}), " +
+                $"symbolLoad={bpMetric.SymbolLoadMs}ms (loaded={bpMetric.ModulesLoaded})");
 
-        bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(15));
-        Assert.True(hitBreak, "Expected mid-session breakpoint in ModuleB.cpp to bind and hit while running.");
-
-        _fixture.StopDebuggingIfActive();
-        _fixture.ClearAllBreakpoints();
+            bool hitBreak = _fixture.WaitForDebuggerMode(dbgDebugMode.dbgBreakMode, TimeSpan.FromSeconds(15));
+            Assert.True(hitBreak, "Expected mid-session breakpoint in ModuleB.cpp to bind and hit while running.");
+        }
+        finally
+        {
+            _fixture.StopDebuggingIfActive();
+            _fixture.ClearAllBreakpoints();
+        }
     }
 
     public void Test05_SessionLifecycleAndCrashRecovery_ManagesBaselineAndPrunesDeadLeases()

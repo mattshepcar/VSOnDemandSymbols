@@ -174,3 +174,4 @@ public sealed class MultiInstanceDebuggerTests
         Assert.False(File.Exists(crashBaselinePath!), "Expected baseline to be restored and deleted.");
     }
 }
+

@@ -127,8 +127,8 @@ Breaking the 32 meta sessions into the **6 functional elements** that built the 
    - For presentation writing and web synthesis, Opus added massive cost without a commensurate step-change in output over Hydrogen.
 
 3. **Micro-Session Re-Orientation Overhead (`S65–S83`):**
-   - `docs/index.html` is a single ~2,500-line HTML/CSS/JS file. Across `S65–S72` and `S81–S83`, **11 separate main sessions** were opened for small, isolated UI/content tweaks (a button here, font sizing there, merging two slides, adding a share button).
-   - Every fresh session paid a "cold-start tax" of reading/grepping the monolith and re-discovering CSS variables, slide numbering, and JS hooks — averaging **~38 turns** and **~$0.60** per tweak (`~$6.50` across those 11 sessions). Batching 3–4 related layout tweaks into one session would have cut this roughly in half.
+   - [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) grew into a **3,564-line (`145 KB`, `~36k` tokens)** single-file HTML/CSS/JS monolith. Across `S65–S72` and `S81–S83`, **11 separate main sessions** were opened for small, isolated UI/content tweaks (a button here, font sizing there, merging two slides, adding a share button).
+   - Every fresh session paid a cold-start orientation tax (discovering CSS variables, slide numbering, and JS hooks) plus `25–44` turns of context replay — averaging **\$0.60** per tweak (`~\$6.50` across those 11 sessions). Batching 3–4 related layout tweaks into one session would have cut this roughly in half.
 
 4. **Manual Meta-Session Classification Drift (`S60` → `S65` → `46fc0ee`):**
    - [extract_chat_history.py](file:///C:/Dev/VSOnDemandSymbols/chat_history/extract_chat_history.py) relies on a hardcoded `META_SESSION_IDS` set plus 5 prompt substrings. Every new wave of presentation sessions (`S62–S71`, then `S72–S83`) was initially misclassified as `development` in `summary_metrics.json`, forcing manual edits to `extract_chat_history.py` and re-syncing the self-reflection slide (`S65`, `46fc0ee`).
@@ -148,6 +148,66 @@ Breaking the 32 meta sessions into the **6 functional elements** that built the 
 
 1. **Match Subagent Fan-Out to Verifiable Outputs:** Only fan out parallel subagents when each subagent produces a **self-contained, directly inspectable artifact** (like HTML templates in `S54–S57`). Never fan out `N` subagents for subjective visual/media curation using text-only `search_web` — if the human has to visually judge the result, a 5-minute manual image search + asking the AI to embed local files beats `$4.83` of blind link-scraping.
 2. **Reserve Opus for Hard Architecture/Debugging, Not Prose Slides:** Default to **Hydrogen** (for slide design, UX, and synthesis) and **Flash** (for Python log/data scripts). Avoid Opus on routine research or single-slide additions unless a prior model is genuinely stuck.
-3. **Batch Small UI Tweaks (or Modularize the Deck):** Avoid opening a brand-new session for every single CSS/JS tweak on a 2,500-line HTML file. Either batch 3–5 UI polish items into one session while the file structure is warm in cache, or split slide data/styles/JS so sessions only read the slice they need.
+3. **Batch Small UI Tweaks (or Modularize the Deck):** Avoid opening a brand-new session for every single CSS/JS tweak on a 3,564-line HTML file. Either batch 3–5 UI polish items into one session while the file structure is warm in cache, or split slide data/styles/JS so sessions only read the slice they need.
 4. **Auto-Classify Meta Sessions by File/Tool Footprint:** Instead of maintaining a manual `META_SESSION_IDS` allowlist in `extract_chat_history.py`, automatically classify any session whose edited/read workspace targets are exclusively under `chat_history/` or `docs/` (presentation files) as `meta`.
 5. **Compute Self-Reflection Stats Directly from Script Output:** Have `extract_chat_history.py` emit a small `docs/meta-stats.json` (or JS snippet) consumed by `docs/index.html` so the "Self-reflection & vibe decking" slide never drifts out of sync with `summary_metrics.json`.
+
+---
+
+## 8. Operational Playbook: Context Caching, Session Lifecycle & Flash vs. Hydrogen
+
+### 8.1 Can an Index / Summary of `docs/index.html` Eliminate File-Read Cost?
+
+**Partially—it cuts discovery turns, not the actual cost driver.**
+
+- [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) is `3,564` lines (`145,162` chars, `~36.3k` tokens). On Hydrogen (`$0.80/M` uncached input), reading it once costs only **~\$0.03**, and subsequent turns read it from prompt cache (`$0.20/M` → **~\$0.007/turn**).
+- Looking at the actual micro-sessions (`S69`, `S72`, `S81`, `S83`), uncached input was only `100–118k` tokens total (`~\$0.08–\$0.09`). The real bill (`\$0.35–\$0.66`) came from **`25–44` turns of full-context replay (`1.1M–2.6M` cached tokens) + output generation (`14–37k` tokens)**.
+- **Where a summary/map *does* help:** Maintaining a tiny `SLIDE_MAP.md` (or header comment in `index.html` listing CSS section line ranges, slide IDs/titles, and JS function line ranges) eliminates the **3–5 `Select-String` / `read_file` discovery turns** every new session spends locating where Slide 19 or `.burger-menu` lives.
+- **Where it *cannot* help:** `edit_file` requires exact line-for-line target matching, so the agent still has to `read_file` the target block before editing.
+- **Would splitting CSS / HTML / JS have helped?** [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) is `1,862` lines of CSS (`52.2%`), `784` lines of HTML slides (`22.0%`), and `906` lines of JS (`25.4%`). Splitting those into `styles.css`, `index.html`, and `deck.js` would let content-only sessions (`S65`, `S66`, `S68`, `S70`, `S72`) read the entire slide deck in **one `read_file` call** (`800`-line cap) instead of `5` calls or repeated `Select-String` jumps (~`10%–20%` fewer discovery turns and cleaner diffs). However, cross-cutting UI features (`S67`, `S82`, `S83`) still touch all three layers, and single-file portability (`file://` + GitHub Pages) is a real trade-off—so **batching tweaks + Flash routing (`~62%` savings)** is a much larger lever than splitting files alone.
+
+### 8.2 When to Reuse an Existing Session vs. Start a New One
+
+Our own session telemetry shows a clear **U-shaped cost curve**:
+
+| Session Length | Examples | Tokens / Turn | Cost / Turn (Hydrogen) | Pattern |
+|---|---|---:|---:|---|
+| **Short–Medium (`25–45` turns)** | `S59`, `S66`, `S68`, `S69`, `S71`, `S72`, `S81–S83` | `39–66k` | **\$0.011–\$0.017** | Sweet spot: fast, clean cache, low replay overhead |
+| **Long (`100–114` turns)** | `S52`, `S58`, `S60` | `106–129k` | **\$0.027–\$0.031** | **2×–2.5× cost/turn** due to replaying `100k+` history |
+| **Mega (`200+` turns / Compaction)** | `S50` (`236` turns), `S51` (dev, `2` compactions) | `128k+` | Spikes + errors | Compaction loses fine details, triggers re-reads |
+
+**Decision rule:**
+- **Reuse the current session** when:
+  1. The next request touches the **same files/feature** (e.g. `S73` handled 5 follow-up prompts—embedding 5 JPGs, doubling image size, adding `finale.jpg`, committing, pushing—for **\$0.43 total** because `index.html` and `flight-data.js` were already warm in cache).
+  2. The session is **under ~50–60 turns** and hasn't compacted.
+- **Start a fresh session** when:
+  1. You are **switching topics or file sets** (e.g., moving from `DIMENSION_4` analysis to mobile CSS). Dragging `80k` tokens of unrelated history makes every subsequent turn 2× pricier.
+  2. The session has passed **~80–100 turns** (`>100k` tokens/turn), hit a **compaction**, or started repeating mistakes—at that point a `~\$0.03–\$0.05` cold-start read is cheaper than paying `\$0.03/turn` to replay stale context.
+
+### 8.3 Should Flash Have Replaced Hydrogen?
+
+In [extract_chat_history.py](file:///C:/Dev/VSOnDemandSymbols/chat_history/extract_chat_history.py), **Hydrogen is exactly 8× the token price of Flash**:
+
+| Tier | Input (`/1M`) | Cache Read (`/1M`) | Output (`/1M`) | Multiplier |
+|---|---:|---:|---:|---:|
+| **Flash** | \$0.10 | \$0.025 | \$0.40 | `1×` |
+| **Hydrogen** | \$0.80 | \$0.20 | \$3.20 | **`8×`** |
+| **Opus** | \$15.00 | \$3.75 | \$75.00 | `150×` |
+
+Across the 30 Hydrogen sessions, Hydrogen cost **\$27.71**. At Flash rates, the exact same token volume would have cost **\$3.46** (a **\$24.25** difference). However, Flash had a **significantly higher tool-error rate** in our logs (`S50`: `28.4%`, `S62`: `33.7%` vs. Hydrogen's `5%–15%`), so the right answer is **task-based routing**, not 100% Flash.
+
+### 8.4 Where Hydrogen Paid Off vs. Where It Was a Waste
+
+| Verdict | Sessions | Spend | Why |
+|---|---|---:|---|
+| **Paid Off (High ROI)** | `S52–S59`, `S64`, `S66–S68`, `S81–S82` | **\$12.25** | **Visual taste, spatial layout & narrative synthesis:** 4 parallel HTML templates (`S54–S57` for `\$0.64`, `1` error in `41` calls), presenter console + themes (`S52`, `S58`), rules audit (`S59`), grid-view/SVG art (`S67`), mobile pageless mode + burger menu (`S82`), and distilling time/ethics/energy research (`S64`, `S66`, `S68`). |
+| **Overkill (Flash Territory)** | `S60`, `S65`, `S69–S73` (embed), `S83` | **\$7.45** | **Deterministic scripts, data lookups & single-widget edits:** Re-running `extract_chat_history.py` and syncing stats (`S60`, `S65`: `\$4.61`), fact-checking slide 7 (`S70`: `\$0.65`), and isolated DOM tweaks like Next/Share buttons, merging 2 slides, or base64-embedding JPGs (`S69`, `S71–S73`, `S83`: `\$2.19`). `S62` proved Flash handles Python script edits + runs for **\$0.28** (`100` turns)—these `8` sessions would have cost **~\$0.93** on Flash (**~\$6.52** saved). |
+| **Pure Waste (Should Not Have Run)** | `S74–S80` (7 subagents) | **\$4.83** | **Text-only web search for visual media:** `524` turns and `517` tool calls hunting for movie stills that couldn't be visually previewed, yielding `0` used assets. |
+
+**Bottom line:** Routing deterministic script/stat updates and isolated DOM tweaks (`\$7.45`) to **Flash (`~\$0.93`)**, skipping the unused 7-subagent image search (`\$4.83`), and using **Hydrogen** instead of **Opus** on `S63` (`\$10.38` → `~\$0.43`) would have brought the entire 32-session meta stage down from **\$39.03** to **~\$14–\$15** (~**62% savings**) with no loss in final deck quality.
+
+### 8.5 Real-Time Session Health & Model-Switch Metering (VS 2026 Watcher VSIX)
+
+Because Antigravity can be run directly inside Visual Studio 2026 (via `Google.GoogleAntigravity`) without a built-in live token/cost HUD, the findings above point directly to a lightweight companion VSIX (**Antigravity Session Watcher**):
+- **Live Green → Amber → Red bar** in the VS status bar / tool window by tailing `transcript.jsonl` (`0–50` turns green, `50–80` amber, `80+` / post-compaction red).
+- **Cold-cache model-switch warning:** Alerts when switching up to an expensive tier (e.g., Opus at `\$15/M` uncached input) late in a session, displaying the estimated Turn-1 cold-cache re-read cost so the pilot can start a fresh session instead.

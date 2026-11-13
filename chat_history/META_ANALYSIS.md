@@ -10,15 +10,15 @@
 | Metric | Analysis & Extraction (`S50`, `S60`) | Slide Deck & Polish (`S52–S59`) | Total Meta Stage (`S50`, `S52–S60`) |
 |---|---:|---:|---:|
 | **Sessions (Main / Subagent)** | 2 (2 / 0) | 8 (3 / 5) | **10** (5 / 5) |
-| **Active Time (gaps ≤ 10m)** | ~2.6 hrs | ~3.2 hrs | **~5.8 hrs** (`348 min`) |
-| **Turns** | 324 | 317 | **641** |
-| **Total Tokens** | 39.91M | 30.43M | **70.34M** |
-| **Tool Calls (Errors)** | 367 (103) | 336 (42) | **703** (`145` errors; **20.6%**) |
+| **Active Time (gaps ≤ 10m)** | ~2.8 hrs | ~3.2 hrs | **~6.0 hrs** (`361 min`) |
+| **Turns** | 343 | 317 | **660** |
+| **Total Tokens** | 43.51M | 30.43M | **73.94M** |
+| **Tool Calls (Errors)** | 397 (108) | 336 (42) | **733** (`150` errors; **20.5%**) |
 | **Context Compactions** | 1 (`S50`) | 0 | **1** |
-| **Exact Cost (USD)** | **$5.68** | **$7.85** | **$13.53** |
+| **Exact Cost (USD)** | **$6.46** | **$7.85** | **$14.31** |
 
-- **Total Meta Overhead:** Analyzing the 50 development transcripts, writing 10+ forensic/playbook reports, and producing a 24-slide interactive HTML presentation added **$13.53** (`11.9%` of the `$113.80` combined spend) and **~5.8 hours** of active AI + pilot time.
-- **Model Shift:** Unlike the development phase (dominated by Flash, Argon, and Opus), the Meta stage ran **95.0% of its spend on Gemini 4 Hydrogen (Medium)** (`481` turns, **$12.86**), with **Gemini 3.8 Flash (Medium)** handling `160` turns (**$0.67**).
+- **Total Meta Overhead:** Analyzing the 50 development transcripts, writing 10+ forensic/playbook reports, and producing a 24-slide interactive HTML presentation added **$14.31** (`$0.60 / slide`) and **~6.0 hours** of active AI + pilot time.
+- **Model Shift:** Unlike the development phase (dominated by Flash, Argon, and Opus), the Meta stage ran **95.3% of its spend on Gemini 4 Hydrogen (Medium)** (`500` turns, **$13.64**), with **Gemini 3.8 Flash (Medium)** handling `160` turns (**$0.67**).
 
 ---
 
@@ -26,9 +26,9 @@
 
 | Model | Active Sessions | Turns | Turn Share | Exact Cost | Cost Share |
 |---|---:|---:|---:|---:|---:|
-| **Gemini 4 Hydrogen (Medium)** | 10 | 481 | 75.0% | **$12.86** | **95.0%** |
-| **Gemini 3.8 Flash (Medium)** | 2 | 160 | 25.0% | **$0.67** | **5.0%** |
-| **Total Meta** | **10** | **641** | **100.0%** | **$13.53** | **100.0%** |
+| **Gemini 4 Hydrogen (Medium)** | 10 | 500 | 75.8% | **$13.64** | **95.3%** |
+| **Gemini 3.8 Flash (Medium)** | 2 | 160 | 24.2% | **$0.67** | **4.7%** |
+| **Total Meta** | **10** | **660** | **100.0%** | **$14.31** | **100.0%** |
 
 ---
 
@@ -45,7 +45,7 @@
 | `S57` | Subagent | Hydrogen Med | 14 | 0.40M | 13 (0) | 0 | **$0.18** | Parallel template prototype #4 |
 | `S58` | Main | Hydrogen Med | 114 | 14.67M | 132 (19) | 0 | **$3.37** | Reviewed & polished `presentation.html` (themes, toggles, speaker notes) |
 | `S59` | Main | Hydrogen Med | 39 | 2.59M | 46 (5) | 0 | **$0.68** | Audited deck against `PRESENTATION_RULES.md`, added cross-check slide |
-| `S60` | Main | Hydrogen Med | 88 | 9.76M | 131 (36) | 0 | **$2.50** | Split dev vs. meta in `extract_chat_history.py`, refreshed all stats, `SESSION_51_DEEP_DIVE.md`, `META_ANALYSIS.md`, & slides |
+| `S60` | Main | Hydrogen Med | 107 | 13.36M | 161 (41) | 0 | **$3.27** | Split dev vs. meta in `extract_chat_history.py`, refreshed all stats, `SESSION_51_DEEP_DIVE.md`, `META_ANALYSIS.md`, & slides |
 
 ---
 

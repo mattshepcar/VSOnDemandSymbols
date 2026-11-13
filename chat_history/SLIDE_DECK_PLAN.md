@@ -36,5 +36,5 @@
 19. **Guardrails:** *Let AI write the rules—then cross-check fresh.* (Codify environment quirks in `AGENTS.md`, then verify in a clean session).
 20. **Pilot Quotes:** *Mid-flight course corrections. 🎛️* (Real verbatim steering quotes from the logs).
 21. **5 Pre-Flight Tips:** *5 pre-flight tips for your next AI project. 📋* + *"Full disclosure: first time 'vibe coding' in anger — I'm still winging it. 🤷‍♂️"* footnote.
-22. **Self-Reflection & Vibe Decking:** *"The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew."* + 2×2 stat grid (`~6 hrs`, `70.3M` tokens, `$13.53` on Gemini 4 Hydrogen, `$0.33 / slide`).
+22. **Self-Reflection & Vibe Decking:** *"The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew."* + 2×2 stat grid (`~6 hrs`, `73.9M` tokens, `$14.31` on Gemini 4 Hydrogen, `$0.60 / slide`).
 23. **Landing / Q&A:** Aeroplane landing SVG + *Questions? 🙋‍♂️* (deferring hard ones to co-pilot Claude).

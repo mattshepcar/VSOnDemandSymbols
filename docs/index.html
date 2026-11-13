@@ -2015,7 +2015,7 @@
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
     </section>
 
-<section class="slide" data-notes="Across 7 days (50 sessions), we logged ~19 hours of active AI and pilot time, excluding idle gaps over 10 minutes. Token volume hit 494M total: 22.6M uncached input, 468M cached read (a 95.4% cache hit rate that saved $208), and 2.6M output. The AI made 4,850 tool calls, and 20% (978) failed on the first try. Total equivalent API spend was $100.27 (~$100), all covered by the £1.89 trial.">
+<section class="slide" data-notes="Across 7 days (50 sessions, 4,694 turns), we logged ~19 hours of active AI and pilot time, excluding idle gaps over 10 minutes. Token volume hit 494M total: 22.6M uncached input, 468M cached read (a 95.4% cache hit rate that saved $208), and 2.6M output. The AI made 4,850 tool calls, and 20% (978) failed on the first try. Total equivalent API spend was $100.27 (~$100 at Nov 2026 list prices), all covered by the £1.89 trial.">
       <h2>The project <span class="accent">by the numbers</span>.</h2>
       <div class="stats-grid-2x2">
         <div class="stat">
@@ -2028,13 +2028,14 @@
         </div>
         <div class="stat">
           <div class="stat-num" data-count="4850" data-comma="true">4,850</div>
-          <div class="stat-label">Tool calls (20% failed on first try)</div>
+          <div class="stat-label">Tool calls across 4,694 turns (20% failed 1st try)</div>
         </div>
         <div class="stat">
           <div class="stat-num accent">~$100</div>
-          <div class="stat-label">API spend (95% cache saved $208)</div>
+          <div class="stat-label">Equiv. API spend* (95% cache saved $208)</div>
         </div>
       </div>
+      <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*Estimated equivalent at Nov 2026 API list prices; actual cost was the £1.89 Google AI Pro trial.</p>
     </section>
 
 <section class="slide" data-notes="These are illustrative estimates, not measurements from the AI provider. Based on assumed energy consumption per tool-call turn, estimated cooling-water usage and an assumed UK electricity carbon intensity. Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent inference benchmarks, accounting for our 95.4% prompt cache hit rate), the 7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh). That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average), or ~70 UK homes for an hour. Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). Agentic coding runs thousands of turns with huge contexts—easily 10x the energy of standard single-turn chat.">
@@ -2132,8 +2133,8 @@
       <p class="takeaway">When docs are missing, yell <strong>“DIVE!”</strong>—let AI plunge straight into the binaries. 🦅</p>
     </section>
 
-<section class="slide" data-notes="Testing a VS extension against UE5 usually means pressing F5, waiting for Lyra to load, and checking output logs by hand. A solo developer wouldn't spend days writing Windows ROT COM automation just to skip F5. For the AI, building that harness was easy. It wrote a tool that launches VS, loads the Unreal project, sets breakpoints, and records timings.">
-      <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-test.</h2>
+<section class="slide" data-notes="Testing a VS extension against UE5 usually means pressing F5, waiting for Lyra to load, and checking output logs by hand. A solo developer wouldn't spend days writing Windows ROT COM automation just to skip F5. For the AI, building that harness was easy. It wrote a tool that launches VS, loads the Unreal project, sets breakpoints, and records timings. It's an agent self-check for fast iteration—not independent proof of correctness.">
+      <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-check.</h2>
       <div class="split-2">
         <div class="contrast-block">
           <div class="contrast-kicker">Human-in-the-Loop</div>
@@ -2141,12 +2142,12 @@
           <div class="stat-label">You launch VS, load UE5, and paste logs back</div>
         </div>
         <div class="contrast-block highlight">
-          <div class="contrast-kicker">AI-Built Harness</div>
+          <div class="contrast-kicker">Agent Self-Check Harness</div>
           <div class="stat-num accent">Autopilot</div>
-          <div class="stat-label">AI drives VS programmatically and benchmarks itself</div>
+          <div class="stat-label">AI drives VS programmatically for a fast self-check</div>
         </div>
       </div>
-      <p class="takeaway">Ask the AI to <strong>build its own test harness</strong>—even for GUI apps.</p>
+      <p class="takeaway">Ask the AI to <strong>build a self-check harness</strong>—fast feedback, even for GUI apps.</p>
     </section>
 
 <section class="slide" data-notes="Six read-only Gemini 3.8 Flash subagents searched the Unreal Engine source tree in parallel to verify module naming rules. They ran 55 minutes 20 seconds of total research (328 turns, 305 tool calls) in 22 minutes of human clock time, for $0.57 ($0.62/hour). Subagents give you two wins: 2.5x faster wall-clock time so you stay engaged, and context isolation so 305 file searches never bloat your main session.">
@@ -2166,15 +2167,16 @@
       <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
     </section>
 
-<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.6 Luna, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec. On coding benchmarks like SWE-bench, they match last generation's frontier flagships at 2–5x lower cost per task. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
+<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.6 Luna, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows (e.g. Gemini 3.8 Flash), and reliable multi-step tool calling at 150–200+ tokens/sec. On SWE-bench Verified (late 2026), they match last generation's frontier flagships at 2–5x lower API cost per task at current pricing. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
       <div class="slide-center-wrap">
       <h2>Fast &amp; cheap models <span class="accent">got seriously good</span>. ⚡</h2>
       <ul class="big-list big-list-lg">
         <li><span class="list-num">1.</span><span><strong>Not just autocomplete</strong> — Flash, Haiku &amp; Luna for multi-file edits.</span></li>
         <li><span class="list-num">2.</span><span><strong>Thinking at 150+ tok/s</strong> — without the frontier wait.</span></li>
-        <li><span class="list-num">3.</span><span><strong>Huge context, tiny bill</strong> — 1M+ context, 2–5× cheaper per task.</span></li>
+        <li><span class="list-num">3.</span><span><strong>Large context, lower bill</strong> — 1M+ on Gemini 3.8 Flash · 2–5× cheaper per task.*</span></li>
       </ul>
       <p class="takeaway"><strong class="accent">Flash! A-ah!</strong> Saviour of the token budget! ⚡</p>
+      <p class="muted" style="font-size: 0.78rem; margin-top: 0.25rem;">*SWE-bench Verified &amp; API list prices as of Nov 2026.</p>
       </div>
     </section>
 
@@ -2191,16 +2193,16 @@
       <img class="act-photo" data-act-img="act3" alt="Act III: Turbulence and Headwinds" />
     </section>
 
-<section class="slide" data-notes="Built over 7 days across 50 sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. We had 26,251 insertions and 15,470 deletions, ending at 10,781 net lines of code. Nearly 60% of all code written was deleted. Three things drove the churn: overspecifying on Day 1 before proving the core loop, letting the AI build complex custom architectures early on, and not asking 'why?' soon enough when it went down a blind alley. By contrast, small surgical edits later averaged $0.08 and zero compactions.">
-      <h2><span class="accent">60%</span> of all code written was deleted.</h2>
+<section class="slide" data-notes="Built over 7 days across 50 sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. We had 26,251 insertions and 15,470 deletions, ending at 10,781 net lines of code—meaning 59% (~60%) of all lines added were later deleted. Three things drove the churn: overspecifying on Day 1 before proving the core loop, letting the AI build complex custom architectures early on, and not asking 'why?' soon enough when it went down a blind alley. By contrast, small surgical edits later averaged $0.08 and zero compactions.">
+      <h2><span class="accent">~60%</span> of all lines added were deleted.</h2>
       <div class="stats-row">
         <div class="stat">
           <div class="stat-num">7 days</div>
           <div class="stat-label">50 dev sessions &nbsp;·&nbsp; 71 commits</div>
         </div>
         <div class="stat">
-          <div class="stat-num accent">+26k / -15k</div>
-          <div class="stat-label">Lines added vs. deleted</div>
+          <div class="stat-num accent">+26.3k / -15.5k</div>
+          <div class="stat-label">Lines added vs. deleted (59% churn)</div>
         </div>
         <div class="stat">
           <div class="stat-num">10.8k</div>
@@ -2232,7 +2234,7 @@
       <p class="takeaway">Recognise dead ends early—save a <strong>handoff doc</strong> and reset.</p>
     </section>
 
-<section class="slide" data-notes="People assume you need the biggest frontier model for real code. Yet Gemini 3.8 Flash handled 81% of all turns at ~6 seconds each for $11. Opus took 1.4% of turns, cost $50, and ran up to 5x slower, turning a 100-turn session into half an hour of watching a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely.">
+<section class="slide" data-notes="People assume you need the biggest frontier model for real code. Yet Gemini 3.8 Flash handled 81% of all turns at ~6 seconds each for $11 (at Nov 2026 list prices). Claude Opus 5.5 took 1.4% of turns, cost $50, and ran up to 5x slower, turning a 100-turn session into half an hour of watching a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely.">
       <div class="slide-header-row">
         <h2 id="costHeading"><span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.</h2>
         <div class="toggle-group" role="group" aria-label="Cost view toggle">
@@ -2264,6 +2266,7 @@
         </div>
       </div>
       <p class="takeaway" id="costTakeaway"><strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--accent); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong></p>
+      <p class="muted" style="font-size: 0.78rem; margin-top: 0.25rem;">*Equivalent API spend at Nov 2026 list prices.</p>
     </section>
 
 <section class="slide" data-notes="Only 6 of 50 sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Those 978 tool errors ate ~3.8 hours of active time (~20% of dev time) and ~$20 in spend, concentrated in two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early: once we wrote down the sandbox build flags, build hangs dropped to zero.">
@@ -2298,7 +2301,7 @@
       <img class="act-photo" data-act-img="act4" alt="Act IV: Lessons from the Flight Deck" />
     </section>
 
-<section class="slide" data-notes="What worked best for me was matching the model to the job: Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Stepping down from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating up to Opus mid-bloat was my most expensive mistake: two mid-session switches burned $38 in 27 minutes (42 turns) re-reading old history at 17–30s per turn. If I hit that wall again, I'd start a fresh session with a 1-page handoff instead.">
+<section class="slide" data-notes="What worked best for me was matching the model to the job: Claude Opus 5.5 or Gemini 4 Argon (High) in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Stepping down from Gemini 4 Argon to Gemini 3.8 Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating up to Claude Opus 5.5 mid-bloat was my most expensive mistake: two mid-session switches burned $38 in 27 minutes (42 turns) re-reading old history at 17–30s per turn. If I hit that wall again, I'd start a fresh session with a 1-page handoff instead.">
       <h2>Don’t escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -2406,12 +2409,12 @@
       <img class="act-photo" data-act-img="act5" alt="Act V: Uncharted Airspace" />
     </section>
 
-<section class="slide" data-notes="Three ethical questions hang over AI coding. (1) Training data: models learned from billions of lines of public open-source code without consent or credit. When an LLM absorbs GPL code and emits a working equivalent into a proprietary repo, that strips copyleft obligations ('license laundering'). (2) Cooling water: hyperscale AI data centres consume vast amounts of water for cooling—plus the indirect water behind their electricity—putting real pressure on local watersheds. (3) The job: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer and review AI, while the boilerplate work that used to train juniors is disappearing.">
+<section class="slide" data-notes="Three ethical questions hang over AI coding. (1) Training data: models learned from billions of lines of public open-source code without consent or credit. When an LLM trained on GPL code emits a similar implementation into a proprietary repo, it raises a 'license laundering' concern around copyleft obligations. (2) Cooling water: hyperscale AI data centres consume vast amounts of water for cooling—plus the indirect water behind their electricity—putting real pressure on local watersheds. (3) The job: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer and review AI, while the boilerplate work that used to train juniors is disappearing.">
       <div class="slide-center-wrap">
       <h2>What’s the <span class="accent">cost of the fuel</span>? 🌍</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The ethical bill behind “effortless” code.</p>
       <ul class="big-list big-list-lg">
-        <li><span class="list-num">1.</span><span><strong>Training data</strong> — uncredited open source &amp; “license laundering”.</span></li>
+        <li><span class="list-num">1.</span><span><strong>Training data</strong> — uncredited open source &amp; “license laundering” risk.</span></li>
         <li><span class="list-num">2.</span><span><strong>Energy &amp; water</strong> — agentic loops multiply the footprint.</span></li>
         <li><span class="list-num">3.</span><span><strong>Changing the job</strong> — fewer junior runways, more code auditing.</span></li>
       </ul>
@@ -2445,7 +2448,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="(1) In METR's 2025 trial, experienced developers thought AI made them 20% faster, yet they measured 19% slower. Feeling fast differs from shipping fast. (2) Code review is now the bottleneck: AI makes it easy to flood PRs, burn out reviewers, and invite rubber-stamping—so own every commit. (3) If AI does the grunt work, how do juniors build the experience to become seniors? (4) 'The AI wrote it' never works in a post-mortem, and cloud models raise copyright and data-policy questions. (5) My £1.89 trial equalled ~$100 of API usage in one week—at team scale, that adds up fast once the subsidies end.">
+<section class="slide" data-notes="(1) For broader context (not our experiment): in METR's July 2025 RCT of experienced open-source developers, participants thought AI made them 20% faster, yet measured 19% slower. Feeling fast differs from shipping fast. (2) Code review is now the bottleneck: AI makes it easy to flood PRs, burn out reviewers, and invite rubber-stamping—so own every commit. (3) If AI does the grunt work, how do juniors build the experience to become seniors? (4) 'The AI wrote it' never works in a post-mortem, and cloud models raise copyright and data-policy questions. (5) My £1.89 trial equalled ~$100 of API usage in one week—at team scale, that adds up fast once the subsidies end.">
       <div class="slide-center-wrap">
       <h2>Questions we <span class="accent">should also</span> be asking. 🧭</h2>
       <ul class="big-list big-list-lg">
@@ -2474,7 +2477,7 @@
       <img class="act-photo" data-act-img="finale" alt="And Finally: Inside the Black Box" />
     </section>
 
-<section class="slide" data-notes="These slides were 'vibe decked': prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 34 sessions (~14 active hours), the log analysis and deck build cost $44.23 ($1.47/slide). Of that, 23.5% came from a single 13-minute Opus session (1.2% of turns) used to research and write the Act V open-questions slides.">
+<section class="slide" data-notes="Separate from the 7-day extension build: these slides were 'vibe decked' in 34 meta-sessions (~14 active hours, $44.23 at Nov 2026 list prices, or $1.47/slide). Four parallel subagents prototyped the deck ($0.64) and another model cross-checked it against PRESENTATION_RULES.md. Of the meta spend, 23.5% came from a single 13-minute Claude Opus 5.5 session (1.2% of turns) used to research and write the Act V open-questions slides.">
       <h2>Introspection &amp; <span class="accent">vibe decking</span>.</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50+ chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
       <div class="stats-grid-2x2 compact">
@@ -2730,7 +2733,7 @@
       { match: /cost the planet/i, icon: '🌱' },
       { match: /Seven days/i, icon: '📅' },
       { match: /VS’s own DLLs|VS's own DLLs/i, icon: '🔍' },
-      { match: /self-test/i, icon: '🤖' },
+      { match: /self-test|self-check/i, icon: '🤖' },
       { match: /Fly, my beauties/i, icon: '🦅' },
       { match: /60%/i, icon: '✂️' },
       { match: /Jettison/i, icon: '🧳' },

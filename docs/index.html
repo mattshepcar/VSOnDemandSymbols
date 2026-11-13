@@ -597,11 +597,12 @@
     .overview-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(9, 9, 11, 0.92);
-      backdrop-filter: blur(10px);
+      background: var(--bg);
+      background-image: var(--bg-glow);
+      color: var(--ink);
       z-index: 40;
       display: none;
-      padding: 4vh 5vw;
+      padding: 2.5vh 3.5vw 3.5vh 3.5vw;
       overflow-y: auto;
     }
 
@@ -609,69 +610,159 @@
 
     .overview-header {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.75rem;
-      color: #fafafa;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--rule);
+      color: var(--ink);
     }
 
     .overview-header h3 {
       font-size: 1.35rem;
-      font-weight: 700;
+      font-weight: 800;
+      letter-spacing: -0.02em;
     }
 
     .overview-close {
-      background: #27272a;
-      color: #fafafa;
-      border: none;
+      background: var(--notes-bg);
+      color: var(--ink);
+      border: 1px solid var(--rule);
       border-radius: 999px;
       padding: 0.45rem 1rem;
       font: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+
+    .overview-close:hover {
+      border-color: var(--accent);
     }
 
     .overview-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    /* Per-act semantic colours (adaptive across light & dark themes) */
+    .overview-card,
+    .overview-act-row {
+      --card-color: var(--accent);
+      --card-tint: var(--accent-soft);
+    }
+
+    [data-act="intro"]      { --card-color: #0284c7; --card-tint: rgba(2, 132, 199, 0.12); }
+    [data-act="act-1"]      { --card-color: #0ea5e9; --card-tint: rgba(14, 165, 233, 0.13); }
+    [data-act="act-2"]      { --card-color: #10b981; --card-tint: rgba(16, 185, 129, 0.13); }
+    [data-act="act-3"]      { --card-color: #f43f5e; --card-tint: rgba(244, 63, 94, 0.12); }
+    [data-act="act-4"]      { --card-color: #6366f1; --card-tint: rgba(99, 102, 241, 0.13); }
+    [data-act="act-5"]      { --card-color: #8b5cf6; --card-tint: rgba(139, 92, 246, 0.13); }
+    [data-act="finale"]     { --card-color: #f97316; --card-tint: rgba(249, 115, 22, 0.14); }
+
+    .overview-act-row {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 1rem;
+      grid-template-columns: 210px 1fr;
+      gap: 0.55rem;
+      align-items: stretch;
+    }
+
+    .overview-act-row.is-intro {
+      grid-template-columns: 1fr;
+    }
+
+    .overview-act-row-slides {
+      display: grid;
+      grid-template-columns: repeat(var(--row-cols, 4), minmax(0, 1fr));
+      gap: 0.55rem;
     }
 
     .overview-card {
-      background: #18181b;
-      border: 1px solid #27272a;
-      border-radius: 12px;
-      padding: 1.1rem 1.2rem;
+      position: relative;
+      overflow: hidden;
+      background: var(--nav-bg);
+      border: 1px solid var(--rule);
+      border-top: 2.5px solid var(--card-color);
+      border-radius: 11px;
+      padding: 0.6rem 0.75rem;
       text-align: left;
-      color: #fafafa;
+      color: var(--ink);
       cursor: pointer;
       display: flex;
       flex-direction: column;
-      gap: 0.45rem;
-      transition: border-color 0.15s ease, transform 0.15s ease;
+      gap: 0.35rem;
+      transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     .overview-card:hover {
-      border-color: var(--accent);
+      border-color: var(--card-color);
       transform: translateY(-2px);
+      box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.25);
     }
 
     .overview-card.current {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent);
+      border-color: var(--card-color);
+      box-shadow: 0 0 0 2px var(--card-color);
+    }
+
+    .overview-card.is-act {
+      background: linear-gradient(135deg, var(--card-tint), var(--nav-bg) 82%);
+      border: 1.5px solid var(--card-color);
+      border-left: 5px solid var(--card-color);
+      justify-content: center;
+    }
+
+    .overview-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.4rem;
+      width: 100%;
     }
 
     .overview-num {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--accent);
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: var(--card-color);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.07em;
+    }
+
+    .overview-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.55rem;
+      height: 1.55rem;
+      border-radius: 7px;
+      background: var(--card-tint);
+      font-size: 0.9rem;
+      flex-shrink: 0;
     }
 
     .overview-title {
-      font-size: 1.05rem;
+      font-size: 0.88rem;
       font-weight: 700;
-      line-height: 1.3;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+
+    .overview-card.is-act .overview-title {
+      font-size: 0.94rem;
+      font-weight: 800;
+    }
+
+    @media (max-width: 960px) {
+      .overview-act-row {
+        grid-template-columns: 1fr;
+      }
+      .overview-act-row-slides {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      }
     }
 
     /* ==========================================================================
@@ -1402,20 +1493,115 @@
       });
     }
 
+    const slideIconRules = [
+      { match: /Weekend Idea|Working VSIX/i, icon: '🧩' },
+      { match: /Tea break/i, icon: '🍵' },
+      { match: /11 PDBs/i, icon: '⚡' },
+      { match: /by the numbers/i, icon: '📊' },
+      { match: /Seven days/i, icon: '📅' },
+      { match: /VS’s own DLLs|VS's own DLLs/i, icon: '🔍' },
+      { match: /self-test/i, icon: '🤖' },
+      { match: /Fly, my beauties/i, icon: '🦅' },
+      { match: /60%/i, icon: '✂️' },
+      { match: /Jettison/i, icon: '🧳' },
+      { match: /81%|Without caching/i, icon: '💸' },
+      { match: /compacted sessions/i, icon: '🔥' },
+      { match: /Never escalate/i, icon: '🎚️' },
+      { match: /Single-focus/i, icon: '🎯' },
+      { match: /cross-check/i, icon: '📐' },
+      { match: /course corrections/i, icon: '🎛️' },
+      { match: /pre-flight/i, icon: '📋' },
+      { match: /cost of the fuel/i, icon: '🌍' },
+      { match: /Big codebases/i, icon: '🏗️' },
+      { match: /still code ourselves/i, icon: '✍️' },
+      { match: /human in the crew/i, icon: '🧑‍🤝‍🧑' },
+      { match: /should also/i, icon: '🧭' },
+      { match: /vibe decking/i, icon: '🪞' },
+      { match: /Questions\?/i, icon: '🙋‍♂️' }
+    ];
+
+    function getSlideIcon(slide, title, isAct) {
+      if (isAct) {
+        const badgeEmoji = slide.querySelector('.act-emoji');
+        if (badgeEmoji) return badgeEmoji.textContent.trim();
+      }
+      for (const rule of slideIconRules) {
+        if (rule.match.test(title)) return rule.icon;
+      }
+      return '📄';
+    }
+
+    function getHeadingText(el) {
+      if (!el) return '';
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('br').forEach((br) => br.replaceWith(' '));
+      return clone.textContent.replace(/\s+/g, ' ').trim();
+    }
+
     function buildOverview() {
       overviewGrid.innerHTML = '';
-      slides.forEach((s, idx) => {
-        if (s.dataset.secret === 'true') return;
+      const actKeys = ['act-1', 'act-2', 'act-3', 'act-4', 'act-5', 'finale'];
+      let currentActKey = 'intro';
+      let currentActLabel = 'Intro';
+      let actCounter = 0;
+
+      const makeCard = (s, idx, actKey, actLabel) => {
+        const isAct = s.classList.contains('act-slide');
         const h = s.querySelector('h1, h2');
-        const title = h ? h.textContent.replace(/\s+/g, ' ').trim() : `Slide ${idx + 1}`;
+        const rawTitle = h ? getHeadingText(h) : `Slide ${idx + 1}`;
+        const title = rawTitle.replace(/\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?(\u200D[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?)*$/u, '').trim();
+        const icon = getSlideIcon(s, rawTitle, isAct);
         const card = document.createElement('button');
-        card.className = 'overview-card' + (idx === index ? ' current' : '');
-        card.innerHTML = `<span class="overview-num">Slide ${idx + 1}</span><span class="overview-title">${title}</span>`;
+        card.dataset.act = actKey;
+        card.className = 'overview-card' + (isAct ? ' is-act' : '') + (idx === index ? ' current' : '');
+
+        const numLabel = isAct ? actLabel.replace(icon, '').trim() : `Slide ${idx + 1}`;
+        card.innerHTML = `
+          <div class="overview-card-top">
+            <span class="overview-num">${numLabel}</span>
+            <span class="overview-icon">${icon}</span>
+          </div>
+          <span class="overview-title">${title}</span>
+        `;
+
         card.addEventListener('click', () => {
           setOverviewOpen(false);
           render(idx);
         });
-        overviewGrid.appendChild(card);
+        return card;
+      };
+
+      const groups = [];
+      let currentGroup = { actKey: 'intro', actLabel: 'Intro', actSlide: null, items: [] };
+      groups.push(currentGroup);
+
+      slides.forEach((s, idx) => {
+        if (s.dataset.secret === 'true') return;
+        if (s.classList.contains('act-slide')) {
+          currentActKey = actKeys[actCounter] || 'finale';
+          actCounter++;
+          const badge = s.querySelector('.act-badge');
+          currentActLabel = badge ? badge.textContent.replace(/\s+/g, ' ').trim() : `Act ${actCounter}`;
+          currentGroup = { actKey: currentActKey, actLabel: currentActLabel, actSlide: { s, idx }, items: [] };
+          groups.push(currentGroup);
+        } else {
+          currentGroup.items.push({ s, idx });
+        }
+      });
+
+      groups.forEach((g) => {
+        const row = document.createElement('div');
+        row.className = 'overview-act-row' + (!g.actSlide ? ' is-intro' : '');
+        row.dataset.act = g.actKey;
+        if (g.actSlide) {
+          row.appendChild(makeCard(g.actSlide.s, g.actSlide.idx, g.actKey, g.actLabel));
+        }
+        const slidesWrap = document.createElement('div');
+        slidesWrap.className = 'overview-act-row-slides';
+        slidesWrap.style.setProperty('--row-cols', String(Math.max(1, g.items.length)));
+        g.items.forEach(({ s, idx }) => slidesWrap.appendChild(makeCard(s, idx, g.actKey, g.actLabel)));
+        row.appendChild(slidesWrap);
+        overviewGrid.appendChild(row);
       });
     }
 

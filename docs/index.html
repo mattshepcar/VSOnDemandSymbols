@@ -1034,7 +1034,32 @@
 
     .act-slide > h1,
     .act-slide > .subtitle {
-      max-width: calc(100% - clamp(200px, 26vw, 370px));
+      max-width: calc(100% - clamp(380px, 46vw, 780px));
+    }
+
+    .act-photo {
+      position: absolute;
+      right: 4vw;
+      top: 50%;
+      transform: translateY(-50%);
+      width: clamp(360px, 44vw, 760px);
+      max-height: 78vh;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .slide.active .act-photo[src] {
+      animation: actPhotoIn 0.65s ease-out forwards;
+    }
+
+    @keyframes actPhotoIn {
+      from { opacity: 0; transform: translateY(-46%) scale(0.96); }
+      to { opacity: 1; transform: translateY(-50%) scale(1); }
     }
 
     @keyframes actFloat {
@@ -1439,6 +1464,7 @@
       <h1>Cleared for <span class="accent">Takeoff</span></h1>
       <div class="act-rule"></div>
       <p class="subtitle">Fixing slow Unreal debugging—and accidentally logging <strong>4,000+ turns</strong> in the cockpit. 🛫</p>
+      <img class="act-photo" data-act-img="act1" alt="Act I: Cleared for Takeoff" />
     </section>
 
     <!-- THE PROBLEM: UE5 SYMBOL LOADING -->
@@ -1569,6 +1595,7 @@
       <h1>Catching a <span class="accent">Tailwind</span></h1>
       <div class="act-rule"></div>
       <p class="subtitle">Where AI gave us lift—cracking undocumented APIs, self-testing, and flying in formation.</p>
+      <img class="act-photo" data-act-img="act2" alt="Act II: Catching a Tailwind" />
     </section>
 
 <section class="slide" data-notes="I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI dived straight into VS's own installed DLLs (233 binary probes) to reflect on exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up. (Bonus Brian Blessed / Flash Gordon Hawkmen energy: 'DIVE!' straight into the binaries.)">
@@ -1634,6 +1661,7 @@
       <h1><span class="danger">Turbulence</span> &amp; Headwinds</h1>
       <div class="act-rule"></div>
       <p class="subtitle">“Please keep your seatbelts fastened at all times.” 💺</p>
+      <img class="act-photo" data-act-img="act3" alt="Act III: Turbulence and Headwinds" />
     </section>
 
 <section class="slide" data-notes="Built over 7 days across 50 development sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC—nearly 60% of all code ever written was deleted. Three root causes drove the churn: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not asking 'why?' soon enough when the model went down a blind alley. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions.">
@@ -1740,6 +1768,7 @@
       <h1>Aviate, Navigate, <span class="accent">Communicate</span></h1>
       <div class="act-rule"></div>
       <p class="subtitle">“You were the pilot steering us away from the mountain!”</p>
+      <img class="act-photo" data-act-img="act4" alt="Act IV: Aviate, Navigate, Communicate" />
     </section>
 
 <section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Notice the asymmetry in mid-session switching: stepping DOWN from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating UP to Opus mid-bloat was disastrous—two mid-session switches burned $38 in just 27 minutes (42 turns) re-reading old history at 17–30s per turn. Start a fresh session with a 1-page handoff.">
@@ -1843,6 +1872,7 @@
         <span>“First time?”</span><br />
         <span class="accent">“No, I’ve been nervous lots of times.”</span>
       </p>
+      <img class="act-photo" data-act-img="act5" alt="Act V: Uncharted Airspace" />
     </section>
 
 <section class="slide" data-notes="Before we talk about codebases and teams, it is worth asking what this costs outside our own editor. Three ethical questions hang over AI coding. (1) Training data: models were trained on billions of lines of public open-source code without explicit consent or attribution. When an LLM absorbs GPL code and emits a functional equivalent into a proprietary repo, that is effectively 'license laundering'—stripping copyleft obligations and credit. (2) Energy and water: global data centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share jumping from ~20% to ~37%. A single large AI data centre can use 1 to 5 million gallons of water a day for cooling—the same as a town of 30,000 to 50,000 people—plus the indirect water used to generate that electricity. And agentic coding runs dozens of prompts per task, not one. (3) The job itself: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) contracting into a 'barbell' market—seniors are in demand to steer and review AI, while the boilerplate tasks that used to be the junior apprenticeship runway are disappearing. The job is shifting from writing code to auditing, architecting, and owning the outcome.">
@@ -1912,6 +1942,7 @@
       <h1>Reading the <span class="accent">Black Box</span></h1>
       <div class="act-rule"></div>
       <p class="subtitle">&ldquo;This is your autopilot speaking. I&rsquo;ve reviewed my own flight logs, and I&rsquo;m delighted to report I was brilliant.&rdquo;</p>
+      <img class="act-photo" data-act-img="finale" alt="And Finally: Reading the Black Box" />
     </section>
 
 <section class="slide" data-notes="Every stat in this talk came from the AI reading its own dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 20 sessions (~10 active hours), that analysis and deck-building pass cost $31.49 (~$1/slide across 31 slides)—with 33% of the bill coming from a single 13-minute Opus session (2.1% of turns) used to research and write the 'Uncharted Airspace' open-questions slides.">
@@ -2236,24 +2267,51 @@
       });
     }
 
-    function loadSecretSlideMedia() {
-      const img = document.getElementById('secretSlideImg');
-      if (!img || img.src) return;
+    function decodeFlightBlobUrl(b64) {
+      const raw = atob(b64);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i) ^ 0x5A;
+      return URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' }));
+    }
+
+    function ensureFlightData(callback) {
+      const prev = window.__onFlightData;
       window.__onFlightData = () => {
-        if (!window.__flightData || img.src) return;
-        const raw = atob(window.__flightData);
-        const bytes = new Uint8Array(raw.length);
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i) ^ 0x5A;
-        img.src = URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' }));
+        if (prev) prev();
+        callback();
       };
-      if (window.__flightData) {
-        window.__onFlightData();
+      if (window.__flightData || window.__actMedia) {
+        callback();
       } else if (!document.getElementById('flightDataScript')) {
         const s = document.createElement('script');
         s.id = 'flightDataScript';
         s.src = 'flight-data.js';
         document.body.appendChild(s);
       }
+    }
+
+    function loadSecretSlideMedia() {
+      const img = document.getElementById('secretSlideImg');
+      if (!img || img.src) return;
+      ensureFlightData(() => {
+        if (!window.__flightData || img.src) return;
+        img.src = decodeFlightBlobUrl(window.__flightData);
+      });
+    }
+
+    function loadActMedia() {
+      const imgs = document.querySelectorAll('img[data-act-img]');
+      const hasUnloaded = Array.from(imgs).some((img) => !img.src);
+      if (!hasUnloaded) return;
+      ensureFlightData(() => {
+        if (!window.__actMedia) return;
+        imgs.forEach((img) => {
+          const key = img.dataset.actImg;
+          if (!img.src && key && window.__actMedia[key]) {
+            img.src = decodeFlightBlobUrl(window.__actMedia[key]);
+          }
+        });
+      });
     }
 
     const isAudienceMode = new URLSearchParams(window.location.search).get('mode') === 'audience';
@@ -2441,6 +2499,9 @@
       progress.style.width = `${Math.min(100, ((index + 1) / publicSlideCount) * 100)}%`;
       notesText.textContent = slides[index].dataset.notes || '';
       if (slides[index].dataset.secret === 'true') loadSecretSlideMedia();
+      if (slides[index].classList.contains('act-slide') || slides[index + 1]?.classList.contains('act-slide')) {
+        loadActMedia();
+      }
       animateSlide(slides[index]);
       updatePresenterConsole();
       if (!fromSync && !isAudienceMode) {

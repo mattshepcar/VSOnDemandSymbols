@@ -46,6 +46,11 @@ META_SESSION_IDS = {
     "7465b370-484f-4203-ae73-d3316127069a",  # S69: add next slide button to deck
     "52611b4f-7da2-4721-9237-2028e886e583",  # S70: check $12 claim on slide 7
     "8a54109e-6cce-4042-87ea-175a6026b8cf",  # S71: improve presentation title page
+    "0f120f77-4e79-46ac-ab3b-2fd97e801021",  # S72: combine slides 19 and 20
+    "95d0410d-7ff7-436a-a8d9-92677aec6500",  # S73: find Airplane! / Flash Gordon images (+7 subagents)
+    "76566b18-d600-45d9-b811-89376bcc2ac7",  # S81: better use of horizontal space on slides
+    "899b4a7e-162d-4f83-9c0e-7e9dc181dc04",  # S82: make slide deck mobile friendly
+    "44033a64-e16a-4a49-a7a2-fe836f7595ea",  # S83: add share button to slide deck
 }
 
 META_PROMPT_PATTERNS = (

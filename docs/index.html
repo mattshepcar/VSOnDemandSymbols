@@ -938,6 +938,308 @@
       from { opacity: 0; transform: translateY(-46%) scale(0.92); }
       to { opacity: 0.18; transform: translateY(-50%) scale(1); }
     }
+
+    /* ==========================================================================
+       PRESENTATION MODE (Audience Window + Dedicated Presenter Console)
+       ========================================================================== */
+    body.is-audience .notes-drawer,
+    body.is-audience .controls,
+    body.is-audience .slide-next-btn {
+      display: none !important;
+    }
+
+    body.is-audience .slide {
+      padding: 7vh 8vw;
+    }
+
+    .audience-fs-prompt {
+      display: none;
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      background: var(--nav-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1.5px solid var(--accent);
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      white-space: nowrap;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    body.is-audience .audience-fs-prompt.visible {
+      display: inline-flex;
+    }
+
+    .audience-fs-prompt .fs-key {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 0.1rem 0.45rem;
+      font-size: 0.85em;
+      font-weight: 800;
+    }
+
+    body.is-presenter .deck,
+    body.is-presenter .notes-drawer,
+    body.is-presenter .controls,
+    body.is-presenter .progress {
+      display: none !important;
+    }
+
+    .presenter-console {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      padding: 1rem 1.5rem 1.25rem;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: minmax(340px, 42%) 1fr;
+      gap: 1rem 1.5rem;
+      background: var(--bg);
+      background-image: var(--bg-glow);
+      overflow: hidden;
+    }
+
+    body.is-presenter .presenter-console {
+      display: grid;
+    }
+
+    .presenter-topbar {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.65rem 1rem;
+      background: var(--nav-bg);
+      border: 1px solid var(--rule);
+      border-radius: 12px;
+    }
+
+    .presenter-status-group,
+    .presenter-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .presenter-badge {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+    }
+
+    .audience-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #22c55e;
+    }
+
+    .status-dot.disconnected {
+      background: var(--danger);
+    }
+
+    .presenter-timer {
+      font-variant-numeric: tabular-nums;
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--ink);
+      padding: 0 0.35rem;
+    }
+
+    .p-btn,
+    .presenter-topbar select {
+      background: var(--notes-bg);
+      color: var(--ink);
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.35rem 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .p-btn:hover,
+    .presenter-topbar select:hover {
+      border-color: var(--accent);
+    }
+
+    .p-btn:disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .p-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #09090b;
+      font-weight: 700;
+    }
+
+    [data-theme="flash-gordon"] .p-btn.primary {
+      color: #0d0518;
+    }
+
+    [data-theme="blue-skies"] .p-btn.primary,
+    [data-theme="swiss-light"] .p-btn.primary,
+    [data-theme="warm-paper"] .p-btn.primary {
+      color: #ffffff;
+    }
+
+    .p-btn.danger {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    .presenter-previews {
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+      min-height: 0;
+    }
+
+    .preview-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      min-height: 0;
+    }
+
+    .preview-card.is-current {
+      flex: 1.25;
+    }
+
+    .preview-card.is-next {
+      flex: 0.9;
+    }
+
+    .preview-label {
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .preview-box {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      max-height: 100%;
+      background: var(--bg);
+      border: 1.5px solid var(--rule);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .preview-card.is-current .preview-box {
+      border-color: var(--accent);
+    }
+
+    .preview-stage {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1440px;
+      height: 810px;
+      transform-origin: top left;
+      pointer-events: none;
+      background: var(--bg);
+      background-image: var(--bg-glow);
+    }
+
+    .preview-stage .slide {
+      position: absolute;
+      inset: 0;
+      padding: 56px 115px;
+      display: flex;
+    }
+
+    .preview-end {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .presenter-notes-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      background: var(--notes-bg);
+      border: 1px solid var(--rule);
+      border-top: 3px solid var(--accent);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      min-height: 0;
+    }
+
+    .presenter-notes-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+    }
+
+    .presenter-notes-body {
+      flex: 1;
+      overflow-y: auto;
+      font-size: clamp(1.25rem, 1.75vw, 1.7rem);
+      line-height: 1.6;
+      color: var(--ink);
+      padding-right: 0.5rem;
+    }
+
+    .presenter-notes-empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    @media (max-width: 860px) {
+      .presenter-console {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+      }
+      .preview-card.is-next {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1567,11 +1869,72 @@
     <div class="overview-grid" id="overviewGrid"></div>
   </div>
 
+  <!-- AUDIENCE FULLSCREEN PROMPT -->
+  <div class="audience-fs-prompt" id="audienceFsPrompt" role="button" tabindex="0">
+    <span>Drag to your 2nd monitor, then click anywhere or press <span class="fs-key">F</span> for Fullscreen</span>
+  </div>
+
+  <!-- PRESENTER CONSOLE (Visible in Presentation Mode on laptop) -->
+  <section class="presenter-console" id="presenterConsole" aria-label="Presenter Console">
+    <header class="presenter-topbar">
+      <div class="presenter-status-group">
+        <span class="presenter-badge">Presenter Mode</span>
+        <span class="counter" id="pCounter">1 / 30</span>
+        <span class="audience-status" id="audienceStatus">
+          <span class="status-dot" id="audienceDot"></span>
+          <span id="audienceStatusText">Audience window connected</span>
+        </span>
+        <button class="p-btn" id="reopenAudienceBtn" style="display: none;">Reopen Audience</button>
+      </div>
+      <div class="presenter-actions-group">
+        <span class="presenter-timer" id="presenterTimer">00:00</span>
+        <button class="p-btn" id="timerToggleBtn" title="Pause / Resume Timer">Pause</button>
+        <button class="p-btn" id="timerResetBtn" title="Reset Timer">Reset</button>
+        <button class="p-btn" id="pPrevBtn" title="Previous (Left Arrow)">← Prev</button>
+        <button class="p-btn primary" id="pNextBtn" title="Next (Right Arrow / Space)">Next →</button>
+        <button class="p-btn" id="pGridBtn" title="Slide Overview (G / Esc)">Grid</button>
+        <select id="pThemeSelect" title="Switch Theme (T)">
+          <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
+          <option value="blue-skies">Blue Skies</option>
+          <option value="keynote-dark">Night Flight</option>
+          <option value="swiss-light">Flight Manual</option>
+          <option value="warm-paper">Pilot’s Logbook</option>
+        </select>
+        <button class="p-btn danger" id="exitPresentBtn" title="Exit Presentation Mode (P)">Exit</button>
+      </div>
+    </header>
+
+    <div class="presenter-previews">
+      <div class="preview-card is-current">
+        <div class="preview-label">Current Slide</div>
+        <div class="preview-box" id="currentPreviewBox">
+          <div class="preview-stage" id="currentPreviewStage"></div>
+        </div>
+      </div>
+      <div class="preview-card is-next">
+        <div class="preview-label">Up Next</div>
+        <div class="preview-box" id="nextPreviewBox">
+          <div class="preview-stage" id="nextPreviewStage"></div>
+          <div class="preview-end" id="nextPreviewEnd" style="display: none;">End of presentation</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="presenter-notes-card">
+      <div class="presenter-notes-header">
+        <span>Speaker Notes</span>
+        <span style="opacity: 0.75; font-size: 0.78rem;">Space / → Next &nbsp;·&nbsp; ← Prev &nbsp;·&nbsp; G Grid</span>
+      </div>
+      <div class="presenter-notes-body" id="presenterNotesBody"></div>
+    </div>
+  </section>
+
   <!-- MINIMAL FLOATING CONTROLS -->
   <nav class="controls" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
     <span class="counter" id="counter">1 / 30</span>
     <button id="nextBtn" class="next-btn" title="Next (Right Arrow / Space)">Next →</button>
+    <button id="presentBtn" title="Presentation Mode — 2nd monitor + notes (P)">Present</button>
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
     <button id="notesBtn" title="Toggle Notes (N)">Notes</button>
     <select id="themeSelect" title="Switch Theme (T)">
@@ -1760,7 +2123,182 @@
       }
     }
 
-    function render(i) {
+    const isAudienceMode = new URLSearchParams(window.location.search).get('mode') === 'audience';
+    const audienceFsPrompt = document.getElementById('audienceFsPrompt');
+    const presenterConsole = document.getElementById('presenterConsole');
+    const pCounter = document.getElementById('pCounter');
+    const pPrevBtn = document.getElementById('pPrevBtn');
+    const pNextBtn = document.getElementById('pNextBtn');
+    const pThemeSelect = document.getElementById('pThemeSelect');
+    const presenterNotesBody = document.getElementById('presenterNotesBody');
+    const currentPreviewBox = document.getElementById('currentPreviewBox');
+    const currentPreviewStage = document.getElementById('currentPreviewStage');
+    const nextPreviewBox = document.getElementById('nextPreviewBox');
+    const nextPreviewStage = document.getElementById('nextPreviewStage');
+    const nextPreviewEnd = document.getElementById('nextPreviewEnd');
+    const audienceDot = document.getElementById('audienceDot');
+    const audienceStatusText = document.getElementById('audienceStatusText');
+    const reopenAudienceBtn = document.getElementById('reopenAudienceBtn');
+    const presenterTimerEl = document.getElementById('presenterTimer');
+    const timerToggleBtn = document.getElementById('timerToggleBtn');
+
+    let audienceWin = null;
+    let isPresenterMode = false;
+    let currentCostMode = 'actual';
+    let syncChannel = null;
+    try { syncChannel = new BroadcastChannel('vsods-deck'); } catch (_) {}
+
+    let timerSeconds = 0;
+    let timerRunning = false;
+    let timerInterval = null;
+
+    function formatTimer(secs) {
+      const m = String(Math.floor(secs / 60)).padStart(2, '0');
+      const s = String(secs % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function updateTimerUI() {
+      presenterTimerEl.textContent = formatTimer(timerSeconds);
+      timerToggleBtn.textContent = timerRunning ? 'Pause' : 'Start';
+    }
+
+    function startTimer() {
+      if (timerRunning) return;
+      timerRunning = true;
+      updateTimerUI();
+      timerInterval = setInterval(() => {
+        timerSeconds++;
+        presenterTimerEl.textContent = formatTimer(timerSeconds);
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      timerRunning = false;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      updateTimerUI();
+    }
+
+    function resetTimer() {
+      timerSeconds = 0;
+      updateTimerUI();
+    }
+
+    function postSync(msg) {
+      if (audienceWin && !audienceWin.closed) {
+        try { audienceWin.postMessage(msg, '*'); } catch (_) {}
+      }
+      if (isAudienceMode && window.opener && !window.opener.closed) {
+        try { window.opener.postMessage(msg, '*'); } catch (_) {}
+      }
+      if (syncChannel) {
+        try { syncChannel.postMessage(msg); } catch (_) {}
+      }
+    }
+
+    function updateAudienceConnectionUI() {
+      const connected = Boolean(audienceWin && !audienceWin.closed);
+      audienceDot.classList.toggle('disconnected', !connected);
+      audienceStatusText.textContent = connected ? 'Audience window connected' : 'Audience window closed';
+      reopenAudienceBtn.style.display = connected ? 'none' : 'inline-flex';
+    }
+
+    function scalePreviewStage(box, stage) {
+      if (!box || !stage) return;
+      const rect = box.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const scale = rect.width / 1440;
+      stage.style.transform = `scale(${scale})`;
+    }
+
+    function cloneSlideToStage(slideEl, stage) {
+      stage.innerHTML = '';
+      if (!slideEl) return;
+      const clone = slideEl.cloneNode(true);
+      clone.classList.add('active');
+      clone.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+      clone.querySelectorAll('.slide-next-btn').forEach((el) => el.remove());
+      clone.querySelectorAll('.bar-fill').forEach((bar) => {
+        const w = bar.dataset.width || bar.style.width;
+        if (w) bar.style.width = w;
+      });
+      stage.appendChild(clone);
+    }
+
+    function updatePresenterConsole() {
+      if (!isPresenterMode) return;
+      pCounter.textContent = `${index + 1} / ${publicSlideCount}`;
+      pPrevBtn.disabled = index === 0;
+      pNextBtn.disabled = index === slides.length - 1;
+
+      const notes = slides[index].dataset.notes || '';
+      if (notes) {
+        presenterNotesBody.textContent = notes;
+        presenterNotesBody.classList.remove('presenter-notes-empty');
+      } else {
+        presenterNotesBody.textContent = 'No speaker notes for this slide.';
+        presenterNotesBody.classList.add('presenter-notes-empty');
+      }
+
+      cloneSlideToStage(slides[index], currentPreviewStage);
+      scalePreviewStage(currentPreviewBox, currentPreviewStage);
+
+      const nextSlide = index + 1 < slides.length ? slides[index + 1] : null;
+      if (nextSlide) {
+        nextPreviewEnd.style.display = 'none';
+        nextPreviewStage.style.display = 'block';
+        cloneSlideToStage(nextSlide, nextPreviewStage);
+        scalePreviewStage(nextPreviewBox, nextPreviewStage);
+      } else {
+        nextPreviewStage.innerHTML = '';
+        nextPreviewStage.style.display = 'none';
+        nextPreviewEnd.style.display = 'flex';
+      }
+      updateAudienceConnectionUI();
+    }
+
+    function openAudienceWindow() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', 'audience');
+      audienceWin = window.open(
+        url.toString(),
+        'vsods-audience',
+        'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no'
+      );
+      if (!audienceWin) {
+        alert('Popup blocked! Please allow popups for this page to open the Audience window.');
+        return false;
+      }
+      updateAudienceConnectionUI();
+      return true;
+    }
+
+    function startPresentationMode() {
+      if (isAudienceMode) return;
+      if (!audienceWin || audienceWin.closed) {
+        if (!openAudienceWindow()) return;
+      } else {
+        audienceWin.focus();
+      }
+      isPresenterMode = true;
+      document.body.classList.add('is-presenter');
+      if (timerSeconds === 0 && !timerRunning) startTimer();
+      updatePresenterConsole();
+      postSync({ type: 'sync', index, theme: themeSelect.value, costMode: currentCostMode });
+    }
+
+    function exitPresentationMode() {
+      isPresenterMode = false;
+      document.body.classList.remove('is-presenter');
+      pauseTimer();
+      if (audienceWin && !audienceWin.closed) {
+        try { audienceWin.close(); } catch (_) {}
+      }
+      audienceWin = null;
+    }
+
+    function render(i, fromSync = false) {
       index = Math.max(0, Math.min(slides.length - 1, i));
       slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
       document.body.classList.toggle('is-first-slide', index === 0);
@@ -1771,36 +2309,52 @@
       notesText.textContent = slides[index].dataset.notes || '';
       if (slides[index].dataset.secret === 'true') loadSecretSlideMedia();
       animateSlide(slides[index]);
+      updatePresenterConsole();
+      if (!fromSync && !isAudienceMode) {
+        postSync({ type: 'sync', index, theme: themeSelect.value, costMode: currentCostMode });
+      }
     }
 
-    function setTheme(theme) {
+    function setTheme(theme, fromSync = false) {
       document.documentElement.setAttribute('data-theme', theme);
       themeSelect.value = theme;
+      pThemeSelect.value = theme;
+      if (!fromSync && !isAudienceMode) {
+        postSync({ type: 'sync', index, theme, costMode: currentCostMode });
+      }
+    }
+
+    function setCostMode(mode, fromSync = false) {
+      currentCostMode = mode;
+      document.querySelectorAll('[data-cost-mode]').forEach((b) => {
+        b.classList.toggle('active', b.dataset.costMode === mode);
+      });
+      document.querySelectorAll('#costBars [data-actual]').forEach((el) => {
+        el.textContent = el.dataset[mode];
+      });
+      document.querySelectorAll('#costBars .bar-fill').forEach((bar) => {
+        const w = mode === 'actual' ? bar.dataset.actualWidth : bar.dataset.uncachedWidth;
+        bar.dataset.width = w;
+        bar.style.width = w;
+      });
+      const heading = document.getElementById('costHeading');
+      const takeaway = document.getElementById('costTakeaway');
+      if (mode === 'uncached') {
+        heading.innerHTML = 'Without caching: <span class="danger">$308</span><br />instead of <span class="accent">$100</span>.';
+        takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$208 (67%)</strong> across 494M tokens.';
+      } else {
+        heading.innerHTML = '<span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.';
+        takeaway.innerHTML = '<strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--danger); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong>';
+      }
+      updatePresenterConsole();
+      if (!fromSync && !isAudienceMode) {
+        postSync({ type: 'sync', index, theme: themeSelect.value, costMode: currentCostMode });
+      }
     }
 
     // Interactive cost toggle (Actual vs. Without Prompt Cache)
     document.querySelectorAll('[data-cost-mode]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const mode = btn.dataset.costMode;
-        document.querySelectorAll('[data-cost-mode]').forEach((b) => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('#costBars [data-actual]').forEach((el) => {
-          el.textContent = el.dataset[mode];
-        });
-        document.querySelectorAll('#costBars .bar-fill').forEach((bar) => {
-          const w = mode === 'actual' ? bar.dataset.actualWidth : bar.dataset.uncachedWidth;
-          bar.dataset.width = w;
-          bar.style.width = w;
-        });
-        const heading = document.getElementById('costHeading');
-        const takeaway = document.getElementById('costTakeaway');
-        if (mode === 'uncached') {
-          heading.innerHTML = 'Without caching: <span class="danger">$308</span><br />instead of <span class="accent">$100</span>.';
-          takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$208 (67%)</strong> across 494M tokens.';
-        } else {
-          heading.innerHTML = '<span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.';
-          takeaway.innerHTML = '<strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--danger); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong>';
-        }
-      });
+      btn.addEventListener('click', () => setCostMode(btn.dataset.costMode));
     });
 
     function setOverviewOpen(open) {
@@ -1813,9 +2367,50 @@
       document.body.classList.toggle('notes-open', open);
     }
 
+    function toggleAudienceFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    function handleSyncMessage(data) {
+      if (!data || typeof data !== 'object') return;
+      if (isAudienceMode && data.type === 'sync') {
+        if (data.theme && data.theme !== themeSelect.value) setTheme(data.theme, true);
+        if (data.costMode && data.costMode !== currentCostMode) setCostMode(data.costMode, true);
+        if (typeof data.index === 'number' && data.index !== index) render(data.index, true);
+      } else if (!isAudienceMode) {
+        if (data.type === 'ready') {
+          updateAudienceConnectionUI();
+          postSync({ type: 'sync', index, theme: themeSelect.value, costMode: currentCostMode });
+        } else if (data.type === 'nav' && typeof data.delta === 'number') {
+          render(index + data.delta);
+        } else if (data.type === 'audience-closed') {
+          setTimeout(updateAudienceConnectionUI, 50);
+        }
+      }
+    }
+
+    window.addEventListener('message', (e) => handleSyncMessage(e.data));
+    if (syncChannel) syncChannel.addEventListener('message', (e) => handleSyncMessage(e.data));
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => {
+        if (isPresenterMode) {
+          scalePreviewStage(currentPreviewBox, currentPreviewStage);
+          scalePreviewStage(nextPreviewBox, nextPreviewStage);
+        }
+      });
+      ro.observe(currentPreviewBox);
+      ro.observe(nextPreviewBox);
+    }
+
     document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
     document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
     document.getElementById('heroNextBtn').addEventListener('click', () => render(index + 1));
+    document.getElementById('presentBtn').addEventListener('click', startPresentationMode);
     document.getElementById('notesBtn').addEventListener('click', toggleNotes);
     document.getElementById('gridBtn').addEventListener('click', () => {
       const opening = !overviewOverlay.classList.contains('open');
@@ -1825,8 +2420,27 @@
     document.getElementById('overviewClose').addEventListener('click', () => setOverviewOpen(false));
     themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 
+    // Presenter Console controls
+    pPrevBtn.addEventListener('click', () => render(index - 1));
+    pNextBtn.addEventListener('click', () => render(index + 1));
+    document.getElementById('pGridBtn').addEventListener('click', () => {
+      const opening = !overviewOverlay.classList.contains('open');
+      if (opening) buildOverview();
+      setOverviewOpen(opening);
+    });
+    pThemeSelect.addEventListener('change', (e) => setTheme(e.target.value));
+    document.getElementById('exitPresentBtn').addEventListener('click', exitPresentationMode);
+    reopenAudienceBtn.addEventListener('click', () => {
+      if (openAudienceWindow()) {
+        postSync({ type: 'sync', index, theme: themeSelect.value, costMode: currentCostMode });
+      }
+    });
+    timerToggleBtn.addEventListener('click', () => (timerRunning ? pauseTimer() : startTimer()));
+    document.getElementById('timerResetBtn').addEventListener('click', resetTimer);
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key.toLowerCase() === 'g') {
+        if (isAudienceMode && e.key === 'Escape') return;
         e.preventDefault();
         if (overviewOverlay.classList.contains('open')) {
           setOverviewOpen(false);
@@ -1839,20 +2453,60 @@
       if (overviewOverlay.classList.contains('open')) return;
       if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
         e.preventDefault();
-        render(index + 1);
+        if (isAudienceMode) {
+          render(index + 1, true);
+          postSync({ type: 'nav', delta: 1 });
+        } else {
+          render(index + 1);
+        }
       } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
         e.preventDefault();
-        render(index - 1);
-      } else if (e.key.toLowerCase() === 'n') {
+        if (isAudienceMode) {
+          render(index - 1, true);
+          postSync({ type: 'nav', delta: -1 });
+        } else {
+          render(index - 1);
+        }
+      } else if (e.key.toLowerCase() === 'f' && isAudienceMode) {
+        e.preventDefault();
+        toggleAudienceFullscreen();
+      } else if (e.key.toLowerCase() === 'p' && !isAudienceMode) {
+        e.preventDefault();
+        if (isPresenterMode) exitPresentationMode();
+        else startPresentationMode();
+      } else if (e.key.toLowerCase() === 'n' && !isAudienceMode && !isPresenterMode) {
         toggleNotes();
-      } else if (e.key.toLowerCase() === 't') {
+      } else if (e.key.toLowerCase() === 't' && !isAudienceMode) {
         const next = themes[(themes.indexOf(themeSelect.value) + 1) % themes.length];
         setTheme(next);
       }
     });
 
-    document.body.classList.toggle('notes-open', notesDrawer.classList.contains('open'));
-    render(0);
+    if (isAudienceMode) {
+      document.body.classList.add('is-audience');
+      document.body.classList.remove('notes-open');
+      notesDrawer.classList.remove('open');
+      audienceFsPrompt.classList.add('visible');
+
+      document.addEventListener('click', () => {
+        if (!document.fullscreenElement) toggleAudienceFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (document.fullscreenElement) {
+          audienceFsPrompt.classList.remove('visible');
+        }
+      });
+      window.addEventListener('beforeunload', () => postSync({ type: 'audience-closed' }));
+
+      render(0, true);
+      postSync({ type: 'ready' });
+    } else {
+      document.body.classList.toggle('notes-open', notesDrawer.classList.contains('open'));
+      setInterval(() => {
+        if (isPresenterMode) updateAudienceConnectionUI();
+      }, 1000);
+      render(0);
+    }
   </script>
 </body>
 </html>

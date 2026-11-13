@@ -1,4 +1,4 @@
-# On-Demand Symbols: Final 22-Slide Presentation Plan
+# On-Demand Symbols: Final 24-Slide Presentation Plan
 
 > **Target Duration:** ~15 minutes  
 > **Output File:** [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) (live at `https://mattshepcar.github.io/VSOnDemandSymbols/`)  
@@ -13,7 +13,7 @@
 2. **Act I Divider:** *Cleared for Takeoff*
 3. **The Problem:** *UE5 + F5 = Tea break time 🍵* (1,000+ DLLs, 950 PDBs, 26+ GB loaded on every launch).
 4. **The Solution:** *On Demand Symbols: 11 PDBs instead of 950.* (30%–62% faster launch; loads breakpoint PDBs upfront and call-stack PDBs only on break).
-5. **The Project by the Numbers:** 2×2 stat grid (`~27 hrs` active time, `450M` tokens, `4,553` tool calls, `~$100` spend with 95% cache hit rate).
+5. **The Project by the Numbers:** 2×2 stat grid (`~19 hrs` active time, `494M` tokens, `4,850` tool calls, `~$100` spend with 95% cache hit rate).
 6. **The Timeline:** *Seven days, one sharp reset.* (Diagonal staircase from Day 1 Spec/Hooks → Day 2 Reset & Working V2 → Days 3–5 Polish & Settings → Day 6 Test Harness → Day 7 Multi-Instance & Audit).
 
 ## Act II — Catching a Tailwind *(The Upside of AI)*
@@ -27,7 +27,7 @@
 12. **Root Causes:** *Why did we delete 60% of the code?* (Overspecifying upfront, early overengineering, not asking "why?").
 13. **The Pilot’s Job:** *AI generates abstractions. You delete them.* (V1 speculative stack `$33` / 7,255 lines cut vs. V2 native rebuild `$4.50`).
 14. **Cheap Resets:** *Resetting is cheap with AI.* (Zero emotional attachment + AI preserves hard-won lessons in docs/ADRs).
-15. **Compaction & Cost:** *5 compacted sessions caused 52% of spend.* (`52%` of cost & `35%` of errors vs. `$0.12` avg / `0` compactions for short sessions).
+15. **Compaction & Cost:** *6 compacted sessions caused 71% of spend.* (`71%` of cost & `44%` of errors vs. `$0.12` avg / `0` compactions for short sessions).
 
 ## Act IV — Aviate, Navigate, Communicate *(Playbook & Outro)*
 16. **Act IV Divider:** *Aviate, Navigate, Communicate*
@@ -35,5 +35,6 @@
 18. **Prompting Discipline:** *Single-focus prompts cost 4× less.* (`$1.64` vs. `$6.93` danger bar for bundled multi-part prompts).
 19. **Guardrails:** *Let AI write the rules—then cross-check fresh.* (Codify environment quirks in `AGENTS.md`, then verify in a clean session).
 20. **Pilot Quotes:** *Mid-flight course corrections. 🎛️* (Real verbatim steering quotes from the logs).
-21. **5 Pre-Flight Tips:** *5 pre-flight tips for your next AI project. 📋*
-22. **Closing:** *Full disclosure: I’m still winging it. 🤷‍♂️*
+21. **5 Pre-Flight Tips:** *5 pre-flight tips for your next AI project. 📋* + *"Full disclosure: first time 'vibe coding' in anger — I'm still winging it. 🤷‍♂️"* footnote.
+22. **Self-Reflection & Vibe Decking:** *"The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew."* + 2×2 stat grid (`~6 hrs`, `70.3M` tokens, `$13.53` on Gemini 4 Hydrogen, `$0.33 / slide`).
+23. **Landing / Q&A:** Aeroplane landing SVG + *Questions? 🙋‍♂️* (deferring hard ones to co-pilot Claude).

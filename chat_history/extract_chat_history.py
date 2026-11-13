@@ -29,6 +29,31 @@ BRAIN_DIR = r"C:\Users\matt\.gemini\antigravity\brain"
 OUTPUT_DIR = r"C:\Dev\VSOnDemandSymbols\chat_history"
 CENTRAL_ARTIFACTS_DIR = os.path.join(OUTPUT_DIR, "artifacts")
 
+# Known main sessions dedicated to chat-history extraction, process analysis, and slide deck creation
+META_SESSION_IDS = {
+    "d3d910fd-56f4-4ba5-96b1-7201a18debbf",  # S50: extract_chat_history.py & ANALYSIS_PLAN / DIMENSION_*
+    "cc9b6218-2add-4ddb-929c-8c235974389e",  # S52: slide deck creation
+    "8aab4909-a978-4306-a246-9fd7170b74b5",  # S58: presentation.html review
+    "0890d259-ddf6-44a3-8aab-4801579dbc2f",  # S59: presentation_rules.md review
+    "ddb7a4e5-20ac-47ee-8a41-60a7c9ddfe5d",  # S60: re-run extract_chat_history & split meta sessions
+}
+
+META_PROMPT_PATTERNS = (
+    "extract_chat_history",
+    "slide_deck_plan",
+    "presentation_rules",
+    "presentation.html",
+    "the chat_history folder contains",
+)
+
+def classify_session_category(cid, parent_id, first_prompt, meta_ids):
+    if cid in meta_ids or (parent_id and parent_id in meta_ids):
+        return "meta"
+    p_low = (first_prompt or "").lower()
+    if any(pat in p_low for pat in META_PROMPT_PATTERNS):
+        return "meta"
+    return "development"
+
 # Standard token rates per million tokens
 RATES = {
     'opus': {'in': 15.0, 'cache': 3.75, 'out': 75.0},
@@ -524,13 +549,42 @@ def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(CENTRAL_ARTIFACTS_DIR, exist_ok=True)
 
-    index_rows = []
+    # Pre-pass: identify any additional meta sessions by prompt and propagate to subagents
+    meta_ids = set(META_SESSION_IDS)
+    for s in sessions:
+        if classify_session_category(s["cid"], s["parent_id"], s["first_prompt"], meta_ids) == "meta":
+            meta_ids.add(s["cid"])
+
+    dev_index_rows = []
+    meta_index_rows = []
     total_artifacts = 0
     total_in_tok = 0
     total_cache_tok = 0
     total_out_tok = 0
     total_cost_usd = 0.0
     global_model_summary = {}
+
+    def empty_cat_bucket():
+        return {
+            "total_sessions": 0,
+            "total_main_sessions": 0,
+            "total_subagent_sessions": 0,
+            "turns": 0,
+            "input_tokens": 0,
+            "cache_read_tokens": 0,
+            "output_tokens": 0,
+            "grand_total_tokens": 0,
+            "total_tool_calls": 0,
+            "total_tool_errors": 0,
+            "compactions_count": 0,
+            "estimated_cost_usd": 0.0,
+            "models_summary": {},
+        }
+
+    category_summary = {
+        "development": empty_cat_bucket(),
+        "meta": empty_cat_bucket(),
+    }
 
     summary_sessions_list = []
 
@@ -543,26 +597,46 @@ def main():
         session_dir = os.path.join(OUTPUT_DIR, folder_name)
         os.makedirs(session_dir, exist_ok=True)
 
+        category = classify_session_category(cid, s["parent_id"], s["first_prompt"], meta_ids)
+        cat_bucket = category_summary[category]
+
         tok = s["tokens"]
         total_in_tok += tok["input_tokens"]
         total_cache_tok += tok["cache_read_tokens"]
         total_out_tok += tok["output_tokens"]
         total_cost_usd += s["estimated_cost_usd"]
 
+        cat_bucket["total_sessions"] += 1
+        if s["is_subagent"]:
+            cat_bucket["total_subagent_sessions"] += 1
+        else:
+            cat_bucket["total_main_sessions"] += 1
+        cat_bucket["input_tokens"] += tok["input_tokens"]
+        cat_bucket["cache_read_tokens"] += tok["cache_read_tokens"]
+        cat_bucket["output_tokens"] += tok["output_tokens"]
+        cat_bucket["grand_total_tokens"] += tok["total_tokens"]
+        cat_bucket["total_tool_calls"] += s["tools"]["total_calls"]
+        cat_bucket["total_tool_errors"] += s["tools"]["error_calls"]
+        cat_bucket["compactions_count"] += s["compactions_count"]
+        cat_bucket["estimated_cost_usd"] += s["estimated_cost_usd"]
+
         for m_name, m_stats in s["per_model_usage"].items():
-            if m_name not in global_model_summary:
-                global_model_summary[m_name] = {
-                    "sessions": 0, "turns": 0, "input_tokens": 0, "cache_read_tokens": 0, "output_tokens": 0, "cost_usd": 0.0
-                }
-            global_model_summary[m_name]["turns"] += m_stats["turns"]
-            global_model_summary[m_name]["input_tokens"] += m_stats["input_tokens"]
-            global_model_summary[m_name]["cache_read_tokens"] += m_stats["cache_read_tokens"]
-            global_model_summary[m_name]["output_tokens"] += m_stats["output_tokens"]
-            global_model_summary[m_name]["cost_usd"] += m_stats["cost_usd"]
+            for summary_dict in (global_model_summary, cat_bucket["models_summary"]):
+                if m_name not in summary_dict:
+                    summary_dict[m_name] = {
+                        "sessions": 0, "turns": 0, "input_tokens": 0, "cache_read_tokens": 0, "output_tokens": 0, "cost_usd": 0.0
+                    }
+                summary_dict[m_name]["turns"] += m_stats["turns"]
+                summary_dict[m_name]["input_tokens"] += m_stats["input_tokens"]
+                summary_dict[m_name]["cache_read_tokens"] += m_stats["cache_read_tokens"]
+                summary_dict[m_name]["output_tokens"] += m_stats["output_tokens"]
+                summary_dict[m_name]["cost_usd"] += m_stats["cost_usd"]
+            cat_bucket["turns"] += m_stats["turns"]
 
         # Track session count per model
         for m_name in s["per_model_usage"].keys():
             global_model_summary[m_name]["sessions"] += 1
+            cat_bucket["models_summary"][m_name]["sessions"] += 1
 
         # Copy artifacts
         copied_artifacts = []
@@ -581,6 +655,7 @@ def main():
         meta_dict = {
             "session_index": idx,
             "session_id": cid,
+            "category": category,
             "folder_name": folder_name,
             "start_time": s["start_time"],
             "end_time": s["end_time"],
@@ -631,14 +706,23 @@ def main():
         if len(s["per_model_usage"]) > 1:
             model_display += f" *(+{len(s['per_model_usage'])-1})*"
 
-        index_rows.append(
-            f"| {idx:02d} | [{folder_name}]({folder_name}/conversation.md) | {s['start_time'][:16]} | {role_label} | {model_display} | {tok_str} | ${s['estimated_cost_usd']:0.2f} | {tool_err_str} | {comp_str} | {art_links} | {summary_clean} |"
-        )
-        print(f"Processed [{idx:02d}/{len(sessions):02d}] {folder_name} (Primary: {s['primary_model']}, Exact Cost: ${s['estimated_cost_usd']:0.2f})")
+        row_str = f"| {idx:02d} | [{folder_name}]({folder_name}/conversation.md) | {s['start_time'][:16]} | {role_label} | {model_display} | {tok_str} | ${s['estimated_cost_usd']:0.2f} | {tool_err_str} | {comp_str} | {art_links} | {summary_clean} |"
+        if category == "meta":
+            meta_index_rows.append(row_str)
+        else:
+            dev_index_rows.append(row_str)
+        print(f"Processed [{idx:02d}/{len(sessions):02d}] [{category}] {folder_name} (Primary: {s['primary_model']}, Exact Cost: ${s['estimated_cost_usd']:0.2f})")
 
-    # Round global summaries
+    # Round global and category summaries
     for m in global_model_summary.values():
         m["cost_usd"] = round(m["cost_usd"], 2)
+    for cat_bucket in category_summary.values():
+        cat_bucket["estimated_cost_usd"] = round(cat_bucket["estimated_cost_usd"], 2)
+        cat_bucket["cache_hit_ratio_percent"] = round(
+            cat_bucket["cache_read_tokens"] * 100.0 / max(1, cat_bucket["input_tokens"] + cat_bucket["cache_read_tokens"]), 2
+        )
+        for m in cat_bucket["models_summary"].values():
+            m["cost_usd"] = round(m["cost_usd"], 2)
 
     master_summary = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -655,6 +739,7 @@ def main():
             "cache_hit_ratio_percent": round(total_cache_tok * 100.0 / max(1, total_in_tok + total_cache_tok), 2)
         },
         "total_estimated_cost_usd": round(total_cost_usd, 2),
+        "category_summary": category_summary,
         "models_summary": global_model_summary,
         "sessions": summary_sessions_list
     }
@@ -663,36 +748,60 @@ def main():
     with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(master_summary, f, indent=2)
 
+    dev_sum = category_summary["development"]
+    meta_sum = category_summary["meta"]
+
     # Write INDEX.md
     index_md = []
     index_md.append("# VSOnDemandSymbols - Complete Antigravity Chat & Development History\n")
     index_md.append(f"This directory contains the complete self-contained extracted conversation history, user prompts, assistant reasoning, tool actions, design artifacts, and exact step-level financial metadata generated while building the **VSOnDemandSymbols** Visual Studio extension with Antigravity.\n")
-    index_md.append("## Overview Statistics")
-    index_md.append(f"- **Total Development Sessions:** {len(sessions)}")
-    index_md.append(f"- **Main Sessions (User-driven):** {sum(1 for s in sessions if not s['is_subagent'])}")
-    index_md.append(f"- **Subagent Sessions (Autonomous delegations):** {sum(1 for s in sessions if s['is_subagent'])}")
+    index_md.append("## Overview Statistics (Split: Development vs. Meta)\n")
+    index_md.append("| Scope | Sessions (Main / Sub) | Turns | Input Tokens | Cached Tokens | Output Tokens | Cache Hit | Tools (Errors) | Exact Cost (USD) |")
+    index_md.append("|---|---|---|---|---|---|---|---|---|")
+    index_md.append(
+        f"| **Extension Development** | **{dev_sum['total_sessions']}** ({dev_sum['total_main_sessions']} / {dev_sum['total_subagent_sessions']}) | {dev_sum['turns']:,} | {dev_sum['input_tokens']:,} | {dev_sum['cache_read_tokens']:,} | {dev_sum['output_tokens']:,} | {dev_sum['cache_hit_ratio_percent']}% | {dev_sum['total_tool_calls']:,} ({dev_sum['total_tool_errors']:,}) | **${dev_sum['estimated_cost_usd']:0.2f}** |"
+    )
+    index_md.append(
+        f"| **Meta (Analysis & Slide Deck)** | **{meta_sum['total_sessions']}** ({meta_sum['total_main_sessions']} / {meta_sum['total_subagent_sessions']}) | {meta_sum['turns']:,} | {meta_sum['input_tokens']:,} | {meta_sum['cache_read_tokens']:,} | {meta_sum['output_tokens']:,} | {meta_sum['cache_hit_ratio_percent']}% | {meta_sum['total_tool_calls']:,} ({meta_sum['total_tool_errors']:,}) | **${meta_sum['estimated_cost_usd']:0.2f}** |"
+    )
+    index_md.append(
+        f"| **Combined Total** | **{len(sessions)}** ({master_summary['total_main_sessions']} / {master_summary['total_subagent_sessions']}) | {dev_sum['turns'] + meta_sum['turns']:,} | {total_in_tok:,} | {total_cache_tok:,} | {total_out_tok:,} | {master_summary['token_totals']['cache_hit_ratio_percent']}% | {dev_sum['total_tool_calls'] + meta_sum['total_tool_calls']:,} ({dev_sum['total_tool_errors'] + meta_sum['total_tool_errors']:,}) | **${total_cost_usd:0.2f}** |"
+    )
+    index_md.append("")
     index_md.append(f"- **Date Range:** {sessions[0]['start_time'][:10]} to {sessions[-1]['start_time'][:10]}")
-    index_md.append(f"- **Total Tokens:** {total_in_tok:,} input, {total_cache_tok:,} cached, {total_out_tok:,} output (**{master_summary['token_totals']['cache_hit_ratio_percent']}% cache hit rate**)")
-    index_md.append(f"- **Total Exact Cost:** ${total_cost_usd:0.2f} USD *(calculated dynamically per step across mid-session model switches)*")
     index_md.append(f"- **Total Markdown Artifacts:** {total_artifacts}")
     index_md.append(f"- **Central Artifacts Directory:** [artifacts/](artifacts/)")
     index_md.append(f"- **Complete Metrics Dataset (JSON):** [summary_metrics.json](summary_metrics.json)")
     index_md.append(f"- **Analysis Plan & Findings:** [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md)")
-    index_md.append(f"- **Session 10 Forensic Deep Dive:** [SESSION_10_DEEP_DIVE.md](SESSION_10_DEEP_DIVE.md)\n")
+    index_md.append(f"- **Session 10 Forensic Deep Dive:** [SESSION_10_DEEP_DIVE.md](SESSION_10_DEEP_DIVE.md)")
+    index_md.append(f"- **Session 51 Forensic Deep Dive:** [SESSION_51_DEEP_DIVE.md](SESSION_51_DEEP_DIVE.md)\n")
 
-    index_md.append("## Model Usage Breakdown (Step-Level Accuracy)\n")
+    index_md.append("## Model Usage Breakdown — Extension Development\n")
     index_md.append("| Model | Active Sessions | Total Turns | Input Tokens | Cached Tokens | Output Tokens | Exact Cost (USD) |")
     index_md.append("|---|---|---|---|---|---|---|")
-    for mod_name, mod_data in sorted(global_model_summary.items(), key=lambda x: x[1]["cost_usd"], reverse=True):
+    for mod_name, mod_data in sorted(dev_sum["models_summary"].items(), key=lambda x: x[1]["cost_usd"], reverse=True):
+        index_md.append(
+            f"| `{mod_name}` | {mod_data['sessions']} | {mod_data['turns']:,} | {mod_data['input_tokens']:,} | {mod_data['cache_read_tokens']:,} | {mod_data['output_tokens']:,} | ${mod_data['cost_usd']:0.2f} |"
+        )
+    index_md.append("\n## Model Usage Breakdown — Meta (Analysis & Slide Deck)\n")
+    index_md.append("| Model | Active Sessions | Total Turns | Input Tokens | Cached Tokens | Output Tokens | Exact Cost (USD) |")
+    index_md.append("|---|---|---|---|---|---|---|")
+    for mod_name, mod_data in sorted(meta_sum["models_summary"].items(), key=lambda x: x[1]["cost_usd"], reverse=True):
         index_md.append(
             f"| `{mod_name}` | {mod_data['sessions']} | {mod_data['turns']:,} | {mod_data['input_tokens']:,} | {mod_data['cache_read_tokens']:,} | {mod_data['output_tokens']:,} | ${mod_data['cost_usd']:0.2f} |"
         )
     index_md.append("\n---\n")
 
-    index_md.append("## Sessions Master Index\n")
+    index_md.append("## Development Sessions Index\n")
     index_md.append("| # | Session Link | Date / Time (UTC) | Role | Primary Model | Tokens (In / Cache / Out) | Cost | Tools (Err) | Comp. | Artifacts | Topic / Prompt |")
     index_md.append("|---|---|---|---|---|---|---|---|---|---|---|")
-    index_md.extend(index_rows)
+    index_md.extend(dev_index_rows)
+    index_md.append("\n---\n")
+
+    index_md.append("## Meta Sessions Index (Analysis & Slide Deck)\n")
+    index_md.append("| # | Session Link | Date / Time (UTC) | Role | Primary Model | Tokens (In / Cache / Out) | Cost | Tools (Err) | Comp. | Artifacts | Topic / Prompt |")
+    index_md.append("|---|---|---|---|---|---|---|---|---|---|---|")
+    index_md.extend(meta_index_rows)
     index_md.append("\n---\n")
     index_md.append("## How This History Was Extracted\n")
     index_md.append("The conversations were parsed from Antigravity's internal conversation storage (`C:\\Users\\matt\\.gemini\\antigravity\\conversations\\*.db` and `C:\\Users\\matt\\.gemini\\antigravity\\brain\\<uuid>\\`).")

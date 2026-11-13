@@ -1,7 +1,7 @@
 # The Antigravity Engineering Playbook
 
-> **Synthesized From:** 51 Antigravity sessions (**4,386 turns**, **4,553 tool calls**, **449.58M tokens**, **\$98.88** total spend) and **71 Git commits** (**+26,251 / -15,470** lines → **10,781** net LOC) building **VSOnDemandSymbols**.  
-> **Detailed Reports:** [Dimension 1: Architecture](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_1_ARCHITECTURE_ANALYSIS.md) · [Dimension 2: Prompting](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_2_PROMPT_ANALYSIS.md) · [Dimension 3: Tool Loops](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_3_TOOL_LOOPS_ANALYSIS.md) · [Dimension 4: Token Economics](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_4_TOKEN_ECONOMICS_ANALYSIS.md) · [Dimension 5: Subagents](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_5_SUBAGENT_ANALYSIS.md) · [Dimension 6: Verification](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_6_VERIFICATION_ANALYSIS.md) · [Dimension 7: Knowledge Discovery](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_7_KNOWLEDGE_DISCOVERY_ANALYSIS.md) · [Session 10 Deep Dive](file:///C:/Dev/VSOnDemandSymbols/chat_history/SESSION_10_DEEP_DIVE.md)
+> **Synthesized From:** 50 extension-development Antigravity sessions (`S01–S49`, `S51`: **4,694 turns**, **4,850 tool calls**, **493.62M tokens**, **\$100.27** total spend) and **71 Git commits** (**+26,251 / -15,470** lines → **10,781** net LOC) building **VSOnDemandSymbols**. *(Separately, 10 meta sessions `S50`, `S52–S60` for chat extraction, process analysis, and slide-deck creation cost **\$11.34**.)*  
+> **Detailed Reports:** [Dimension 1: Architecture](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_1_ARCHITECTURE_ANALYSIS.md) · [Dimension 2: Prompting](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_2_PROMPT_ANALYSIS.md) · [Dimension 3: Tool Loops](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_3_TOOL_LOOPS_ANALYSIS.md) · [Dimension 4: Token Economics](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_4_TOKEN_ECONOMICS_ANALYSIS.md) · [Dimension 5: Subagents](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_5_SUBAGENT_ANALYSIS.md) · [Dimension 6: Verification](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_6_VERIFICATION_ANALYSIS.md) · [Dimension 7: Knowledge Discovery](file:///C:/Dev/VSOnDemandSymbols/chat_history/DIMENSION_7_KNOWLEDGE_DISCOVERY_ANALYSIS.md) · [Session 10 Deep Dive](file:///C:/Dev/VSOnDemandSymbols/chat_history/SESSION_10_DEEP_DIVE.md) · [Session 51 Deep Dive](file:///C:/Dev/VSOnDemandSymbols/chat_history/SESSION_51_DEEP_DIVE.md)
 
 ---
 
@@ -11,7 +11,7 @@
 |---|---|---|---|
 | **Initial Spec & Architecture** | **Claude Opus 5.5 (High)** or **Gemini 4 Argon (High)** | Fresh session (`<= 25` turns) | `S01` Opus High produced the full spec in 22 turns (\$11.79); `S43` Argon High reviewed the repo in 11 turns (\$0.59). |
 | **Read-Only Codebase / SDK Research** | **Gemini 3.8 Flash (Medium/High)** subagents | Parallel subagents (`15–80` turns each) | `S05–S09` explored `D:\UnrealEngine` UBT rules for **\$0.35 total**, keeping `S04` clean (**\$0.23**, 3.8% errors). |
-| **Bounded Implementation & Bug Fixes** | **Gemini 3.8 Flash (High)** | Fresh session (`<= 120` turns) | Flash executed **80.1% of all turns** for **\$10.23**; built V2 Clean-Slate (`S15`, \$0.51) & Break-Mode/Settings (`S21`, \$1.77). |
+| **Bounded Implementation & Bug Fixes** | **Gemini 3.8 Flash (High)** | Fresh session (`<= 120` turns) | Flash executed **81.4% of all dev turns** for **\$11.45**; built V2 Clean-Slate (`S15`, \$0.51) & Break-Mode/Settings (`S21`, \$1.77). |
 | **Complex Perf / Integration Harness** | **Gemini 4 Argon (Medium)** | Scoped session (`<= 100` turns) | Built `MiniUnreal` (`S45`, \$1.67), `--profile-lyra` (`S46`, \$7.48), and AD7 `FIF_MODULE` (`S49`, \$2.16). |
 | **Surgical Edits & Docs** | **Gemini 3.8 Flash (Medium/High)** | `1–10` turns | `S17`, `S18`, `S22`, `S28`, `S31`, `S32`, `S36`, `S44` averaged **\$0.08** and **0 compactions**. |
 
@@ -23,7 +23,7 @@
 
 ## 2. Context, Compaction & Session-Splitting Rules
 
-1. **Hard-stop before Context Compaction.** Only **5 of 51 sessions** (`S02`, `S10`, `S21`, `S43`, `S46`) crossed compaction, yet they consumed **51.5% of total spend (\$52.23 / \$98.88)** and **34.5% of all tool errors (316 / 915)**.
+1. **Hard-stop before Context Compaction.** Only **6 of 50 development sessions** (`S02`, `S10`, `S21`, `S43`, `S46`, `S51`) crossed compaction, yet they consumed **71.4% of total development spend (\$71.62 / \$100.27)** and **44.1% of all tool errors (431 / 978)**.
 2. **Split at logical boundaries.** Short sessions (`<= 40` turns, 14 sessions) had **0 compactions** and averaged **\$0.12** (excluding `S01`). Deliberate handoffs like `S14` (\$0.34) → `S15` (\$0.51) rebuilt the entire V2 architecture for **\$0.85 total**.
 3. **Cap identical-file reads and compile-fail retries.** If the AI reads the same file >4 times (e.g., `S13` read `SessionTracker.cs` **37×**, `S10` **36×**) or fails 3 builds on the same SDK/COM error, stop and either inspect official SDK metadata or start a fresh session.
 4. **Watch for 10k+ char thinking traces.** Single thinking blocks above 10,000 characters (`S11`: 40,693 chars; `S10`: 28,150 chars; `S51`: 14,338 chars) signal circular reasoning or speculative over-engineering—pause and ask the pilot.

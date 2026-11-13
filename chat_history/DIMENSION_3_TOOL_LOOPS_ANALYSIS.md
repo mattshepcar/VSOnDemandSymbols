@@ -1,16 +1,16 @@
 # Dimension 3 Analysis: Agent Stalling, Confusion, and Tool Loops
 
-> **Scope:** Quantitative analysis of tool failures, sandbox hangs, COM/threading cascades, redundant file reads, compaction thrashing, and thinking-trace bloat across all **51 sessions** (**4,553 tool calls**, **915 errors**) in `chat_history/`.  
+> **Scope:** Quantitative analysis of tool failures, sandbox hangs, COM/threading cascades, redundant file reads, compaction thrashing, and thinking-trace bloat across all **50 extension-development sessions** (`S01–S49`, `S51`: **4,850 tool calls**, **978 errors**) in `chat_history/`. *(Excludes the 10 meta sessions `S50`, `S52–S60`.)*  
 > **Goal:** Identify where the AI burned cycles, why it got stuck in loops, and what concrete guardrails prevent those failure modes in future projects.
 
 ---
 
 ## 1. Executive Summary
 
-Across **4,553 total tool calls**, **915 ended in error (20.1% overall error rate)**. Tool failures were not evenly distributed—they clustered tightly around five structural friction points:
+Across **4,850 total development tool calls**, **978 ended in error (20.2% overall error rate)**. Tool failures were not evenly distributed—they clustered tightly around five structural friction points:
 
 1. **Sandbox & Build Infrastructure Hangs (`S03`, `S04`, `S10`, `S46`):** MSBuild's `VBCSCompiler.exe` and worker node reuse (`/nr:true`) rely on named pipes that hang indefinitely inside the Windows sandbox. It took **until Session 10** (after 5 pilot *"has the build hung?"* interventions across `S03`, `S04`, and `S10`) to institutionalize `/p:UseSharedCompilation=false /nr:false` in [AGENTS.md](file:///C:/Dev/VSOnDemandSymbols/AGENTS.md) (`fb519e7`).
-2. **Compaction-Induced Thrashing (`S02`, `S10`, `S21`, `S43`, `S46`):** Only **5 of 51 sessions** crossed the context compaction threshold, yet those 5 sessions accounted for **51.5% of total project spend (\$52.23 / \$98.88)** and **34.5% of all tool errors (316 / 915)**.
+2. **Compaction-Induced Thrashing (`S02`, `S10`, `S21`, `S43`, `S46`, `S51`):** Only **6 of 50 development sessions (12%)** crossed the context compaction threshold, yet those 6 sessions accounted for **71.4% of total development spend (\$71.62 / \$100.27)** and **44.1% of all tool errors (431 / 978)**.
 3. **Massive Redundant File Reads (`S10`, `S13`, `S21`):** In long sessions, the AI repeatedly re-read the exact same files—peaking at **37 reads of `SessionTracker.cs`** in `S13`, **36 reads of `SessionTracker.cs`** in `S10`, and **22 reads of `VSOnDemandSymbolsPackage.cs`** in `S21`.
 4. **COM, Threading, and VS SDK Friction (`S10`, `S21`, `S43`, `S49`):** `VSTHRD` threading analyzer errors, `ThreadHelper.ThrowIfNotOnUIThread()` omissions, `COMException`s, and opaque Unified Settings schemas drove hundreds of edit-compile-fail cycles.
 5. **Runaway Thinking Traces (`>10,000` chars):** Single thinking blocks ballooning past **10k–40k characters** (`S11`: 40,693 chars; `S10`: 28,150 chars; `S43`: 20,616 chars; `S51`: 14,338 chars) consistently correlated with over-engineering or circular debugging rather than higher code quality.
@@ -19,18 +19,18 @@ Across **4,553 total tool calls**, **915 ended in error (20.1% overall error rat
 
 ## 2. Quantitative Overview: Tool Calls & Error Hotspots
 
-### 2.1 Overall Tool Usage Distribution (All 51 Sessions)
+### 2.1 Overall Tool Usage Distribution (50 Development Sessions)
 
 | Tool | Total Calls | Share of Calls | Primary Role |
 |---|---:|---:|---|
-| `run_command` | 2,054 | 45.1% | MSBuild builds, `dotnet` test runs, `git`, inspection scripts |
-| `read_file` (+ `view_file`) | 1,235 | 27.1% | Reading source, docs, and build logs |
-| `edit_file` | 659 | 14.5% | Incremental code/doc patches |
-| `write_file` | 338 | 7.4% | Creating new files, reports, and scratch scripts |
-| `search_web` | 168 | 3.7% | VS SDK / Unified Settings / AD7 API lookups |
-| `manage_task` | 72 | 1.6% | Checking/killing hung background builds |
+| `run_command` | 2,142 | 44.2% | MSBuild builds, `dotnet` test runs, `git`, inspection scripts |
+| `read_file` (+ `view_file`) | 1,406 | 29.0% | Reading source, docs, and build logs |
+| `edit_file` | 711 | 14.7% | Incremental code/doc patches |
+| `write_file` | 314 | 6.5% | Creating new files, reports, and scratch scripts |
+| `search_web` | 172 | 3.5% | VS SDK / Unified Settings / AD7 API lookups |
+| `manage_task` | 78 | 1.6% | Checking/killing hung background builds |
 | Other (`invoke_subagent`, `send_message`, `ask_question`, etc.) | 27 | 0.6% | Subagent coordination and pilot clarification |
-| **Total** | **4,553** | **100.0%** | **915 tool errors (20.1% failure rate)** |
+| **Total** | **4,850** | **100.0%** | **978 tool errors (20.2% failure rate)** |
 
 ### 2.2 Top Error-Generating Sessions
 
@@ -45,7 +45,7 @@ Across **4,553 total tool calls**, **915 ended in error (20.1% overall error rat
 | `S37` | Flash High | 33 / 143 | 23.1% | 0 | \$0.44 | Adding PDB skip-count stats into `DebuggerSessionMonitor` |
 | `S46` | Argon Med | 33 / 188 | 17.6% | 1 | \$7.48 | Out-of-proc `devenv.exe` Lyra profiling & sandbox boundary retries |
 | `S39` | Flash High | 32 / 163 | 19.6% | 0 | \$0.57 | Debugging stats not updating during Lyra launch |
-| `S51` | Flash Med, Opus Med, Hydrogen Med | 31 / 134 | 23.1% | 0 | \$17.64 | Multi-instance `HiveLock` + `IVsDebugLaunchHook` (`Index.lock` / build retries) |
+| `S51` | Flash Med, Opus Med, Hydrogen Med | 115 / 543 | 21.2% | 2 | \$19.38 | Multi-Instance `HiveLock` + `IVsDebugLaunchHook` (`Index.lock` / build retries) |
 | `S08` | Flash Med (Subagent) | 29 / 39 | **74.4%** | 0 | \$0.04 | Probing missing `D:\UnrealEngine\Engine\Binaries\Win64` paths |
 
 ---

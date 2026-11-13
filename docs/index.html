@@ -720,7 +720,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" data-notes="Opening (~0.5 min): This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the lessons we extracted.">
+    <section class="slide active" data-notes="This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the lessons we extracted.">
       <div class="title-hero">
         <svg class="vsix-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="On Demand Symbols Icon">
           <defs>
@@ -759,7 +759,7 @@
     </section>
 
     <!-- ACT I DIVIDER -->
-    <section class="slide act-slide" data-notes="Act I (~0.2 min): Let's start with what we built, the scale of the experiment, and how the 7 days played out.">
+    <section class="slide act-slide" data-notes="Let's start with what we built, the scale of the experiment, and how the 7 days played out.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M25 155 Q90 60 175 45" stroke-dasharray="7 7"/>
         <path d="M175 45 L145 38 L155 52 L148 64 Z" fill="currentColor" stroke="none"/>
@@ -772,7 +772,7 @@
     </section>
 
     <!-- THE PROBLEM: UE5 SYMBOL LOADING -->
-    <section class="slide" data-notes="The Problem (~1 min): If you've ever launched Unreal Engine 5 Editor under the Visual Studio debugger, you know the pain—it takes ages to start up. On a project like Lyra, UE5 maps over 1,000 DLLs and 26+ GB of PDB debug symbols. By default, Visual Studio eagerly loads ~950 PDBs at startup—even though you only have breakpoints in a tiny fraction of them.">
+    <section class="slide" data-notes="If you've ever launched Unreal Engine 5 Editor under the Visual Studio debugger, you know the pain—it takes ages to start up. On a project like Lyra, UE5 maps over 1,000 DLLs and 26+ GB of PDB debug symbols. By default, Visual Studio eagerly loads ~950 PDBs at startup—even though you only have breakpoints in a tiny fraction of them.">
       <h2>UE5 + F5 = <span class="danger">Tea break time</span> 🍵</h2>
       <div class="stats-row">
         <div class="stat">
@@ -791,7 +791,7 @@
       <p class="takeaway">A huge chunk of UE5’s startup wait is <strong>loading symbols you’ll never touch</strong>.</p>
     </section>
 
-<section class="slide" data-notes="The Solution (~1 min): On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (e.g., 22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
+<section class="slide" data-notes="On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (e.g., 22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
       <h2>On Demand Symbols: <span class="accent" data-count="11">11</span> PDBs instead of <span class="danger" data-count="950">950</span>.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -808,29 +808,29 @@
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
     </section>
 
-<section class="slide" data-notes="By the Numbers (~1 min): Across 7 calendar days (~50 sessions), we logged ~27 hours of active AI + pilot time (excluding idle gaps >10 min). Token volume hit 450M total: 21M uncached input, 426M cached read (95% cache hit rate, saving $205), and 2.5M output. The AI made 4,553 tool calls—and 20% (915) failed on the first try. Total equivalent API bill: ~$100 ($98.88)—all covered by that £1.89 Google AI Pro trial.">
+<section class="slide" data-notes="Across 7 calendar days (50 development sessions), we logged ~19 hours of active AI + pilot time (excluding idle gaps >10 min). Token volume hit 494M total: 22.6M uncached input, 468M cached read (95.4% cache hit rate, saving $208), and 2.6M output. The AI made 4,850 tool calls—and 20% (978) failed on the first try. Total equivalent API bill for building the extension: $100.27 (~$100)—all covered by that £1.89 Google AI Pro trial.">
       <h2>The project <span class="accent">by the numbers</span>.</h2>
       <div class="stats-grid-2x2">
         <div class="stat">
-          <div class="stat-num accent">~27 hrs</div>
+          <div class="stat-num accent">~19 hrs</div>
           <div class="stat-label">Active AI + pilot time across 7 days</div>
         </div>
         <div class="stat">
-          <div class="stat-num"><span data-count="450" data-suffix="M">450M</span></div>
-          <div class="stat-label">Tokens (21M in · 426M cached · 2.5M out)</div>
+          <div class="stat-num"><span data-count="494" data-suffix="M">494M</span></div>
+          <div class="stat-label">Tokens (22.6M in · 468M cached · 2.6M out)</div>
         </div>
         <div class="stat">
-          <div class="stat-num" data-count="4553" data-comma="true">4,553</div>
+          <div class="stat-num" data-count="4850" data-comma="true">4,850</div>
           <div class="stat-label">Tool calls (20% failed on first try)</div>
         </div>
         <div class="stat">
           <div class="stat-num accent">~$100</div>
-          <div class="stat-label">Total spend (95% cache saved $205)</div>
+          <div class="stat-label">Dev spend (95% cache saved $208)</div>
         </div>
       </div>
     </section>
 
-<section class="slide" data-notes="The 7-Day Story Arc (~1 min): Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product for just $12. Days 5-6 added automated real-world benchmarking and performance tuning. Day 7 tackled multi-instance edge cases, which we caught and simplified mid-flight.">
+<section class="slide" data-notes="Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product for just $12. Days 5-6 added automated real-world benchmarking and performance tuning. Day 7 tackled multi-instance edge cases, which we caught and simplified mid-flight.">
       <h2>Seven days, <span class="accent">one sharp reset</span>.</h2>
       <div class="timeline">
         <div class="tl-step">
@@ -868,7 +868,7 @@
     </section>
 
     <!-- ACT II DIVIDER -->
-    <section class="slide act-slide" data-notes="Act II (~0.2 min): Before looking at what went wrong, here are the two places where AI felt like a genuine superpower.">
+    <section class="slide act-slide" data-notes="Before looking at what went wrong, here are the two places where AI felt like a genuine superpower.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="110,15 45,115 95,115 85,185 155,85 105,85"/>
       </svg>
@@ -878,7 +878,7 @@
       <p class="subtitle">Where AI gave us lift—cracking undocumented APIs and building its own autopilot.</p>
     </section>
 
-<section class="slide" data-notes="Why AI made it possible (~1.5 min): I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI reflected directly on VS's own installed DLLs (233 binary probes) to find exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up.">
+<section class="slide" data-notes="I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI reflected directly on VS's own installed DLLs (233 binary probes) to find exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up.">
       <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -897,7 +897,7 @@
       <p class="takeaway">When docs are missing, don’t <strong>fly blind</strong>—let AI switch on <strong>radar</strong> and probe the binaries. 📡</p>
     </section>
 
-<section class="slide" data-notes="Self-Testing (~1.5 min): Normally, testing a Visual Studio extension against UE5 means manually pressing F5, waiting for Lyra to load, and checking output logs over and over—and a solo developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, building its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
+<section class="slide" data-notes="Normally, testing a Visual Studio extension against UE5 means manually pressing F5, waiting for Lyra to load, and checking output logs over and over—and a solo developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, building its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
       <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-test.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -915,7 +915,7 @@
     </section>
 
     <!-- ACT III DIVIDER -->
-    <section class="slide act-slide" data-notes="Act III (~0.2 min): Now the flip side—when code is free to generate, you hit two huge traps: massive churn and runaway token bills.">
+    <section class="slide act-slide" data-notes="Now the flip side—when code is free to generate, you hit two huge traps: massive churn and runaway token bills.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M30 40 L170 40 L120 160 L80 160 Z"/>
         <circle cx="100" cy="95" r="18" stroke-dasharray="4 4"/>
@@ -926,12 +926,12 @@
       <p class="subtitle">“Please keep your seatbelts fastened at all times.” 💺</p>
     </section>
 
-<section class="slide" data-notes="Timeline & Output (~1 min): Built Nov 5 to Nov 12 across 51 sessions (44 main, 7 subagents), 4,386 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC. Nearly 60% of all code ever written was deleted.">
+<section class="slide" data-notes="Built Nov 5 to Nov 12 across 50 development sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC. Nearly 60% of all code ever written was deleted.">
       <h2><span class="accent">60%</span> of all code written was deleted.</h2>
       <div class="stats-row">
         <div class="stat">
           <div class="stat-num">7 days</div>
-          <div class="stat-label">~50 sessions &nbsp;·&nbsp; 71 commits</div>
+          <div class="stat-label">50 dev sessions &nbsp;·&nbsp; 71 commits</div>
         </div>
         <div class="stat">
           <div class="stat-num accent">+26k / -15k</div>
@@ -945,7 +945,7 @@
       <p class="takeaway">Across <strong>4,400 turns</strong>, pruning mattered more than generating.</p>
     </section>
 
-<section class="slide" data-notes="Why the deletions happened (~1 min): AI has near-zero friction for building whatever you put in the spec—even bad ideas. Three root causes drove nearly two-thirds of the code being deleted: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not questioning the model's choices soon enough. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions. Lesson: start with the smallest possible spec and add complexity only when proven necessary.">
+<section class="slide" data-notes="AI has near-zero friction for building whatever you put in the spec—even bad ideas. Three root causes drove nearly two-thirds of the code being deleted: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not questioning the model's choices soon enough. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions. Lesson: start with the smallest possible spec and add complexity only when proven necessary.">
       <h2>Why did we delete <span class="accent">60%</span> of the code?</h2>
       <ul class="big-list">
         <li><span class="list-num">01</span><span><strong>Overspecifying on Day 1</strong> — AI has zero friction for building speculative features.</span></li>
@@ -955,7 +955,7 @@
       <p class="takeaway">Start minimal, then iterate—surgical edits averaged <strong>$0.08</strong> and <strong>0 compactions</strong>.</p>
     </section>
 
-<section class="slide" data-notes="The Meta-Lesson (~1 min): AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 before we deleted 7,255 lines; V2 rebuilt it cleanly for $4.50). Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
+<section class="slide" data-notes="AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 before we deleted 7,255 lines; V2 rebuilt it cleanly for $4.50). Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
       <h2>AI generates abstractions. <span class="accent">You delete them.</span></h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -973,7 +973,7 @@
     </section>
 
     <!-- RESETTING IS CHEAP WITH AI -->
-    <section class="slide" data-notes="Resetting is Cheap (~1 min): Normally, throwing away 7,255 lines of code is agonizing—sunk cost, ego, days of typing. With AI, resetting is cheap. I felt zero attachment to the V1 code because it was only a few hours of work anyway. Better yet, the AI itself knew what to keep: it documented all the hard-won lessons (the sandbox build flags, what APIs failed, what actually worked) and handed them off cleanly to the fresh V2 branch.">
+    <section class="slide" data-notes="Normally, throwing away 7,255 lines of code is agonizing—sunk cost, ego, days of typing. With AI, resetting is cheap. I felt zero attachment to the V1 code because it was only a few hours of work anyway. Better yet, the AI itself knew what to keep: it documented all the hard-won lessons (the sandbox build flags, what APIs failed, what actually worked) and handed them off cleanly to the fresh V2 branch.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <path d="M35 85 A65 65 0 0 1 165 85 Z"/>
         <path d="M35 85 L100 165 M78 85 L100 165 M122 85 L100 165 M165 85 L100 165"/>
@@ -988,32 +988,32 @@
       <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
     </section>
 
-<section class="slide" data-notes="Model Usage Breakdown (~2 min): Exact spend was $98.88 (~$100). Gemini 3.8 Flash handled 80% of all turns (3,514) for just $10.23 (10% of spend) and was also the fastest at 6.2s per turn on average. Gemini 4 Argon handled 18% of turns (804) for $38.80 (12.9s avg—2x slower). Claude Opus 5.5 handled 1.5% of turns (64) yet cost $49.65 (30.2s avg—5x slower). Once the plan is locked, Flash saves both money and wall-clock time. Toggle 'Without Cache' to see prompt caching savings ($303.44 down to $98.88).">
+<section class="slide" data-notes="Exact development spend was $100.27 (~$100). Gemini 3.8 Flash handled 81% of all turns (3,821) for just $11.45 (11% of spend) and was also the fastest at 6.2s per turn on average. Gemini 4 Argon handled 17% of turns (804) for $38.80 (12.9s avg—2x slower). Claude Opus 5.5 handled 1.4% of turns (64) yet cost $49.65 (30.2s avg—5x slower). Once the plan is locked, Flash saves both money and wall-clock time. Toggle 'Without Cache' to see prompt caching savings ($308.01 down to $100.27).">
       <div class="slide-header-row">
-        <h2 id="costHeading"><span class="accent">80%</span> of turns cost $10.<br /><span class="danger">1.5%</span> cost <span class="danger">$50</span>.</h2>
+        <h2 id="costHeading"><span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.</h2>
         <div class="toggle-group" role="group" aria-label="Cost view toggle">
-          <button class="toggle-btn active" data-cost-mode="actual">Actual ($99)</button>
-          <button class="toggle-btn" data-cost-mode="uncached">Without Cache ($303)</button>
+          <button class="toggle-btn active" data-cost-mode="actual">Actual ($100)</button>
+          <button class="toggle-btn" data-cost-mode="uncached">Without Cache ($308)</button>
         </div>
       </div>
       <div class="bars" id="costBars">
         <div class="bar-row">
           <div class="bar-header">
-            <span>Gemini 3.8 Flash &nbsp;<span class="muted">(80% of turns · 6.2s/turn)</span></span>
-            <span class="accent" data-actual="$10" data-uncached="$34">$10</span>
+            <span>Gemini 3.8 Flash &nbsp;<span class="muted">(81% of turns · 6.2s/turn)</span></span>
+            <span class="accent" data-actual="$11" data-uncached="$39">$11</span>
           </div>
-          <div class="bar-track"><div class="bar-fill accent-bg" data-width="20%" data-actual-width="20%" data-uncached-width="25%" style="width: 20%;"></div></div>
+          <div class="bar-track"><div class="bar-fill accent-bg" data-width="23%" data-actual-width="23%" data-uncached-width="28%" style="width: 23%;"></div></div>
         </div>
         <div class="bar-row">
           <div class="bar-header">
-            <span>Gemini 4 Argon &nbsp;<span class="muted">(18% of turns · 12.9s/turn)</span></span>
+            <span>Gemini 4 Argon &nbsp;<span class="muted">(17% of turns · 12.9s/turn)</span></span>
             <span data-actual="$39" data-uncached="$131">$39</span>
           </div>
           <div class="bar-track"><div class="bar-fill" data-width="78%" data-actual-width="78%" data-uncached-width="95%" style="width: 78%;"></div></div>
         </div>
         <div class="bar-row">
           <div class="bar-header">
-            <span>Claude Opus 5.5 &nbsp;<span class="muted">(1.5% of turns · 30.2s/turn)</span></span>
+            <span>Claude Opus 5.5 &nbsp;<span class="muted">(1.4% of turns · 30.2s/turn)</span></span>
             <span class="danger" data-actual="$50" data-uncached="$138">$50</span>
           </div>
           <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" data-actual-width="100%" data-uncached-width="100%" style="width: 100%;"></div></div>
@@ -1022,13 +1022,13 @@
       <p class="takeaway" id="costTakeaway">Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.</p>
     </section>
 
-<section class="slide" data-notes="Compaction & Loops (~1.5 min): Only 5 of 51 sessions crossed context compaction, yet they caused 52% of total spend ($52.23) and 35% of all tool errors (316/915). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
-      <h2><span class="accent">5</span> compacted sessions caused <span class="accent">52%</span> of spend.</h2>
+<section class="slide" data-notes="Only 6 of 50 development sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
+      <h2><span class="accent">6</span> compacted sessions caused <span class="accent">71%</span> of spend.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
-          <div class="contrast-kicker">5 Compacted Sessions</div>
-          <div class="stat-num danger">~$10 avg</div>
-          <div class="stat-label"><strong>52%</strong> of total spend &nbsp;·&nbsp; <strong>35%</strong> of tool errors</div>
+          <div class="contrast-kicker">6 Compacted Sessions</div>
+          <div class="stat-num danger">~$12 avg</div>
+          <div class="stat-label"><strong>71%</strong> of total spend &nbsp;·&nbsp; <strong>44%</strong> of tool errors</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Short Sessions (≤40 turns)</div>
@@ -1040,7 +1040,7 @@
     </section>
 
     <!-- ACT IV DIVIDER -->
-    <section class="slide act-slide" data-notes="Act IV (~0.5 min): I actually asked the AI after reading all 51 transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through 51 sessions of transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' So here are the practical lessons for flying an AI.">
+    <section class="slide act-slide" data-notes="I actually asked the AI after reading all 50 dev transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through the session transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' So here are the practical lessons for flying an AI.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <circle cx="100" cy="100" r="78"/>
         <path d="M32 108 L168 92" stroke-dasharray="6 5"/>
@@ -1053,7 +1053,7 @@
       <p class="subtitle">“You were the pilot steering us away from the mountain!”</p>
     </section>
 
-<section class="slide" data-notes="Model Routing (~1.5 min): Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
+<section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
       <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -1070,7 +1070,7 @@
       <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
     </section>
 
-<section class="slide" data-notes="Prompting (~1.5 min): Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. Three high-ROI pilot habits: (1) Design Gate—ask for options before editing code; (2) Telemetry-Backed Bugs—paste exact output/timing logs ($2.16 perf fix); (3) Challenge complexity early.">
+<section class="slide" data-notes="Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. Three high-ROI pilot habits: (1) Design Gate—ask for options before editing code; (2) Telemetry-Backed Bugs—paste exact output/timing logs ($2.16 perf fix); (3) Challenge complexity early.">
       <h2>Single-focus prompts cost <span class="accent">4× less</span>.</h2>
       <div class="bars">
         <div class="bar-row">
@@ -1091,7 +1091,7 @@
       <p class="takeaway">Use a <strong>Design Gate</strong> before coding, and paste exact <strong>output logs</strong> for bugs.</p>
     </section>
 
-<section class="slide" data-notes="Rules & Cross-Check (~1 min): One of the highest-leverage habits in late 2026 is context engineering: having the AI write lean rulebooks for itself (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck) and then spinning up another agent with a fresh context to cross-check work against those rules. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
+<section class="slide" data-notes="One of the highest-leverage habits in late 2026 is context engineering: having the AI write lean rulebooks for itself (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck) and then spinning up another agent with a fresh context to cross-check work against those rules. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
       <h2>Let AI write the rules—then <span class="accent">cross-check</span> fresh.</h2>
       <ul class="big-list">
         <li><span class="list-num">01</span><span><strong>Codify the rules</strong> — have AI maintain lean rulebooks (<code>AGENTS.md</code>, <code>RULES.md</code>) so every session starts smart.</span></li>
@@ -1101,7 +1101,7 @@
       <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
     </section>
 
-<section class="slide" data-notes="Refocusing Prompts (~1 min): Reading back through 202 prompts, keeping the AI on track didn't require fancy prompt engineering—just blunt human reality checks. Whether it was catching hung builds, interrupting a 44-search spiral, noticing zombie references to deleted features, critiquing an off-center icon, or questioning 925 lines of over-engineering.">
+<section class="slide" data-notes="Reading back through 202 prompts, keeping the AI on track didn't require fancy prompt engineering—just blunt human reality checks. Whether it was catching hung builds, interrupting a 44-search spiral, noticing zombie references to deleted features, critiquing an off-center icon, or questioning 925 lines of over-engineering.">
       <h2>Mid-flight <span class="accent">course corrections</span>. 🎛️</h2>
       <div class="quotes-list">
         <div class="quote-card">
@@ -1127,7 +1127,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Closing (~1 min): Five tips for Monday morning: (1) Use AI as a research engine first and codify rules in AGENTS.md; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—split early, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion.">
+<section class="slide" data-notes="Five tips for Monday morning: (1) Use AI as a research engine first and codify rules in AGENTS.md; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—split early, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
       <h2>5 <span class="accent">pre-flight</span> tips for your next AI project. 📋</h2>
       <ul class="big-list">
         <li><span class="list-num">1.</span><span><strong>Research &amp; rules first</strong> — <code>AGENTS.md</code> and cheap subagents beat guessing.</span></li>
@@ -1136,23 +1136,73 @@
         <li><span class="list-num">4.</span><span><strong>Start minimal, iterate</strong> — surgical edits cost pennies; giant specs churn.</span></li>
         <li><span class="list-num">5.</span><span><strong>Your highest-leverage skill is deletion.</strong></span></li>
       </ul>
+      <p class="takeaway">Full disclosure: first time “vibe coding” in anger — <strong>I’m still winging it. 🤷‍♂️</strong></p>
     </section>
 
-<section class="slide" data-notes="Outro (~0.5 min): One last confession—this was my very first time 'vibe coding' a real project in anger, so take these as early field notes, not commandments. Every single stat in this talk came from the AI reading its own 51 chat transcripts, and yes—even these slides were 'vibe decked' and then cross-checked by another member of the cabin crew against a PRESENTATION_RULES.md the AI wrote itself. Thanks! Questions? (If they're too hard, I'll defer to my co-pilot, Claude.)">
-      <h2>Full disclosure: I’m still <span class="accent">winging it</span>. 🤷‍♂️</h2>
-      <ul class="big-list">
-        <li><span class="list-num">🔥</span><span><strong>First time “vibe coding” in anger</strong> — early field notes, not gospel.</span></li>
-        <li><span class="list-num">🤖</span><span><strong>100% AI-analyzed</strong> — the bots read all 51 transcripts and graded their own homework.</span></li>
-        <li><span class="list-num">✨</span><span><strong>Even these slides were “vibe decked”</strong> — then cross-checked by another member of the cabin crew against rules the AI wrote itself.</span></li>
-      </ul>
-      <p class="takeaway">Questions? 🙋‍♂️ <strong>(If they’re hard, I’ll defer to my co-pilot, Claude.)</strong></p>
+<section class="slide" data-notes="Every stat in this talk came from the AI reading all 50 dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64 total) and cross-checked by another member of the cabin crew against PRESENTATION_RULES.md that the AI wrote itself. Across 10 sessions (~5.8 active hours, 70.3M tokens, 703 tool calls), that analysis and deck-building pass cost $13.53—95% on Gemini 4 Hydrogen.">
+      <h2>Self-reflection &amp; <span class="accent">vibe decking</span>.</h2>
+      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
+      <div class="stats-grid-2x2">
+        <div class="stat">
+          <div class="stat-num accent">~6 hrs</div>
+          <div class="stat-label">Active time (10 sessions · 641 turns)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num"><span data-count="70.3" data-suffix="M">70.3M</span></div>
+          <div class="stat-label">Tokens (94% cache hit · 703 tool calls)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num accent">$13.53</div>
+          <div class="stat-label">Total spend (95% Gemini 4 Hydrogen)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">$0.33 / slide</div>
+          <div class="stat-label">$7.85 deck build · $5.68 log analysis</div>
+        </div>
+      </div>
+    </section>
+
+<section class="slide" data-notes="Thanks for flying with us! Questions? (If they're hard, I'll defer to my co-pilot, Claude.)">
+      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
+        <svg viewBox="0 0 360 150" width="380" height="158" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Aeroplane landing on runway" style="color: var(--accent);">
+          <!-- Descending glide path -->
+          <path d="M24 26 Q 125 60 218 114" stroke-dasharray="6 6" opacity="0.45"/>
+          <!-- Landing aeroplane angled slightly nose-up for flare -->
+          <g transform="translate(132, 46) rotate(8)">
+            <!-- Fuselage -->
+            <path d="M8 22 L66 20 C78 20 86 24 88 27 C86 30 76 32 62 32 L14 31 Z" fill="currentColor" fill-opacity="0.16"/>
+            <!-- Tail fin -->
+            <path d="M12 22 L4 4 L18 6 L24 21" fill="currentColor" fill-opacity="0.22"/>
+            <!-- Main swept wing -->
+            <path d="M36 25 L22 40 L34 40 L52 27" fill="currentColor" fill-opacity="0.24"/>
+            <!-- Cockpit window -->
+            <path d="M68 22 L78 24 L74 26 L68 25 Z" fill="currentColor"/>
+            <!-- Landing gear -->
+            <line x1="34" y1="32" x2="32" y2="41"/>
+            <circle cx="32" cy="43" r="2.8" fill="currentColor"/>
+            <line x1="66" y1="31" x2="66" y2="40"/>
+            <circle cx="66" cy="42" r="2.4" fill="currentColor"/>
+          </g>
+          <!-- Runway -->
+          <line x1="20" y1="126" x2="340" y2="126" stroke-width="3.5" opacity="0.85"/>
+          <line x1="45" y1="136" x2="85" y2="136" stroke-width="2" opacity="0.4"/>
+          <line x1="110" y1="136" x2="155" y2="136" stroke-width="2" opacity="0.4"/>
+          <line x1="180" y1="136" x2="225" y2="136" stroke-width="2" opacity="0.4"/>
+          <line x1="250" y1="136" x2="295" y2="136" stroke-width="2" opacity="0.4"/>
+          <!-- Touchdown flare sparks -->
+          <path d="M214 120 L206 114 M222 118 L224 110 M230 120 L238 114" opacity="0.65"/>
+        </svg>
+        <h2 style="margin: 0;">Questions? <span class="accent">🙋‍♂️</span></h2>
+        <p class="subtitle" style="margin: 0;">Come and talk to me or message me on <strong>Teams</strong>.</p>
+        <p class="subtitle" style="margin: 0; font-size: 1.05rem;">(If they’re hard, I’ll defer to my co-pilot, <strong>Claude</strong>.)</p>
+      </div>
     </section>
 
   </main>
 
-  <!-- SPEAKER NOTES DRAWER -->
-  <aside class="notes-drawer" id="notesDrawer">
-    <div class="notes-label">Speaker Notes (N to hide)</div>
+  <!-- NOTES DRAWER -->
+  <aside class="notes-drawer open" id="notesDrawer">
+    <div class="notes-label">Notes (N to hide)</div>
     <div class="notes-text" id="notesText"></div>
   </aside>
 
@@ -1168,10 +1218,10 @@
   <!-- MINIMAL FLOATING CONTROLS -->
   <nav class="controls" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
-    <span class="counter" id="counter">1 / 22</span>
+    <span class="counter" id="counter">1 / 24</span>
     <button id="nextBtn" title="Next (Right Arrow / Space)">→</button>
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
-    <button id="notesBtn" title="Toggle Speaker Notes (N)">Notes</button>
+    <button id="notesBtn" title="Toggle Notes (N)">Notes</button>
     <select id="themeSelect" title="Switch Theme (T)">
       <option value="keynote-dark">Keynote Dark</option>
       <option value="swiss-light">Swiss Light</option>
@@ -1268,10 +1318,10 @@
         const heading = document.getElementById('costHeading');
         const takeaway = document.getElementById('costTakeaway');
         if (mode === 'uncached') {
-          heading.innerHTML = 'Without caching: <span class="danger">$303</span><br />instead of <span class="accent">$99</span>.';
-          takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$205 (67%)</strong> across 450M tokens.';
+          heading.innerHTML = 'Without caching: <span class="danger">$308</span><br />instead of <span class="accent">$100</span>.';
+          takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$208 (67%)</strong> across 494M tokens.';
         } else {
-          heading.innerHTML = '<span class="accent">80%</span> of turns cost $10.<br /><span class="danger">1.5%</span> cost <span class="danger">$50</span>.';
+          heading.innerHTML = '<span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.';
           takeaway.innerHTML = 'Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.';
         }
       });

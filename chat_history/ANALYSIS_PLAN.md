@@ -1,24 +1,24 @@
 # VSOnDemandSymbols: Development Process Analysis Plan & Preliminary Findings
 
-> **Objective:** Systematically analyze the 51 conversation transcripts, prompt sequences, agent thinking traces, tool actions, and design artifacts in `chat_history/` to understand what worked, what failed, where tokens and time were wasted, how models performed, and how to optimize AI-assisted engineering for future complex software projects.
+> **Objective:** Systematically analyze the **50 extension-development conversation transcripts** (`S01–S49`, `S51`), prompt sequences, agent thinking traces, tool actions, and design artifacts in `chat_history/` to understand what worked, what failed, where tokens and time were wasted, how models performed, and how to optimize AI-assisted engineering for future complex software projects. *(The 10 meta sessions `S50`, `S52–S60` dedicated to extracting this history, running the analysis, and building the slide deck are tracked separately in [INDEX.md](INDEX.md) and [summary_metrics.json](summary_metrics.json): 574 turns, 61.54M tokens, $11.34 USD.)*
 
 ---
 
 ## 1. Executive Summary & Dataset Overview
 
-Building **On-Demand Symbols** (a high-performance Visual Studio extension accelerating Unreal Engine 5 debugging) produced a rich trajectory of agent-pilot collaboration. Spanning **51 chronological sessions** from **November 5 to November 12, 2026**, the dataset captures the complete lifecycle: specification authoring, subagent exploration of the Unreal Engine codebase, iterative C# VSIX development, test rationalization, performance profiling on Lyra, and release packaging.
+Building **On-Demand Symbols** (a high-performance Visual Studio extension accelerating Unreal Engine 5 debugging) produced a rich trajectory of agent-pilot collaboration. Spanning **50 chronological development sessions** from **November 5 to November 12, 2026**, the dataset captures the complete lifecycle: specification authoring, subagent exploration of the Unreal Engine codebase, iterative C# VSIX development, test rationalization, performance profiling on Lyra, and multi-instance coordination.
 
-### Dataset Baseline Metrics
+### Dataset Baseline Metrics (Extension Development: `S01–S49`, `S51`)
 
 | Metric | Measured Value |
 |---|---|
-| **Total Development Sessions** | **51** (44 Interactive User Sessions, 7 Autonomous Subagents) |
-| **Total Prompt Input Tokens** | **21,113,118** (~21.1 M tokens) |
-| **Total Cached Context Read Tokens** | **425,934,415** (~425.9 M tokens; **~95.3% cache hit rate**) |
-| **Total Model Output Tokens** | **2,531,778** (~2.5 M tokens) |
-| **Total Exact Cost** | **$98.88 USD** *(dynamically calculated per step across all mid-session model switches)* |
+| **Total Development Sessions** | **50** (43 Interactive User Sessions, 7 Autonomous Subagents) |
+| **Total Prompt Input Tokens** | **22,557,447** (~22.6 M tokens) |
+| **Total Cached Context Read Tokens** | **468,454,270** (~468.5 M tokens; **95.41% cache hit rate**) |
+| **Total Model Output Tokens** | **2,611,132** (~2.6 M tokens) |
+| **Total Exact Cost** | **$100.27 USD** *(dynamically calculated per step across all mid-session model switches)* |
+| **Meta Sessions (Analysis & Slide Deck)** | **10** (`S50`, `S52–S60`: 5 main, 5 subagents; **574 turns**, **61.54M tokens**, **$11.34 USD**) |
 | **Complete Machine-Readable Dataset** | [summary_metrics.json](summary_metrics.json) (100% self-contained in `chat_history/`) |
-| **Total Extracted Markdown History** | **~17.4 MB** across 51 session transcripts |
 | **Primary Models Utilized** | **Gemini 3.8 Flash**, **Gemini 4 Argon**, **Claude Opus 5.5**, **Gemini 4 Hydrogen** |
 | **Design / Planning Artifacts** | **6** foundational artifacts (`artifacts/`) |
 
@@ -26,10 +26,10 @@ Building **On-Demand Symbols** (a high-performance Visual Studio extension accel
 
 ## 2. Preliminary Findings from the Data
 
-An initial quantitative scan of the 51 sessions reveals striking operational patterns:
+An initial quantitative scan of the 50 development sessions reveals striking operational patterns:
 
 ### 2.1 The "Monster Session" 80/20 Rule
-The vast majority of sessions were tight, tactical interactions (1–5 user prompts, 10–50 tool actions, under 5M tokens). However, two outlier sessions account for **over 30% of total tokens, 35% of all steps, and 45% of all tool errors**:
+The vast majority of sessions were tight, tactical interactions (1–5 user prompts, 10–50 tool actions, under 5M tokens). However, a small handful of outlier sessions account for the majority of spend and errors—most notably **Session 10** (`$30.93`, 559 tool calls, 100 errors, 2 compactions), **Session 51** (`$19.38`, 543 tool calls, 115 errors, 2 compactions), and **Session 21** (`$1.77` on Flash High, 456 tool calls, 96 errors, 2 compactions):
 
 1. **Session 10 (`7b1b8651` - Phase 3 Implementation):**
    - **1,062 steps**, 20 user prompts, 27 model replies, **559 tool calls**, **100 tool errors**.
@@ -49,16 +49,16 @@ Tracking `Model Selection` settings across sessions reveals how model capabiliti
 |---|---|---|---|---|---|---|
 | **Claude Opus 5.5 (Medium/High)** | 3 | 64 | 596,698 | 7,831,913 | 150,978 | **$49.65** |
 | **Gemini 4 Argon (Medium/High)** | 13 | 804 | 4,857,600 | 97,006,576 | 724,790 | **$38.80** |
-| **Gemini 3.8 Flash (High/Medium)** | 45 | 3,514 | 15,517,399 | 320,694,092 | 1,650,383 | **$10.23** |
-| **Gemini 4 Hydrogen (Medium)** | 1 | 4 | 141,421 | 401,834 | 5,627 | **$0.21** |
-| **Total Project** | **51** | **4,386** | **21,113,118** | **425,934,415** | **2,531,778** | **$98.88** |
+| **Gemini 3.8 Flash (High/Medium)** | 44 | 3,821 | 16,776,807 | 363,213,947 | 1,724,141 | **$11.45** |
+| **Gemini 4 Hydrogen (Medium)** | 1 | 5 | 326,342 | 401,834 | 11,223 | **$0.38** |
+| **Total Development (`S01–S49, S51`)** | **50** | **4,694** | **22,557,447** | **468,454,270** | **2,611,132** | **$100.27** |
 
 - **Claude Opus 5.5:** Reserved for high-abstraction initial specification (Session 01: `docs/SPEC.md`, `AGENTS.md`) and high-level architectural retrospectives/reviews (Session 27). High reasoning depth, structured planning, low hallucination on architectural constraints.
 - **Gemini 4 Argon:** Deployed for complex technical investigations, integration test design (MiniUnreal / Lyra profiling in Session 46), and delicate Git/repo initialization (Session 02).
 - **Gemini 3.8 Flash:** The workhorse for iterative feature coding, refactoring, documentation synchronization, and fast tool execution loops. Extremely rapid turnaround, but more prone to tool-retry loops when hit with unexpected sandbox or COM errors.
 
 ### 2.3 Compaction Induced Thrashing
-Four sessions hit the context boundary and triggered system compactions (`CHECKPOINT`): Sessions **02**, **10**, **21**, and **46**.
+Six development sessions hit the context boundary and triggered system compactions (`CHECKPOINT`): Sessions **02**, **10**, **21**, **43**, **46**, and **51** (9 compactions total, accounting for **$71.62 / 71.4% of dev spend** and **431 / 44.1% of dev tool errors**).
 - In Session 10 and Session 21, once compaction occurred, the agent lost fine-grained memory of prior failed code edits. It occasionally reintroduced patterns the user had already rejected or re-ran diagnostic commands it had already tried 50 turns earlier.
 - **Key Observation:** Mega-sessions that cross compaction thresholds have diminishing marginal returns and high token waste compared to fresh, scoped sessions.
 
@@ -239,7 +239,7 @@ Perform a forensic review of the 10 pivotal sessions:
 - **Session 51:** Multi-Instance VS Race Condition Identification.
 
 ### Phase 3: Error Pattern & Failure Taxonomy
-Categorize every single tool failure (out of ~500+ total failures across the 51 sessions) into:
+Categorize every single tool failure (978 total failures across the 50 development sessions) into:
 - Sandbox boundary failures (network, file permissions, named pipes).
 - Visual Studio COM / Threading violations.
 - Compilation / MSBuild errors.

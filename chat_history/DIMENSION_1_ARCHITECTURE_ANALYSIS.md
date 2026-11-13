@@ -11,8 +11,8 @@ The **VSOnDemandSymbols** repository tells a striking story of **over-engineerin
 
 - **58.9% of all code ever written was deleted:** Across **71 Git commits**, the project recorded **26,251 insertions** and **15,470 deletions**, settling at **10,781 net lines**.
 - **Over half the project's dollar cost went into dead ends or architectural reversals:**
-  - **Concord Debug Engine + MSBuild/MRU V1 stack (`S02`, `S10`, `S11`):** **$41.46** (41.9% of the **$98.88** total project cost) was spent building and debugging a complex V1 architecture that was completely deleted in **Session 15** (`57e200a`: **+1,258 / -7,255 lines** across 59 files).
-  - **Multi-Instance `HiveCoordinator` Phase 1 overshoot (`S51`):** **$17.64** in a single session—mostly burned before the pilot challenged the complexity (*"can you just check that this session manager stuff is the optimal way..."*), triggering a **+605 / -925 line** simplification (`06c4fa9`) to kernel file-handle locks (`HiveLock`).
+  - **Concord Debug Engine + MSBuild/MRU V1 stack (`S02`, `S10`, `S11`):** **$41.46** (41.3% of the **$100.27** total development cost) was spent building and debugging a complex V1 architecture that was completely deleted in **Session 15** (`57e200a`: **+1,258 / -7,255 lines** across 59 files).
+  - **Multi-Instance `HiveCoordinator` Phase 1 overshoot (`S51`):** **$19.38** in a single session (`544` turns, `2` compactions)—mostly burned before the pilot challenged the complexity (*"can you just check that this session manager stuff is the optimal way..."*), triggering a **+605 / -925 line** simplification (`06c4fa9`) to kernel file-handle locks (`HiveLock`).
 - **The winning architecture was radically simpler than the initial spec:**
   - Every major breakthrough came from replacing custom in-process interception (Concord, MSBuild crawling, MRU caches, custom menus) with **native Visual Studio primitives** (`IncludeList`, `IVsDebugLaunchHook`, AD7 `EnumFrameInfo(FIF_MODULE)`, Unified Settings `registration.json`, and Win32 kernel file locks).
 - **The pilot was the primary architectural simplifier:** Almost every pruning milestone (`S03` RecentlyBuilt, `S13` MRU/Pinning, `S14–S15` V2 Clean-Slate, `S18` Debug Menu, `S21` Unified Settings, `S28` `Polyfills.cs`, `S43` Dead Code, `S51` Option A) was initiated when the pilot questioned whether a mechanism was actually needed.
@@ -23,7 +23,7 @@ The **VSOnDemandSymbols** repository tells a striking story of **over-engineerin
 
 ### 2.1 Cost of Major Architectural Phases & Reversals
 
-| Architectural Phase / Pivot | Sessions | Primary Models | Turns | Tool Calls (Errors) | Total Cost | Share of $98.88 | Fate |
+| Architectural Phase / Pivot | Sessions | Primary Models | Turns | Tool Calls (Errors) | Total Cost | Share of $100.27 | Fate |
 |---|---|---|---|---|---|---|---|
 | **Spec & Initial V1 Design** | `S01` | Claude Opus 5.5 (High) | 22 | 31 (8) | **$11.79** | 11.9% | Initial spec included Concord, MSBuild, RecentlyBuilt, MRU |
 | **Phase 0–1 + Concord Pivot (D-15)** | `S02–S03` | Argon Med, Flash Med | 372 | 385 (56) | **$10.96** | 11.1% | Switched to Concord Hybrid; `RecentlyBuilt` cut in `S03` |
@@ -34,7 +34,7 @@ The **VSOnDemandSymbols** repository tells a striking story of **over-engineerin
 | **Post-V2 Pruning & Hardening** | `S27–S28, S35, S43` | Flash High, Argon Med/High | 431 | 461 (96) | **$5.10** | 5.2% | Pruned `NativeSample`, dead tests, regex allocations, `OutputLog` cruft |
 | **Out-of-Proc Integration & Lyra Profiling** | `S45–S47` | Argon Med | 228 | 302 (48) | **$10.10** | 10.2% | Built `MiniUnreal` + `--profile-lyra` (`ADR-12`, `ADR-14`) |
 | **AD7 `FIF_MODULE` Stack-Walk Optimization** | `S49` | Argon Med | 53 | 50 (18) | **$2.16** | 2.2% | Cut break-mode stack walk from **401 ms** down (`ADR-02`) |
-| **Multi-Instance Coordination (`HiveLock`)** | `S51` | Flash Med, Opus Med, Hydrogen Med | 120 | 134 (31) | **$17.64** | 17.8% | Overbuilt Phase 1, then simplified (`-925` lines) to `ADR-15`/`ADR-16` |
+| **Multi-Instance Coordination (`HiveLock`)** | `S51` | Flash Med, Opus Med, Hydrogen Med | 544 | 543 (115) | **$19.38** | 19.3% | Overbuilt Phase 1, then simplified (`-925` lines) to `ADR-15`/`ADR-16` |
 
 ### 2.2 Top Deletion-Heavy & High-Churn Commits
 

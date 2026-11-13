@@ -1,19 +1,19 @@
 # Dimension 4 Analysis: Token Economics and Cost Modeling
 
-> **Scope:** Exact step-level token and cost accounting across all **51 sessions** (**4,386 turns**, **449.58M total tokens**) in `chat_history/summary_metrics.json`, using the turn-level rate card in [extract_chat_history.py](file:///C:/Dev/VSOnDemandSymbols/chat_history/extract_chat_history.py).  
+> **Scope:** Exact step-level token and cost accounting across all **50 extension-development sessions** (`S01–S49`, `S51`: **4,694 turns**, **493.62M total tokens**) in `chat_history/summary_metrics.json`, using the turn-level rate card in [extract_chat_history.py](file:///C:/Dev/VSOnDemandSymbols/chat_history/extract_chat_history.py). *(The 10 meta sessions `S50`, `S52–S60` for history extraction, analysis, and slide-deck creation are tracked separately: 574 turns, 61.54M tokens, $11.34 USD.)*  
 > **Goal:** Account for total spend, cost per milestone, prompt-cache savings, error-loop waste, and the effectiveness of mid-session model switching.
 
 ---
 
 ## 1. Executive Summary
 
-- **Total Project Cost:** **\$98.88 USD** across **51 sessions** (**44** main sessions, **7** subagent sessions).
-- **Total Token Volume:** **449,579,311 tokens** (**21.11M** uncached input, **425.93M** cache read, **2.53M** output), achieving a **95.28% cache hit ratio**.
-- **Prompt Caching Saved \$204.56 (67.4%):** Without prompt caching, the exact same workload would have cost **\$303.44**.
+- **Total Development Cost:** **\$100.27 USD** across **50 development sessions** (**43** main sessions, **7** subagent sessions).
+- **Total Token Volume:** **493,622,849 tokens** (**22.56M** uncached input, **468.45M** cache read, **2.61M** output), achieving a **95.41% cache hit ratio**.
+- **Prompt Caching Saved \$207.74 (67.4%):** Without prompt caching, the exact same workload would have cost **\$308.01**.
 - **The Model Cost/Volume Paradox:**
-  - **Gemini 3.8 Flash** executed **80.1% of all turns (3,514 / 4,386)** for just **\$10.23 (10.3% of spend)**.
-  - **Claude Opus 5.5** executed **1.5% of all turns (64 / 4,386)** yet accounted for **\$49.64 (50.2% of spend)**—driven largely by two mid-session escalations (`S10` and `S51`) that cost **\$37.86** in just **42 turns**.
-- **Two Dead-End / Overshoot Clusters Consumed 51.7% of Total Spend:** V1 Concord + MSBuild (`S10–S11`: **\$33.45**) and `S51` multi-instance (`\$17.64`) together cost **\$51.09**.
+  - **Gemini 3.8 Flash** executed **81.4% of all turns (3,821 / 4,694)** for just **\$11.45 (11.4% of spend)**.
+  - **Claude Opus 5.5** executed **1.4% of all turns (64 / 4,694)** yet accounted for **\$49.65 (49.5% of spend)**—driven largely by two mid-session escalations (`S10` and `S51`) that cost **\$37.86** in just **42 turns**.
+- **Two Monster Sessions Consumed 50.2% of Total Spend:** V1 Concord + MSBuild (`S10`: **\$30.93**, `S11`: **\$2.52**) and `S51` multi-instance (`\$19.38`) together cost **\$52.83**.
 
 ---
 
@@ -32,14 +32,14 @@
 
 | Model Variant | Sessions Used | Turns | Turn Share | Input (M) | Cache Read (M) | Output (M) | Actual Cost | Cost Share |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| **Claude Opus 5.5 (Medium)** | 2 | 42 | 1.0% | 0.403 | 6.810 | 0.084 | **\$37.86** | 38.3% |
-| **Gemini 4 Argon (Medium)** | 10 | 609 | 13.9% | 3.822 | 72.388 | 0.498 | **\$28.99** | 29.3% |
-| **Claude Opus 5.5 (High)** | 1 | 22 | 0.5% | 0.193 | 1.022 | 0.067 | **\$11.79** | 11.9% |
-| **Gemini 4 Argon (High)** | 3 | 195 | 4.4% | 1.035 | 24.619 | 0.226 | **\$9.81** | 9.9% |
-| **Gemini 3.8 Flash (High)** | 27 | 2,252 | 51.3% | 10.650 | 217.211 | 1.005 | **\$6.90** | 7.0% |
-| **Gemini 3.8 Flash (Medium)** | 18 | 1,262 | 28.8% | 4.867 | 103.483 | 0.645 | **\$3.33** | 3.4% |
-| **Gemini 4 Hydrogen (Medium)** | 1 | 4 | 0.1% | 0.141 | 0.402 | 0.006 | **\$0.21** | 0.2% |
-| **Total** | *51* | **4,386** | **100.0%** | **21.113** | **425.934** | **2.532** | **\$98.88** | **100.0%** |
+| **Claude Opus 5.5 (Medium)** | 2 | 42 | 0.9% | 0.403 | 6.810 | 0.084 | **\$37.86** | 37.8% |
+| **Gemini 4 Argon (Medium)** | 10 | 609 | 13.0% | 3.822 | 72.388 | 0.498 | **\$28.99** | 28.9% |
+| **Claude Opus 5.5 (High)** | 1 | 22 | 0.5% | 0.193 | 1.022 | 0.067 | **\$11.79** | 11.8% |
+| **Gemini 4 Argon (High)** | 3 | 195 | 4.2% | 1.035 | 24.619 | 0.226 | **\$9.81** | 9.8% |
+| **Gemini 3.8 Flash (High)** | 27 | 2,252 | 48.0% | 10.650 | 217.211 | 1.005 | **\$6.90** | 6.9% |
+| **Gemini 3.8 Flash (Medium)** | 17 | 1,569 | 33.4% | 6.127 | 146.003 | 0.719 | **\$4.55** | 4.5% |
+| **Gemini 4 Hydrogen (Medium)** | 1 | 5 | 0.1% | 0.326 | 0.402 | 0.011 | **\$0.38** | 0.4% |
+| **Total (Development)** | *50* | **4,694** | **100.0%** | **22.557** | **468.454** | **2.611** | **\$100.27** | **100.0%** |
 
 ---
 
@@ -47,19 +47,18 @@
 
 | Milestone / Phase | Sessions | Turns | Tool Calls (Errors) | Total Cost | Share of Spend |
 |---|---|---:|---:|---:|---:|
-| **Spec & Phase 0** | `S01–S02` | 207 | 253 (57) | **\$19.80** | 20.0% |
-| **Phase 1: Core & Unit Tests** | `S03` | 187 | 163 (7) | **\$2.95** | 3.0% |
+| **Spec & Phase 0** | `S01–S02` | 207 | 253 (57) | **\$19.80** | 19.7% |
+| **Phase 1: Core & Unit Tests** | `S03` | 187 | 163 (7) | **\$2.95** | 2.9% |
 | **Phase 2: UBT Subagents (`D:\UnrealEngine`)** | `S04–S09` | 328 | 305 (83) | **\$0.57** | 0.6% |
-| **Phase 3–4: V1 Concord & MSBuild Triggers** | `S10–S11` | 517 | 662 (124) | **\$33.45** | **33.8%** |
-| **V2 Clean-Slate & Break-Mode / Settings** | `S12–S23` | 1,414 | 1,370 (293) | **\$4.51** | 4.6% |
-| **Icon, Reviews, Stats & Maintenance** | `S24–S44` | 1,202 | 1,185 (229) | **\$7.08** | 7.2% |
-| **Integration Tests (`MiniUnreal` & `--profile-lyra`)** | `S45–S47` | 228 | 302 (48) | **\$10.09** | 10.2% |
-| **Break-Mode AD7 `FIF_MODULE` Perf** | `S49` | 53 | 50 (18) | **\$2.16** | 2.2% |
-| **Multi-Instance Coordination (`HiveLock`)** | `S51` | 120 | 134 (31) | **\$17.64** | 17.8% |
-| **Meta / Chat Analysis / Skills** | `S48, S50` | 130 | 129 (25) | **\$0.62** | 0.6% |
-| **Total** | **`S01–S51`** | **4,386** | **4,553 (915)** | **\$98.88** | **100.0%** |
+| **Phase 3–4: V1 Concord & MSBuild Triggers** | `S10–S11` | 517 | 662 (124) | **\$33.45** | **33.4%** |
+| **V2 Clean-Slate & Break-Mode / Settings** | `S12–S23` | 1,414 | 1,370 (293) | **\$4.51** | 4.5% |
+| **Icon, Reviews, Stats & Maintenance** | `S24–S44` | 1,202 | 1,185 (229) | **\$7.08** | 7.1% |
+| **Integration Tests (`MiniUnreal` & `--profile-lyra`)** | `S45–S47` | 228 | 302 (48) | **\$10.09** | 10.1% |
+| **Skills / Perf Research & Break-Mode AD7 Perf** | `S48–S49` | 67 | 67 (22) | **\$2.42** | 2.4% |
+| **Multi-Instance Coordination (`HiveLock`)** | `S51` | 544 | 543 (115) | **\$19.38** | 19.3% |
+| **Total (Development)** | **`S01–S49, S51`** | **4,694** | **4,850 (978)** | **\$100.27** | **100.0%** |
 
-*Note: V2 Clean-Slate through Polish (`S12–S44`) delivered 2,616 turns of working, shipped code for **\$11.59 total** using Gemini 3.8 Flash (High/Medium) and targeted Argon reviews.*
+*Note: V2 Clean-Slate through Polish (`S12–S44`) delivered 2,616 turns of working, shipped code for **\$11.59 total** using Gemini 3.8 Flash (High/Medium) and targeted Argon reviews. Separately, the 10 Meta sessions (`S50`, `S52–S60`) for chat extraction, process analysis, and slide deck creation cost **\$11.34** (574 turns, 597 tool calls).*
 
 ---
 
@@ -69,20 +68,21 @@
 
 | Tier | Actual Cost (With Cache) | Counterfactual Cost (Uncached Input Rate) | Dollars Saved by Cache |
 |---|---:|---:|---:|
-| **Claude Opus 5.5** | \$49.64 | \$137.75 | **\$88.11** |
-| **Gemini 4 Argon** | \$38.80 | \$130.95 | **\$92.16** |
-| **Gemini 3.8 Flash** | \$10.23 | \$34.28 | **\$24.05** |
-| **Gemini 4 Hydrogen** | \$0.21 | \$0.45 | **\$0.24** |
-| **Total** | **\$98.88** | **\$303.44** | **\$204.56 (67.4%)** |
+| **Claude Opus 5.5** | \$49.65 | \$137.75 | **\$88.10** |
+| **Gemini 4 Argon** | \$38.80 | \$130.95 | **\$92.15** |
+| **Gemini 3.8 Flash** | \$11.45 | \$38.69 | **\$27.24** |
+| **Gemini 4 Hydrogen** | \$0.38 | \$0.62 | **\$0.24** |
+| **Total (Development)** | **\$100.27** | **\$308.01** | **\$207.74 (67.4%)** |
 
-*(Note: Individual tier sums match \$98.88 after per-model rounding.)*
+*(Note: Individual tier sums match \$100.27 after per-model rounding.)*
 
 ### 4.2 Direct Proportional Cost of Tool Error Loops
 
 Using tool failure share (`error_calls / total_calls`) as a proportional proxy for wasted turns:
 - **Session 10:** `100 / 559` (17.9%) × \$30.93 = **\$5.53** in direct failing tool steps (excluding the larger downstream cost of Concord rework).
+- **Session 51:** `115 / 543` (21.2%) × \$19.38 = **\$4.10** in direct failing tool steps.
 - **Session 21:** `96 / 456` (21.1%) × \$1.77 = **\$0.37** (Flash High kept the dollar penalty tiny despite 96 errors).
-- **All 51 Sessions Combined:** **\$20.37** proportional direct cost across all 915 tool errors.
+- **All 50 Development Sessions Combined:** **\$20.33** proportional direct cost across all 978 tool errors.
 
 ---
 

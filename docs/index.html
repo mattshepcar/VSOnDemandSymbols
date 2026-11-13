@@ -1881,7 +1881,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" id="heroSlide" data-notes="This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the lessons we extracted.">
+    <section class="slide active" id="heroSlide" data-notes="This started as a weekend project to fix slow UE5 debugging in Visual Studio. I built it with Google Antigravity inside Visual Studio 2026 on a £1.89 one-month trial of Google AI Pro. Over 7 days, that turned into ~50 sessions, ~4,400 turns, and about $100 of equivalent API spend. The result is a working VSIX extension. Here is what happened and what I learned.">
       <div class="hero-bg-layer hero-bg-sunburst" aria-hidden="true">
         <div class="sunburst-slash"></div>
       </div>
@@ -1964,7 +1964,7 @@
     </section>
 
     <!-- THE PROBLEM & SOLUTION: UE5 SYMBOL LOADING -->
-    <section class="slide" data-notes="If you've ever launched Unreal Engine 5 Editor under the Visual Studio debugger, you know the pain—it takes ages to start up. On a project like Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and by default Visual Studio eagerly loads ~950 PDBs at startup—even though you only have breakpoints in a tiny fraction of them. On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
+    <section class="slide" data-notes="Launching Unreal Engine 5 Editor under the Visual Studio debugger takes ages. On Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and Visual Studio loads ~950 PDBs at startup by default even if you only have breakpoints in a few files. On Demand Symbols switches VS to 'load only specified modules' mode, fills IncludeList from your breakpoints before launch, and loads call-stack PDBs only when you hit a break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%–62% (22.1s down to 8.5s warm).">
       <h2>UE5 + F5 = <span class="danger">Tea break time</span> 🍵</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -1981,7 +1981,7 @@
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
     </section>
 
-<section class="slide" data-notes="Across 7 calendar days (50 development sessions), we logged ~19 hours of active AI + pilot time (excluding idle gaps >10 min). Token volume hit 494M total: 22.6M uncached input, 468M cached read (95.4% cache hit rate, saving $208), and 2.6M output. The AI made 4,850 tool calls—and 20% (978) failed on the first try. Total equivalent API bill for building the extension: $100.27 (~$100)—all covered by that £1.89 Google AI Pro trial.">
+<section class="slide" data-notes="Across 7 days (50 sessions), we logged ~19 hours of active AI and pilot time, excluding idle gaps over 10 minutes. Token volume hit 494M total: 22.6M uncached input, 468M cached read (a 95.4% cache hit rate that saved $208), and 2.6M output. The AI made 4,850 tool calls, and 20% (978) failed on the first try. Total equivalent API spend was $100.27 (~$100), all covered by the £1.89 trial.">
       <h2>The project <span class="accent">by the numbers</span>.</h2>
       <div class="stats-grid-2x2">
         <div class="stat">
@@ -2003,7 +2003,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="People often ask what ~494M tokens actually costs the planet. Using conservative published inference benchmarks (~240 Wh per million blended tokens—especially realistic given our 95.4% prompt cache hit rate), the entire 7-day build used ~120 kWh of electricity: enough to power 1 typical UK home for ~17 days (at Ofgem's ~6.85 kWh/day average, or ~420 UK homes for an hour). Direct data-center cooling water is ~150 L, or ~2–3 showers—roughly the water needed to grow a single cup of coffee. At the UK grid average (0.196 kg CO2e/kWh, DESNZ), that's ~24 kg CO2, or ~1 rainforest tree working for a year (~90 miles in a petrol car). At macro scale, global data centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026 (AI's share jumping from ~20% to ~37%), and agentic loops run dozens of prompts per task, not one—cheap tokens still have a real-world bill. And the joking equivalent in junior developers? About 2.4 junior devs—who saved 1 bucket of tears shed over Visual Studio APIs.">
+<section class="slide" data-notes="Using ~240 Wh per million blended tokens (with our 95.4% cache hit rate), the 7-day build used ~120 kWh of electricity. That powers 1 typical UK home for ~17 days (at Ofgem's ~6.85 kWh/day average), or ~420 UK homes for an hour. Direct cooling water is ~150 L, about 2–3 showers or the water needed to grow one cup of coffee. At the UK grid average (0.196 kg CO2e/kWh, DESNZ), that is ~24 kg CO2, or ~1 rainforest tree working for a year (~90 petrol-car miles). At macro scale, global data-centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share rising from ~20% to ~37%. And agentic coding runs dozens of prompts per task.">
       <h2>What 494M tokens <span class="accent">cost the planet</span>.</h2>
       <div class="stats-grid-2x2 compact">
         <div class="stat">
@@ -2027,7 +2027,7 @@
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*Conservative UK estimate (~240 Wh/MTok, 95.4% cached, 0.196 kg CO₂e/kWh).</p>
     </section>
 
-<section class="slide" data-notes="Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product (~$12–$14). Days 5-6 added automated real-world benchmarking and performance tuning (~$13). Day 7 tackled multi-instance edge-case bug fixes (~$19–$20), which we caught and simplified mid-flight.">
+<section class="slide" data-notes="Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that complex V1 approach stalled after burning $31, so we deleted 7,255 lines and started clean. That reset was painless: it had only been a few hours of work, and the AI documented all its lessons before handing off to V2. Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14). Days 5–6 added automated benchmarking and performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20), which we simplified mid-flight.">
       <div class="slide-center-wrap">
       <h2>Seven days, <span class="accent">one aborted approach</span>.</h2>
       <div class="timeline">
@@ -2078,7 +2078,7 @@
       <img class="act-photo" data-act-img="act2" alt="Act II: Catching a Tailwind" />
     </section>
 
-<section class="slide" data-notes="I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI dived straight into VS's own installed DLLs (233 binary probes) to reflect on exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up. (Bonus Brian Blessed / Flash Gordon Hawkmen energy: 'DIVE!' straight into the binaries.)">
+<section class="slide" data-notes="I could not have built this without AI, because Visual Studio's SDK is sparse and often undocumented. Instead of hunting dead forum threads, the AI ran 233 binary probes against VS's own installed DLLs to inspect interfaces, and ran 168 web searches for undocumented config schemas. Doing that by hand would have been soul-destroying.">
       <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -2097,7 +2097,7 @@
       <p class="takeaway">When docs are missing, yell <strong>“DIVE!”</strong>—let AI plunge straight into the binaries. 🦅</p>
     </section>
 
-<section class="slide" data-notes="Normally, testing a Visual Studio extension against UE5 means manually pressing F5, waiting for Lyra to load, and checking output logs over and over—and a solo developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, building its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
+<section class="slide" data-notes="Testing a VS extension against UE5 usually means pressing F5, waiting for Lyra to load, and checking output logs by hand. A solo developer wouldn't spend days writing Windows ROT COM automation just to skip F5. For the AI, building that harness was easy. It wrote a tool that launches VS, loads the Unreal project, sets breakpoints, and records timings.">
       <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-test.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -2114,7 +2114,7 @@
       <p class="takeaway">Ask the AI to <strong>build its own test harness</strong>—even for GUI apps.</p>
     </section>
 
-<section class="slide" data-notes="Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Fly, my beauties!'—fittingly, these were Flash subagents. Six autonomous read-only Gemini 3.8 Flash subagents explored the Unreal Engine source tree in parallel to verify module naming rules. Together they executed 55 minutes 20 seconds of aggregate research (328 turns, 305 tool calls) in just 22 minutes of human wall-clock time—for $0.57 ($0.62/hour). Subagents deliver two huge wins: (1) 2.5x wall-clock compression, cutting dead wait time so you stay engaged instead of tabbing away; and (2) context isolation—all 305 file searches stay out of your main session, keeping it lean and far away from compaction.">
+<section class="slide" data-notes="Six read-only Gemini 3.8 Flash subagents searched the Unreal Engine source tree in parallel to verify module naming rules. They ran 55 minutes 20 seconds of total research (328 turns, 305 tool calls) in 22 minutes of human clock time, for $0.57 ($0.62/hour). Subagents give you two wins: 2.5x faster wall-clock time so you stay engaged, and context isolation so 305 file searches never bloat your main session.">
       <h2>“<span class="accent">Fly, my beauties!</span>”<br />Parallel wingmen cut the wait.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -2131,7 +2131,7 @@
       <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
     </section>
 
-<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models were only good for autocomplete and boilerplate. By late 2026, lightweight models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.5/5.6 Mini, and DeepSeek V4 Flash have crossed a threshold: they pack lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec—routinely matching what last generation's frontier flagships scored on coding benchmarks like SWE-bench, at 5–10x lower cost. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
+<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.5/5.6 Mini, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec. On coding benchmarks like SWE-bench, they match last generation's frontier flagships at 5–10x lower cost. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
       <div class="slide-center-wrap">
       <h2>Fast &amp; cheap models <span class="accent">got seriously good</span>. ⚡</h2>
       <ul class="big-list big-list-lg">
@@ -2156,7 +2156,7 @@
       <img class="act-photo" data-act-img="act3" alt="Act III: Turbulence and Headwinds" />
     </section>
 
-<section class="slide" data-notes="Built over 7 days across 50 development sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC—nearly 60% of all code ever written was deleted. Three root causes drove the churn: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not asking 'why?' soon enough when the model went down a blind alley. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions.">
+<section class="slide" data-notes="Built over 7 days across 50 sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. We had 26,251 insertions and 15,470 deletions, ending at 10,781 net lines of code. Nearly 60% of all code written was deleted. Three things drove the churn: overspecifying on Day 1 before proving the core loop, letting the AI build complex custom architectures early on, and not asking 'why?' soon enough when it went down a blind alley. By contrast, small surgical edits later averaged $0.08 and zero compactions.">
       <h2><span class="accent">60%</span> of all code written was deleted.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -2175,7 +2175,7 @@
       <p class="takeaway">Overspecifying on Day 1 + not asking <strong>“why?”</strong> drove the churn—surgical edits averaged <strong>$0.08</strong>.</p>
     </section>
 
-<section class="slide" data-notes="AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 and 2h 45m getting stuck in error loops before we deleted 7,255 lines). GitClear's code-change research and InfoQ coverage of Google's agent telemetry describe AI as stuck in a 'perpetual V1': it writes fresh local code instead of reusing existing abstractions, so duplication goes up and refactoring goes down. Normally, throwing away 7,255 lines is agonizing—sunk cost, ego, days of typing. With AI, resetting is cheap: zero attachment (it was only a few hours' work), and the AI itself documented all hard-won lessons (sandbox build flags, what APIs failed, what worked) before handing off cleanly to V2. Once we pivoted to a simplified, native V2 plan, Gemini 3.8 Flash rebuilt the entire working extension in 4h 12m at a blistering 337 turns/hour for just $4.51 ($1.07/hr). Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
+<section class="slide" data-notes="AI generates abstractions with near-zero friction, so it will happily over-engineer. Our V1 Concord + MSBuild stack burned $33 and 2h 45m in error loops before we deleted 7,255 lines. GitClear's code-change research and InfoQ coverage of Google's agent telemetry describe the same trap as a 'perpetual V1': AI writes fresh local code instead of reusing abstractions, so duplication rises and refactoring drops. With AI, resetting is cheap. You have zero attachment after a few hours' work, and the AI documented what failed before handing off to V2. Once we simplified, Gemini 3.8 Flash rebuilt the working extension in 4h 12m at 337 turns/hour for $4.51 ($1.07/hr). Almost every big simplification happened when I asked: 'Do we actually need this?'">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <path d="M35 85 A65 65 0 0 1 165 85 Z"/>
         <path d="M35 85 L100 165 M78 85 L100 165 M122 85 L100 165 M165 85 L100 165"/>
@@ -2197,7 +2197,7 @@
       <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
     </section>
 
-<section class="slide" data-notes="Total dev spend was about $100. Everyone assumes you need the biggest frontier model for real code—that a cheap model won't survive. Yet Gemini 3.8 Flash handled over 80% of all turns at ~6 seconds each for just $11. Meanwhile Opus took just 1.4% of turns, cost $50, and ran up to 5x slower—turning a 100-turn session into half an hour of staring at a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely.">
+<section class="slide" data-notes="People assume you need the biggest frontier model for real code. Yet Gemini 3.8 Flash handled 81% of all turns at ~6 seconds each for $11. Opus took 1.4% of turns, cost $50, and ran up to 5x slower, turning a 100-turn session into half an hour of watching a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely.">
       <div class="slide-header-row">
         <h2 id="costHeading"><span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.</h2>
         <div class="toggle-group" role="group" aria-label="Cost view toggle">
@@ -2231,7 +2231,7 @@
       <p class="takeaway" id="costTakeaway"><strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--accent); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong></p>
     </section>
 
-<section class="slide" data-notes="Only 6 of 50 development sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Across the whole project, those 978 tool errors ate ~3.8 hours of active engineering time (~20% of total dev time) and ~$20 in direct spend—concentrated in the two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
+<section class="slide" data-notes="Only 6 of 50 sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Those 978 tool errors ate ~3.8 hours of active time (~20% of dev time) and ~$20 in spend, concentrated in two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early: once we wrote down the sandbox build flags, build hangs dropped to zero.">
       <h2><span class="accent">6</span> compacted sessions caused <span class="accent">71%</span> of spend.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -2263,7 +2263,7 @@
       <img class="act-photo" data-act-img="act4" alt="Act IV: Aviate, Navigate, Communicate" />
     </section>
 
-<section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Notice the asymmetry in mid-session switching: stepping DOWN from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating UP to Opus mid-bloat was disastrous—two mid-session switches burned $38 in just 27 minutes (42 turns) re-reading old history at 17–30s per turn. Start a fresh session with a 1-page handoff.">
+<section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Stepping down from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating up to Opus mid-bloat was disastrous: two mid-session switches burned $38 in 27 minutes (42 turns) re-reading old history at 17–30s per turn. Start a fresh session with a 1-page handoff instead.">
       <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -2280,7 +2280,7 @@
       <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
     </section>
 
-<section class="slide" data-notes="Single-focus prompts were 4x cheaper ($1.64 vs $6.93). Draft a plan and lean rulebooks first (AGENTS.md for build flags, PRESENTATION_RULES.md for this deck), paste exact logs for bugs ($2.16 perf fix), and keep docs and comments current—stale notes send agents on side quests. Cross-check in a fresh session to catch drift and confirmation bias.">
+<section class="slide" data-notes="Single-focus prompts were 4x cheaper ($1.64 vs $6.93). Draft a plan and lean rulebooks first (AGENTS.md for build flags, PRESENTATION_RULES.md for this deck), paste exact logs for bugs ($2.16 perf fix), and keep docs and comments current so stale notes do not send agents on side quests. Cross-check in a fresh session to catch drift and confirmation bias.">
       <h2>Single-focus plans, <span class="accent">cross-checked</span> fresh.</h2>
       <div class="split-2" style="align-items: center;">
         <div class="bars">
@@ -2309,7 +2309,7 @@
       <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
     </section>
 
-<section class="slide" data-notes="Reading back through 202 prompts, keeping the AI on track didn't require fancy prompt engineering—just blunt human reality checks. Whether it was catching hung builds, interrupting a 44-search spiral, noticing zombie references to deleted features, critiquing an off-center icon, or questioning 925 lines of over-engineering.">
+<section class="slide" data-notes="Reading back through 202 prompts, keeping the AI on track took blunt human reality checks rather than fancy prompt engineering. I caught hung builds, stopped a 44-search spiral, spotted zombie references to deleted features, flagged an off-center icon, and questioned 925 lines of over-engineering.">
       <div class="slide-center-wrap">
       <h2>Mid-flight <span class="accent">course corrections</span>. 🎛️</h2>
       <div class="quotes-list">
@@ -2337,7 +2337,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Five tips for the AI pilot: (1) Use AI as a research engine first—probe undocumented APIs and codify rules in AGENTS.md before coding; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—execute the plan one step at a time, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
+<section class="slide" data-notes="Five habits from the cockpit: (1) probe undocumented APIs and write AGENTS.md first; (2) default to a fast workhorse model and save frontier models for fresh sessions; (3) work one step at a time and cross-check fresh to avoid compaction; (4) start minimal and iterate; (5) delete aggressively. Full disclosure: this was my first time vibe coding in anger, so take these as early field notes.">
       <div class="slide-center-wrap">
       <h2>5 <span class="accent">pre-flight</span> tips for AI projects. 📋</h2>
       <ul class="big-list">
@@ -2352,7 +2352,7 @@
     </section>
 
     <!-- ACT V DIVIDER -->
-    <section class="slide act-slide" data-notes="Before we land: this was one person, one small tool and one week. Some big questions are still open, and I don't have the answers yet. The next few slides cover the ones I keep coming back to: maintainability at scale, what we should still code ourselves, and how we keep sharing knowledge as people. Then a few more I think we should all be asking. (Quote from Airplane!, 1980 — Ted Striker on flying without a map.)">
+    <section class="slide act-slide" data-notes="Before we land: this was one person, one small tool, and one week. Some big questions are still open, and I do not have the answers yet. The next few slides look at the ethical cost, what we should still code ourselves, and how we keep sharing knowledge as people.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M40 120 C28 120 22 110 26 101 C30 92 42 90 48 95 C50 82 64 74 77 79 C84 68 102 68 109 80 C122 76 134 86 131 99 C140 100 145 110 140 117 C137 120 133 120 130 120 Z"/>
         <path d="M20 170 Q 70 150 100 150 Q 130 150 150 135" stroke-dasharray="6 6"/>
@@ -2371,7 +2371,7 @@
       <img class="act-photo" data-act-img="act5" alt="Act V: Uncharted Airspace" />
     </section>
 
-<section class="slide" data-notes="Before we talk about codebases and teams, it is worth asking what this costs outside our own editor. Three ethical questions hang over AI coding. (1) Training data: models were trained on billions of lines of public open-source code without explicit consent or attribution. When an LLM absorbs GPL code and emits a functional equivalent into a proprietary repo, that is effectively 'license laundering'—stripping copyleft obligations and credit. (2) Energy and water: global data centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share jumping from ~20% to ~37%. A single large AI data centre can use 1 to 5 million gallons of water a day for cooling—the same as a town of 30,000 to 50,000 people—plus the indirect water used to generate that electricity. And agentic coding runs dozens of prompts per task, not one. (3) The job itself: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) contracting into a 'barbell' market—seniors are in demand to steer and review AI, while the boilerplate tasks that used to be the junior apprenticeship runway are disappearing. The job is shifting from writing code to auditing, architecting, and owning the outcome.">
+<section class="slide" data-notes="Three ethical questions hang over AI coding. (1) Training data: models learned from billions of lines of public open-source code without consent or credit. When an LLM absorbs GPL code and emits a working equivalent into a proprietary repo, that strips copyleft obligations ('license laundering'). (2) Cooling water: a single large AI data centre can use 1 to 5 million gallons of water a day, matching a town of 30,000 to 50,000 people, plus the indirect water used to generate its electricity. (3) The job: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer and review AI, while the boilerplate work that used to train juniors is disappearing.">
       <div class="slide-center-wrap">
       <h2>What’s the <span class="accent">cost of the fuel</span>? 🌍</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The ethical bill behind “effortless” code.</p>
@@ -2384,7 +2384,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Open question 2. This was a small, self-contained tool with one author, so AI-written code was easy to live with. Bigger, long-lived codebases are harder: 2026 write-ups (GitClear's code-change research, InfoQ coverage of Google's agent telemetry) describe AI as stuck in a 'perpetual V1'—writing fresh local code instead of reusing abstractions, so duplication rises and refactoring drops—and warn of 'convenient debt' (code that compiles and passes tests, yet nobody chose on purpose or understands). That's why humans must own the interfaces and boundaries while AI fills the implementation, and why it is dangerous to hand everything to the AI. In 2026 threads on r/ExperiencedDevs and r/learnprogramming, people describe skill atrophy: blank-screen panic when the AI is down, and approving code they no longer really understand. Keep the thinking work: architecture, core algorithms, concurrency, security-sensitive paths and error recovery. Debug first: form your own hypothesis before you paste the stack trace. Delegate the drudge work: boilerplate, test stubs, glue code, and digging through undocumented SDKs, which was the superpower on this project. Offload memory, not thinking. Airline pilots have the same problem with autopilot, and they hand-fly regularly to keep their skills current.">
+<section class="slide" data-notes="This was a small, single-author tool. Long-lived codebases are harder: AI tends to create 'convenient debt'—code that compiles and passes tests, yet nobody chose on purpose or understands. It is tempting to hand everything to the AI, and people on r/ExperiencedDevs and r/learnprogramming already describe skill atrophy and blank-screen panic when the AI is down. Keep the thinking work: architecture, interfaces, core algorithms, concurrency, and error recovery. Debug first by forming your own theory before pasting a stack trace. Delegate boilerplate, glue code, and SDK digging. Offload memory, not thinking. Airline pilots hand-fly regularly to stay current.">
       <div class="slide-center-wrap">
       <h2>What should we <span class="accent">still code ourselves</span>? ✍️</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Resisting the urge to let AI do everything.</p>
@@ -2397,7 +2397,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Open question 3. AI coding can be a very solitary activity: one person, one chat window, and all the lessons stay in that person's transcript. 2026 articles on mentoring in AI teams make the same point: the friction that used to spread knowledge (juniors writing boilerplate, seniors reviewing small PRs, pairing) is disappearing. Ideas: share the flight logs by committing the rulebooks, decisions and handoff docs (AGENTS.md, DECISIONS.md) so the whole team benefits, not just one person's chat. Explain AI output to a human through walkthroughs and pairing, so understanding is shared and not just merged. Mentor judgement, not syntax: juniors try first, AI critiques, and seniors coach the 'why'. Use the time AI saves to talk to each other more, not less.">
+<section class="slide" data-notes="AI coding can be solitary: one person, one chat window, and all the lessons stay in that person's transcript. The old friction that spread knowledge—juniors writing boilerplate, seniors reviewing small PRs, pairing—is fading. Share the flight logs by committing rulebooks and decision docs (AGENTS.md, DECISIONS.md) so the whole team learns. Explain AI output to another person through walkthroughs and pairing. Focus on the 'why' (architecture and algorithms) instead of style nitpicks: juniors try first, AI critiques, and seniors coach the design.">
       <div class="slide-center-wrap">
       <h2>Keeping the <span class="accent">human</span> in the crew. 🧑‍🤝‍🧑</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Sharing knowledge with each other, not just with AI.</p>
@@ -2410,7 +2410,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Other questions we should be asking. (1) Is it actually faster? In METR's 2025 randomised trial, experienced open-source developers believed AI made them about 20% faster, but they were measured as 19% slower. The 2026 follow-ups say this is hard to measure as tools change, but feeling fast is not the same as shipping fast. (2) Who reviews the flood? 2026 data from LinearB and Faros says review is now the bottleneck. AI PRs wait longer and senior reviewers burn out, so the risk is rubber-stamping—use the 'explain it' rule at review time and own every commit, because slop becomes 2am debugging hell. (3) Where do the next seniors come from, if juniors never do the grunt work that used to teach them? Stanford Digital Economy data shows early-career hiring (ages 22–25) contracting into a 'barbell' market—seniors in demand to steer AI, junior runways shrinking. (4) Who owns the bugs? 'The AI wrote it' is never an excuse in a post-mortem. There are also licensing and training-data questions ('license laundering' when models trained on uncredited GPL/OSS emit equivalents into proprietary repos), and questions about which code we may send to cloud models. (5) What happens when the subsidies end? This whole project ran on a £1.89 trial, but the equivalent API bill was about $100. Teams report $200 to $2,000+ per engineer per month on tokens. What happens when the subsidies end? Code is cheap now; understanding it is the expensive part.">
+<section class="slide" data-notes="(1) In METR's 2025 trial, experienced developers thought AI made them 20% faster, yet they measured 19% slower. Feeling fast differs from shipping fast. (2) LinearB and Faros data shows review is now the bottleneck: AI PRs wait longer, reviewers burn out, and rubber-stamping rises, so own every commit. (3) If AI does the grunt work, how do juniors build the experience to become seniors? (4) 'The AI wrote it' never works in a post-mortem, and cloud models raise copyright and data-policy questions. (5) My £1.89 trial equalled ~$100 in API usage, and teams report $200 to $2,000+ per engineer a month. What happens when the subsidies end?">
       <div class="slide-center-wrap">
       <h2>Questions we <span class="accent">should also</span> be asking. 🧭</h2>
       <ul class="big-list big-list-lg">
@@ -2425,7 +2425,7 @@
     </section>
 
     <!-- AND FINALLY DIVIDER -->
-    <section class="slide act-slide" data-notes="And finally: the black box. Every stat in this talk came from the AI reading its own flight recorder: all 50 development chat logs. (Fun fact: aircraft black boxes are actually bright orange so they are easy to find in the wreckage.) So yes, the AI marked its own homework, and then wrote the slides about how well it did.">
+    <section class="slide act-slide" data-notes="Every stat in this talk came from the AI reading its own flight recorder: all 50 development chat logs. Yes, the AI marked its own homework, then wrote the slides about how well it did.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <rect x="45" y="60" width="110" height="90" rx="8"/>
         <path d="M45 82 L155 82 M45 128 L155 128" stroke-dasharray="5 5"/>
@@ -2439,7 +2439,7 @@
       <img class="act-photo" data-act-img="finale" alt="And Finally: Inside the Black Box" />
     </section>
 
-<section class="slide" data-notes="Every stat in this talk came from the AI reading its own dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 32 sessions (~12 active hours), that analysis and deck-building pass cost $39.03 ($1.26/slide across 31 slides)—with 27% of the bill coming from a single 13-minute Opus session (1.3% of turns) used to research and write the 'Uncharted Airspace' open-questions slides.">
+<section class="slide" data-notes="These slides were 'vibe decked': prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 32 sessions (~12 active hours), the log analysis and deck build cost $39.03 ($1.26/slide). Of that, 27% came from a single 13-minute Opus session (1.3% of turns) used to research and write the Act V open-questions slides.">
       <h2>Introspection &amp; <span class="accent">vibe decking</span>.</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50+ chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
       <div class="stats-grid-2x2 compact">
@@ -2462,7 +2462,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Thanks for flying with us! Questions? (If they're hard, I'll defer to my co-pilot, Claude.)">
+<section class="slide" data-notes="Thanks for flying with us! Questions?">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <svg viewBox="0 0 360 150" width="380" height="158" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Aeroplane landing on runway" style="color: var(--accent);">
           <!-- Descending glide path -->
@@ -2502,7 +2502,7 @@
     </section>
 
     <!-- SECRET SLIDE -->
-    <section class="slide" data-secret="true" data-notes="Secret Slide! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
+    <section class="slide" data-secret="true" data-notes="Secret Slide! We launched 6 Flash subagents in parallel.">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <img id="secretSlideImg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>

@@ -1750,34 +1750,32 @@
       <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
     </section>
 
-<section class="slide" data-notes="Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. The best way to keep prompts single-focus is to have the AI write a step-by-step implementation plan first (a Design Gate), review and approve the steps, and then execute one step per prompt or session. Combine that with telemetry-backed bug reports (paste exact output/timing logs—that got us a $2.16 perf fix) and challenging complexity early.">
-      <h2>Single-focus prompts cost <span class="accent">4× less</span>.</h2>
-      <div class="bars">
-        <div class="bar-row">
-          <div class="bar-header">
-            <span>Single-Focus Prompt</span>
-            <span class="accent">$1.64</span>
+<section class="slide" data-notes="Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts—4x cheaper. The best way to keep prompts single-focus is to have the AI draft a step-by-step plan and lean rulebooks first (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck), execute one step per prompt (with telemetry-backed bug reports—pasting exact logs got us a $2.16 perf fix), and spin up another agent with a fresh context to cross-check each completed step against the rules and deterministic tests. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
+      <h2>Single-focus plans, <span class="accent">cross-checked</span> fresh.</h2>
+      <div class="split-2" style="align-items: center;">
+        <div class="bars">
+          <div class="bar-row">
+            <div class="bar-header">
+              <span>Single-Focus Prompt</span>
+              <span class="accent">$1.64</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill accent-bg" data-width="24%" style="width: 24%;"></div></div>
           </div>
-          <div class="bar-track"><div class="bar-fill accent-bg" data-width="24%" style="width: 24%;"></div></div>
-        </div>
-        <div class="bar-row">
-          <div class="bar-header">
-            <span>Bundled Multi-Part Prompt</span>
-            <span class="danger">$6.93</span>
+          <div class="bar-row">
+            <div class="bar-header">
+              <span>Bundled Multi-Part Prompt</span>
+              <span class="danger">$6.93</span>
+            </div>
+            <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" style="width: 100%;"></div></div>
           </div>
-          <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" style="width: 100%;"></div></div>
+          <p class="stat-label" style="margin: 0; font-size: clamp(1rem, 1.3vw, 1.2rem);"><strong>4× cheaper</strong> · 85 vs. 204 avg. tool calls</p>
         </div>
+        <ul class="big-list" style="gap: clamp(0.9rem, 2vh, 1.4rem);">
+          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">01</span><span><strong>Plan &amp; codify first</strong> — draft a step-by-step plan and lean rulebooks (<code>AGENTS.md</code>), then run one step per prompt.</span></li>
+          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">02</span><span><strong>Cross-check fresh</strong> — spin up another agent; never let the authoring session grade its own work.</span></li>
+          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">03</span><span><strong>Demand proof</strong> — passing tests and benchmarks beat “it should work.”</span></li>
+        </ul>
       </div>
-      <p class="takeaway">Have AI write a <strong>step-by-step plan</strong> first—then execute <strong>one step per prompt</strong>.</p>
-    </section>
-
-<section class="slide" data-notes="One of the highest-leverage habits in late 2026 is planning and context engineering: get the AI to write a step-by-step implementation plan and lean rulebooks (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck), work through the plan one step at a time, and spin up another agent with a fresh context to cross-check each completed step against the rules. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
-      <h2>Let AI write the rules—then <span class="accent">cross-check</span> fresh.</h2>
-      <ul class="big-list">
-        <li><span class="list-num">01</span><span><strong>Plan &amp; codify first</strong> — have AI draft a step-by-step plan and lean rulebooks (<code>AGENTS.md</code>), then work one step at a time.</span></li>
-        <li><span class="list-num">02</span><span><strong>Cross-check with another agent</strong> — never let the authoring session grade its own work.</span></li>
-        <li><span class="list-num">03</span><span><strong>Demand deterministic proof</strong> — passing tests and benchmarks beat “it should work.”</span></li>
-      </ul>
       <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
     </section>
 
@@ -1907,7 +1905,7 @@
       <p class="subtitle">&ldquo;This is your autopilot speaking. I&rsquo;ve reviewed my own flight logs, and I&rsquo;m delighted to report I was brilliant.&rdquo;</p>
     </section>
 
-<section class="slide" data-notes="Every stat in this talk came from the AI reading its own dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 20 sessions (~10 active hours), that analysis and deck-building pass cost $31.49 (~$1/slide across 32 slides)—with 33% of the bill coming from a single 13-minute Opus session (2.1% of turns) used to research and write the 'Uncharted Airspace' open-questions slides.">
+<section class="slide" data-notes="Every stat in this talk came from the AI reading its own dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 20 sessions (~10 active hours), that analysis and deck-building pass cost $31.49 (~$1/slide across 31 slides)—with 33% of the bill coming from a single 13-minute Opus session (2.1% of turns) used to research and write the 'Uncharted Airspace' open-questions slides.">
       <h2>Self-reflection &amp; <span class="accent">vibe decking</span>.</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50+ chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
       <div class="stats-grid-2x2 compact">
@@ -1969,8 +1967,8 @@
       </div>
     </section>
 
-    <!-- SECRET SLIDE 32 -->
-    <section class="slide" data-secret="true" data-notes="Secret Slide 32! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
+    <!-- SECRET SLIDE 31 -->
+    <section class="slide" data-secret="true" data-notes="Secret Slide 31! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <img id="secretSlideImg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>

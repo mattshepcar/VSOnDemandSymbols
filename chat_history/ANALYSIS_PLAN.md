@@ -76,6 +76,7 @@ flowchart TD
     D4["4. Token Economics & Cost Modeling"] --> Plan
     D5["5. Subagent Delegation Dynamics"] --> Plan
     D6["6. Verification & Sandbox Engineering"] --> Plan
+    D7["7. Knowledge Discovery & API Resolution"] --> Plan
     Plan --> Guidelines["Future AI Engineering Guidelines"]
 ```
 
@@ -185,6 +186,17 @@ How did verification evolve from blind guessing to rock-solid automated suites?
 3. **The Breakthrough: Out-of-Sandbox COM Integration Tests (`tests/VSOnDemandSymbols.IntegrationTests`):**
    - Spawning devenv, connecting via ROT COM, driving breakpoints in MiniUnreal and Lyra without pilot intervention.
    - Analyzing Sessions 45–47 where this test harness was designed and verified.
+
+---
+
+### Dimension 7: Knowledge Discovery & API Resolution Strategies
+
+How did the agents actually discover Visual Studio debugger APIs, Unreal Engine rules, and correct fixes—through Microsoft documentation (`search_web`), local DLL reflection/disassembly (`System.Reflection`, `ildasm.exe`), source-code inspection, or trial-and-error?
+
+#### Key Questions:
+1. **Channel Mix:** Quantify `search_web` (`learn.microsoft.com`), `.NET Reflection` against VS/NuGet DLLs, `ildasm.exe` disassembly, and edit-compile-fail trial-and-error across all 51 sessions.
+2. **Why Agents Preferred DLL Reflection/Disassembly Over Docs:** When did inspecting `Common7\IDE` and `.nuget\packages` assemblies succeed immediately vs. when did missing docs (e.g., Unified Settings `registration.json`) trigger `search_web` + trial-and-error storms?
+3. **Actionable Guidance:** How should future AI projects structure local SDK/API inspection tools so agents verify exact signatures on Turn 1 instead of guessing?
 
 ---
 

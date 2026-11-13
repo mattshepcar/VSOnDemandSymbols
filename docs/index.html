@@ -112,8 +112,15 @@
       padding: 7vh 8vw 11vh 8vw;
       display: none;
       flex-direction: column;
-      justify-content: center;
+      justify-content: safe center;
       gap: clamp(1.75rem, 3.8vh, 3.25rem);
+      transition: padding-top 0.2s ease, padding-bottom 0.2s ease, gap 0.2s ease;
+    }
+
+    body.notes-open .slide {
+      padding-top: 3vh;
+      padding-bottom: 22vh;
+      gap: clamp(1rem, 2.4vh, 2rem);
     }
 
     .slide.active {
@@ -411,31 +418,54 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: var(--notes-bg);
+      background: color-mix(in srgb, var(--notes-bg) 82%, transparent);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border-top: 2px solid var(--accent);
-      padding: 1.25rem 8vw 1.5rem 8vw;
+      padding: 0.95rem 4vw 1.15rem 2.5vw;
       z-index: 25;
       display: none;
-      max-height: 32vh;
+      max-height: 24vh;
       overflow-y: auto;
     }
 
-    .notes-drawer.open { display: block; }
+    .notes-drawer.open {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.25rem;
+    }
 
     .notes-label {
       font-size: 0.85rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
+      line-height: 1.25;
       color: var(--accent);
-      margin-bottom: 0.4rem;
+      flex-shrink: 0;
+      white-space: nowrap;
+      padding-top: 0.15rem;
+    }
+
+    .notes-hint {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      opacity: 0.75;
     }
 
     .notes-text {
       font-size: 1.05rem;
-      line-height: 1.55;
+      line-height: 1.5;
       color: var(--ink);
-      max-width: 78ch;
+      flex: 1;
+      max-width: 90ch;
+    }
+
+    .stats-grid-2x2.compact .stat-num {
+      font-size: clamp(2.2rem, 3.8vw, 3.4rem);
+      white-space: nowrap;
     }
 
     /* ==========================================================================
@@ -951,7 +981,7 @@
       <p class="subtitle">“Please keep your seatbelts fastened at all times.” 💺</p>
     </section>
 
-<section class="slide" data-notes="Built Nov 5 to Nov 12 across 50 development sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC—nearly 60% of all code ever written was deleted. Three root causes drove the churn: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not asking 'why?' soon enough when the model went down a blind alley. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions.">
+<section class="slide" data-notes="Built over 7 days across 50 development sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC—nearly 60% of all code ever written was deleted. Three root causes drove the churn: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not asking 'why?' soon enough when the model went down a blind alley. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions.">
       <h2><span class="accent">60%</span> of all code written was deleted.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -992,7 +1022,7 @@
       <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
     </section>
 
-<section class="slide" data-notes="Exact development spend was $100.27 (~$100). Everyone assumes you have to throw the big, expensive frontier model at real code—that the cheap tier won't survive. Meanwhile, Gemini 3.8 Flash handled 81% of all turns (3,821) for just $11.45 (11% of spend) at 5.7s–6.3s per turn (p90 = 11–12s)—to quote Brian Blessed in the other Flash: 'Gordon's alive!' Gemini 4 Argon handled 17% of turns (804) for $38.80 (13.4s–15.5s avg—2.3x slower). Claude Opus 5.5 handled 1.4% of turns (64) yet cost $49.65 (16.7s–30.2s avg, p90 = 81s—up to 5x slower). That latency gap is a hidden human tax: over 100 turns, Opus adds 25–40 minutes of dead waiting time. At ~6s per turn you stay in flow, reading diffs and steering; at 30–80s you tab away, get distracted, and stop supervising closely. Toggle 'Without Cache' to see prompt caching savings ($308.01 down to $100.27).">
+<section class="slide" data-notes="Total dev spend was about $100. Everyone assumes you need the biggest frontier model for real code—that a cheap model won't survive. Yet Gemini 3.8 Flash handled over 80% of all turns at ~6 seconds each for just $11. Meanwhile Opus took just 1.4% of turns, cost $50, and ran up to 5x slower—turning a 100-turn session into half an hour of staring at a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely.">
       <div class="slide-header-row">
         <h2 id="costHeading"><span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.</h2>
         <div class="toggle-group" role="group" aria-label="Cost view toggle">
@@ -1215,25 +1245,25 @@
       <p class="subtitle">&ldquo;This is your autopilot speaking. I&rsquo;ve reviewed my own flight logs, and I&rsquo;m delighted to report I was brilliant.&rdquo;</p>
     </section>
 
-<section class="slide" data-notes="Every stat in this talk came from the AI reading all 50+ dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64 total) and cross-checked by another member of the cabin crew against PRESENTATION_RULES.md that the AI wrote itself. Across 14 sessions (~7 active hours, 823 turns, 87.9M tokens, 925 tool calls), that analysis and deck-building pass cost $25.69 ($0.83/slide across 31 slides)—56% Gemini 4 Hydrogen, 40% Claude Opus 5.5, and 4% Gemini 3.8 Flash. Notably, that 40% Opus share ($10.38) came from a single 24-turn (~13-minute) session—just 3% of turns and 2.3% of tokens—used to research and write the 4 'Uncharted Airspace' unanswered-questions slides and the 'Reading the Black Box' divider.">
+<section class="slide" data-notes="Every stat in this talk came from the AI reading its own dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64) and cross-checked by another model against PRESENTATION_RULES.md. Across 14 sessions (~7.8 active hours), that analysis and deck-building pass cost $27.03 ($0.90/slide across 30 slides)—with 38% of the bill coming from a single 13-minute Opus session (2.7% of turns) used to research and write the 'Uncharted Airspace' open-questions slides.">
       <h2>Self-reflection &amp; <span class="accent">vibe decking</span>.</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50+ chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
-      <div class="stats-grid-2x2">
+      <div class="stats-grid-2x2 compact">
         <div class="stat">
-          <div class="stat-num accent">~7 hrs</div>
-          <div class="stat-label">Active time (14 sessions · 823 turns)</div>
+          <div class="stat-num accent">~7.8 hrs</div>
+          <div class="stat-label">Active time (14 sessions · 885 turns)</div>
         </div>
         <div class="stat">
-          <div class="stat-num"><span data-count="87.9" data-suffix="M">87.9M</span></div>
-          <div class="stat-label">Tokens (94.5% cache hit · 925 tool calls)</div>
+          <div class="stat-num"><span data-count="93.3" data-suffix="M">93.3M</span></div>
+          <div class="stat-label">Tokens (94.6% cache hit · 985 tool calls)</div>
         </div>
         <div class="stat">
-          <div class="stat-num accent">$25.69</div>
-          <div class="stat-label">Total spend (56% Hydrogen · 40% Opus from 3% of turns)</div>
+          <div class="stat-num accent">$27.03</div>
+          <div class="stat-label">Total spend (58% Hydrogen · 38% Opus from 2.7% of turns)</div>
         </div>
         <div class="stat">
-          <div class="stat-num">$0.83 / slide</div>
-          <div class="stat-label">$18.28 deck build · $7.41 log analysis</div>
+          <div class="stat-num">$0.90 / slide</div>
+          <div class="stat-label">$18.55 deck build · $8.48 log analysis</div>
         </div>
       </div>
     </section>
@@ -1277,11 +1307,20 @@
       </div>
     </section>
 
+    <!-- SECRET SLIDE 30 -->
+    <section class="slide" data-notes="Secret Slide 30! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
+      <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
+        <img src="princevultan.jpg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); object-fit: contain;"/>
+        <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>
+        <p class="subtitle" style="margin: 0;">&mdash; Prince Vultan (Brian Blessed), <em>Flash Gordon</em> (1980)</p>
+      </div>
+    </section>
+
   </main>
 
   <!-- NOTES DRAWER -->
   <aside class="notes-drawer open" id="notesDrawer">
-    <div class="notes-label">Notes (N to hide)</div>
+    <div class="notes-label">Notes<span class="notes-hint">(N to hide)</span></div>
     <div class="notes-text" id="notesText"></div>
   </aside>
 
@@ -1411,9 +1450,14 @@
       overviewOverlay.setAttribute('aria-hidden', String(!open));
     }
 
+    function toggleNotes() {
+      const open = notesDrawer.classList.toggle('open');
+      document.body.classList.toggle('notes-open', open);
+    }
+
     document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
     document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
-    document.getElementById('notesBtn').addEventListener('click', () => notesDrawer.classList.toggle('open'));
+    document.getElementById('notesBtn').addEventListener('click', toggleNotes);
     document.getElementById('gridBtn').addEventListener('click', () => {
       const opening = !overviewOverlay.classList.contains('open');
       if (opening) buildOverview();
@@ -1441,13 +1485,14 @@
         e.preventDefault();
         render(index - 1);
       } else if (e.key.toLowerCase() === 'n') {
-        notesDrawer.classList.toggle('open');
+        toggleNotes();
       } else if (e.key.toLowerCase() === 't') {
         const next = themes[(themes.indexOf(themeSelect.value) + 1) % themes.length];
         setTheme(next);
       }
     });
 
+    document.body.classList.toggle('notes-open', notesDrawer.classList.contains('open'));
     render(0);
   </script>
 </body>

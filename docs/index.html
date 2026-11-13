@@ -1032,12 +1032,12 @@
 
     .act-art {
       position: absolute;
-      right: 7vw;
-      top: 50%;
-      transform: translateY(-50%);
-      width: clamp(180px, 24vw, 340px);
-      height: clamp(180px, 24vw, 340px);
-      opacity: 0.16;
+      right: calc(4vw + clamp(360px, 44vw, 760px) / 2);
+      bottom: 6vh;
+      transform: translateX(50%);
+      width: clamp(130px, 15vw, 220px);
+      height: clamp(130px, 15vw, 220px);
+      opacity: 0.28;
       pointer-events: none;
     }
 
@@ -1057,10 +1057,10 @@
     .act-photo {
       position: absolute;
       right: 4vw;
-      top: 50%;
+      top: 38%;
       transform: translateY(-50%);
       width: clamp(360px, 44vw, 760px);
-      max-height: 78vh;
+      max-height: 58vh;
       object-fit: cover;
       border-radius: 14px;
       border: 2px solid rgba(255, 255, 255, 0.16);
@@ -1068,6 +1068,17 @@
       opacity: 0;
       pointer-events: none;
       z-index: 1;
+    }
+
+    body.notes-open .act-photo {
+      top: 34%;
+      max-height: 50vh;
+    }
+
+    body.notes-open .act-art {
+      bottom: 20vh;
+      width: clamp(100px, 12vw, 170px);
+      height: clamp(100px, 12vw, 170px);
     }
 
     .slide.active .act-photo[src] {
@@ -1090,8 +1101,8 @@
     }
 
     @keyframes actArtIn {
-      from { opacity: 0; transform: translateY(-46%) scale(0.92); }
-      to { opacity: 0.18; transform: translateY(-50%) scale(1); }
+      from { opacity: 0; transform: translateX(50%) translateY(10px) scale(0.92); }
+      to { opacity: 0.28; transform: translateX(50%) translateY(0) scale(1); }
     }
 
     /* ==========================================================================
@@ -1864,7 +1875,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Five tips for Monday morning: (1) Use AI as a research engine first—probe undocumented APIs and codify rules in AGENTS.md before coding; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—execute the plan one step at a time, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
+<section class="slide" data-notes="Five tips for the AI pilot: (1) Use AI as a research engine first—probe undocumented APIs and codify rules in AGENTS.md before coding; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—execute the plan one step at a time, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
       <div class="slide-center-wrap">
       <h2>5 <span class="accent">pre-flight</span> tips for AI projects. 📋</h2>
       <ul class="big-list">

@@ -14,7 +14,7 @@
 3. **The Problem:** *UE5 + F5 = Tea break time 🍵* (1,000+ DLLs, 950 PDBs, 26+ GB loaded on every launch).
 4. **The Solution:** *On Demand Symbols: 11 PDBs instead of 950.* (30%–62% faster launch; loads breakpoint PDBs upfront and call-stack PDBs only on break).
 5. **The Project by the Numbers:** 2×2 stat grid (`~19 hrs` active time, `494M` tokens, `4,850` tool calls, `~$100` spend with 95% cache hit rate).
-6. **The Timeline:** *Seven days, one sharp reset.* (Diagonal staircase from Day 1 Spec/Hooks → Day 2 Reset & Working V2 → Days 3–5 Polish & Settings → Day 6 Test Harness → Day 7 Multi-Instance & Audit).
+6. **The Timeline:** *Seven days, one aborted approach.* (Diagonal staircase from Day 1 Spec/Hooks → Day 2 Reset & Working V2 → Days 3–5 Polish & Settings → Day 6 Test Harness → Day 7 Multi-Instance & Audit).
 
 ## Act II — Catching a Tailwind *(The Upside of AI)*
 7. **Act II Divider:** *Catching a Tailwind*
@@ -24,12 +24,10 @@
 
 ## Act III — Turbulence & Headwinds *(The Traps)*
 11. **Act III Divider:** *Turbulence & Headwinds*
-12. **Code Churn:** *60% of all code written was deleted.* (`+26k / -15k → 10.8k` net LOC across 71 commits).
-13. **Root Causes:** *Why did we delete 60% of the code?* (Overspecifying upfront, early overengineering, not asking "why?").
-14. **The Pilot’s Job:** *AI overbuilds. Jettison the baggage.* (V1 speculative stack `$33 · 2h 45m stalled` / 7,255 lines cut vs. V2 native rebuild `$4.50 · 4h 12m` at 337 turns/hr).
-15. **Cheap Resets:** *Resetting is cheap with AI.* (Zero emotional attachment + AI preserves hard-won lessons in docs/ADRs).
-16. **Model Speed & Cost:** *81% of turns cost $11. 1.4% cost $50.* (6s turns keep you in flow; 30s+ turns make you tab away; live prompt-cache toggle).
-17. **Compaction & Cost:** *6 compacted sessions caused 71% of spend.* (`71%` of cost & `44%` of errors vs. `$0.12` avg / `0` compactions for short sessions; ~3.8 hrs lost to error loops in notes).
+12. **Code Churn & Root Causes:** *60% of all code written was deleted.* (`+26k / -15k → 10.8k` net LOC across 71 commits; overspecifying + not asking "why?" in notes).
+13. **The Pilot’s Job & Cheap Resets:** *AI overbuilds. Jettison the baggage.* (V1 speculative stack `$33 · 2h 45m stalled` / 7,255 lines cut vs. V2 native rebuild `$4.50 · 4h 12m` at 337 turns/hr; ejector-seat parachute takeaway + zero-attachment / lesson-preservation in notes).
+14. **Model Speed & Cost:** *81% of turns cost $11. 1.4% cost $50.* (Flash carried 81% of turns *"Gordon's alive!"* — and 6s turns keep you in flow; live prompt-cache toggle).
+15. **Compaction & Cost:** *6 compacted sessions caused 71% of spend.* (`71%` of cost & `44%` of errors vs. `$0.12` avg / `0` compactions for short sessions; ~3.8 hrs lost to error loops in notes).
 
 ## Act IV — Aviate, Navigate, Communicate *(Playbook)*
 18. **Act IV Divider:** *Aviate, Navigate, Communicate*

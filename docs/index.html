@@ -1104,7 +1104,7 @@
       <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
     </section>
 
-<section class="slide" data-notes="Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. Three high-ROI pilot habits: (1) Design Gate—ask for options before editing code; (2) Telemetry-Backed Bugs—paste exact output/timing logs ($2.16 perf fix); (3) Challenge complexity early.">
+<section class="slide" data-notes="Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. The best way to keep prompts single-focus is to have the AI write a step-by-step implementation plan first (a Design Gate), review and approve the steps, and then execute one step per prompt or session. Combine that with telemetry-backed bug reports (paste exact output/timing logs—that got us a $2.16 perf fix) and challenging complexity early.">
       <h2>Single-focus prompts cost <span class="accent">4× less</span>.</h2>
       <div class="bars">
         <div class="bar-row">
@@ -1122,13 +1122,13 @@
           <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" style="width: 100%;"></div></div>
         </div>
       </div>
-      <p class="takeaway">Use a <strong>Design Gate</strong> before coding, and paste exact <strong>output logs</strong> for bugs.</p>
+      <p class="takeaway">Have AI write a <strong>step-by-step plan</strong> first—then execute <strong>one step per prompt</strong>.</p>
     </section>
 
-<section class="slide" data-notes="One of the highest-leverage habits in late 2026 is context engineering: having the AI write lean rulebooks for itself (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck) and then spinning up another agent with a fresh context to cross-check work against those rules. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
+<section class="slide" data-notes="One of the highest-leverage habits in late 2026 is planning and context engineering: get the AI to write a step-by-step implementation plan and lean rulebooks (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck), work through the plan one step at a time, and spin up another agent with a fresh context to cross-check each completed step against the rules. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
       <h2>Let AI write the rules—then <span class="accent">cross-check</span> fresh.</h2>
       <ul class="big-list">
-        <li><span class="list-num">01</span><span><strong>Codify the rules</strong> — have AI maintain lean rulebooks (<code>AGENTS.md</code>, <code>RULES.md</code>) so every session starts smart.</span></li>
+        <li><span class="list-num">01</span><span><strong>Plan &amp; codify first</strong> — have AI draft a step-by-step plan and lean rulebooks (<code>AGENTS.md</code>), then work one step at a time.</span></li>
         <li><span class="list-num">02</span><span><strong>Cross-check with another agent</strong> — never let the authoring session grade its own work.</span></li>
         <li><span class="list-num">03</span><span><strong>Demand deterministic proof</strong> — passing tests and benchmarks beat “it should work.”</span></li>
       </ul>
@@ -1161,12 +1161,12 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Five tips for Monday morning: (1) Use AI as a research engine first and codify rules in AGENTS.md; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—split early, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
-      <h2>5 <span class="accent">pre-flight</span> tips for your next AI project. 📋</h2>
+<section class="slide" data-notes="Five tips for Monday morning: (1) Use AI as a research engine first, have it write a step-by-step implementation plan and codify rules in AGENTS.md; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—execute the plan one step at a time, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
+      <h2>5 <span class="accent">pre-flight</span> tips for AI projects. 📋</h2>
       <ul class="big-list">
-        <li><span class="list-num">1.</span><span><strong>Research &amp; rules first</strong> — <code>AGENTS.md</code> and cheap subagents beat guessing.</span></li>
+        <li><span class="list-num">1.</span><span><strong>Research, plan &amp; codify first</strong> — get AI to write a step-by-step plan and <code>AGENTS.md</code> before coding.</span></li>
         <li><span class="list-num">2.</span><span><strong>Fast workhorse models by default</strong> — frontier only in fresh sessions.</span></li>
-        <li><span class="list-num">3.</span><span><strong>Fear compaction</strong> — split early, prompt single-focus, cross-check fresh.</span></li>
+        <li><span class="list-num">3.</span><span><strong>Fear compaction</strong> — work one step at a time, prompt single-focus, cross-check.</span></li>
         <li><span class="list-num">4.</span><span><strong>Start minimal, iterate</strong> — surgical edits cost pennies; giant specs churn.</span></li>
         <li><span class="list-num">5.</span><span><strong>Your highest-leverage skill is deletion.</strong></span></li>
       </ul>

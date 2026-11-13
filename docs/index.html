@@ -720,7 +720,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" data-notes="Opening (~0.5 min): This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the playbook we extracted.">
+    <section class="slide active" data-notes="Opening (~0.5 min): This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the lessons we extracted.">
       <div class="title-hero">
         <svg class="vsix-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="On Demand Symbols Icon">
           <defs>
@@ -878,7 +878,7 @@
       <p class="subtitle">Where AI gave us lift—cracking undocumented APIs and building its own autopilot.</p>
     </section>
 
-<section class="slide" data-notes="Why AI made it possible (~1.5 min): I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. A human would normally spend weeks hunting Microsoft docs and dead forum threads. Instead, the AI reflected directly on VS's installed DLLs (214 .NET Reflection probes + 19 ildasm.exe disassemblies) to pull exact COM signatures like IVsDebuggerSymbolSettingsManager120A and IVsDebugLaunchHook, reserving 168 web searches for declarative JSON schemas like Unified Settings registration.json. Doing that solo would easily take 2-3 weeks.">
+<section class="slide" data-notes="Why AI made it possible (~1.5 min): I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI reflected directly on VS's own installed DLLs (233 binary probes) to find exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up.">
       <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -897,7 +897,7 @@
       <p class="takeaway">When docs are missing, don’t <strong>fly blind</strong>—let AI switch on <strong>radar</strong> and probe the binaries. 📡</p>
     </section>
 
-<section class="slide" data-notes="Playbook 4 (~1.5 min): For weeks, testing meant me pressing F5 in Visual Studio, loading UE5 Lyra, and pasting Output logs back to the AI. Normally a developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, writing its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
+<section class="slide" data-notes="Self-Testing (~1.5 min): Normally, testing a Visual Studio extension against UE5 means manually pressing F5, waiting for Lyra to load, and checking output logs over and over—and a solo developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, building its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
       <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-test.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -988,7 +988,7 @@
       <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
     </section>
 
-<section class="slide" data-notes="Model Usage Breakdown (~2 min): Exact spend was $98.88 (~$100). Gemini 3.8 Flash handled 80% of all turns (3,514) for just $10.23 (10% of spend) and was also the fastest: 6.2s avg / 12s p90 per tool-turn. Gemini 4 Argon handled 18% of turns (804) for $38.80 (12.9s avg / 25s p90—2x slower). Claude Opus 5.5 handled 1.5% of turns (64) yet cost $49.65 (30.2s avg / 81s p90—5x slower). Once the plan is locked, Flash saves both money and wall-clock time. Toggle 'Without Cache' to see prompt caching savings ($303.44 down to $98.88).">
+<section class="slide" data-notes="Model Usage Breakdown (~2 min): Exact spend was $98.88 (~$100). Gemini 3.8 Flash handled 80% of all turns (3,514) for just $10.23 (10% of spend) and was also the fastest at 6.2s per turn on average. Gemini 4 Argon handled 18% of turns (804) for $38.80 (12.9s avg—2x slower). Claude Opus 5.5 handled 1.5% of turns (64) yet cost $49.65 (30.2s avg—5x slower). Once the plan is locked, Flash saves both money and wall-clock time. Toggle 'Without Cache' to see prompt caching savings ($303.44 down to $98.88).">
       <div class="slide-header-row">
         <h2 id="costHeading"><span class="accent">80%</span> of turns cost $10.<br /><span class="danger">1.5%</span> cost <span class="danger">$50</span>.</h2>
         <div class="toggle-group" role="group" aria-label="Cost view toggle">
@@ -1022,7 +1022,7 @@
       <p class="takeaway" id="costTakeaway">Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.</p>
     </section>
 
-<section class="slide" data-notes="Playbook 2 (~1.5 min): Only 5 of 51 sessions crossed context compaction, yet they caused 52% of total spend ($52.23) and 35% of all tool errors (316/915). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
+<section class="slide" data-notes="Compaction & Loops (~1.5 min): Only 5 of 51 sessions crossed context compaction, yet they caused 52% of total spend ($52.23) and 35% of all tool errors (316/915). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
       <h2><span class="accent">5</span> compacted sessions caused <span class="accent">52%</span> of spend.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -1040,7 +1040,7 @@
     </section>
 
     <!-- ACT IV DIVIDER -->
-    <section class="slide act-slide" data-notes="Act IV (~0.5 min): I actually asked the AI after reading all 51 transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through 51 sessions of transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' So here is the playbook for flying an AI.">
+    <section class="slide act-slide" data-notes="Act IV (~0.5 min): I actually asked the AI after reading all 51 transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through 51 sessions of transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' So here are the practical lessons for flying an AI.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <circle cx="100" cy="100" r="78"/>
         <path d="M32 108 L168 92" stroke-dasharray="6 5"/>
@@ -1053,7 +1053,7 @@
       <p class="subtitle">“You were the pilot steering us away from the mountain!”</p>
     </section>
 
-<section class="slide" data-notes="Playbook 1 (~1.5 min): Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
+<section class="slide" data-notes="Model Routing (~1.5 min): Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
       <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -1070,7 +1070,7 @@
       <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
     </section>
 
-<section class="slide" data-notes="Playbook 3 (~1.5 min): Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. Three high-ROI pilot habits: (1) Design Gate—ask for options before editing code; (2) Telemetry-Backed Bugs—paste exact output/timing logs ($2.16 perf fix); (3) Challenge complexity early.">
+<section class="slide" data-notes="Prompting (~1.5 min): Single-focus opening prompts averaged $1.64 (85 tool calls) vs $6.93 (204 tool calls) for multi-part bundled prompts. Three high-ROI pilot habits: (1) Design Gate—ask for options before editing code; (2) Telemetry-Backed Bugs—paste exact output/timing logs ($2.16 perf fix); (3) Challenge complexity early.">
       <h2>Single-focus prompts cost <span class="accent">4× less</span>.</h2>
       <div class="bars">
         <div class="bar-row">
@@ -1138,14 +1138,14 @@
       </ul>
     </section>
 
-<section class="slide" data-notes="Outro (~0.5 min): One last confession—this was my very first time 'vibe coding' a real project in anger, so take these as early field notes, not commandments. Every single stat in this talk came from the AI reading its own 51 chat transcripts, and yes—even these slides were 'vibe decked' and then cross-checked by another member of the cabin crew against a PRESENTATION_RULES.md the AI wrote itself. Thanks! Questions? (If they're too hard, I'll spin up a Flash subagent.)">
+<section class="slide" data-notes="Outro (~0.5 min): One last confession—this was my very first time 'vibe coding' a real project in anger, so take these as early field notes, not commandments. Every single stat in this talk came from the AI reading its own 51 chat transcripts, and yes—even these slides were 'vibe decked' and then cross-checked by another member of the cabin crew against a PRESENTATION_RULES.md the AI wrote itself. Thanks! Questions? (If they're too hard, I'll defer to my co-pilot, Claude.)">
       <h2>Full disclosure: I’m still <span class="accent">winging it</span>. 🤷‍♂️</h2>
       <ul class="big-list">
         <li><span class="list-num">🔥</span><span><strong>First time “vibe coding” in anger</strong> — early field notes, not gospel.</span></li>
         <li><span class="list-num">🤖</span><span><strong>100% AI-analyzed</strong> — the bots read all 51 transcripts and graded their own homework.</span></li>
         <li><span class="list-num">✨</span><span><strong>Even these slides were “vibe decked”</strong> — then cross-checked by another member of the cabin crew against rules the AI wrote itself.</span></li>
       </ul>
-      <p class="takeaway">Questions? 🙋‍♂️ <strong>(If they’re hard, I’ll spin up a Flash subagent.)</strong></p>
+      <p class="takeaway">Questions? 🙋‍♂️ <strong>(If they’re hard, I’ll defer to my co-pilot, Claude.)</strong></p>
     </section>
 
   </main>

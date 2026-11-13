@@ -189,16 +189,23 @@
     .title-hero {
       display: flex;
       align-items: center;
-      gap: clamp(2rem, 5vw, 4.5rem);
+      gap: clamp(1.5rem, 3.5vw, 3.5rem);
+    }
+
+    .title-hero-text {
+      flex: 1;
+      min-width: 0;
+      container-type: inline-size;
     }
 
     .title-hero h1 {
-      font-size: clamp(2.1rem, 3.85vw, 3.75rem);
+      font-size: clamp(1.2rem, 5.85cqw, 8.5rem);
+      white-space: nowrap;
     }
 
     .vsix-icon {
-      width: clamp(110px, 14vw, 180px);
-      height: clamp(110px, 14vw, 180px);
+      width: clamp(100px, 11vw, 160px);
+      height: clamp(100px, 11vw, 160px);
       flex-shrink: 0;
       position: relative;
       z-index: 1;
@@ -207,6 +214,8 @@
 
     #heroSlide {
       overflow: hidden;
+      padding-left: 5vw;
+      padding-right: 5vw;
     }
 
     #heroSlide .title-hero {
@@ -1404,7 +1413,7 @@
           <path d="M 252,126 L 328,126 L 236,264 L 316,264 L 148,488 L 212,304 L 140,304 Z"
                 fill="url(#goldGrad)" stroke="#1E1E1E" stroke-width="7" stroke-linejoin="round" filter="url(#bolt-shadow)" />
         </svg>
-        <div>
+        <div class="title-hero-text">
           <h1>“Surely You Can’t Be Vibe Coding?”<br />I Am. And Don’t Call Me <span class="accent">Shirley</span></h1>
           <p class="subtitle" style="margin-top: 1.25rem;">~50 AI sessions &nbsp;·&nbsp; 7 days &nbsp;·&nbsp; ~$100</p>
           <p style="margin-top: 1rem; font-size: 1.05rem;">
@@ -2631,6 +2640,20 @@
       }, 1000);
       render(0);
     }
+    function fitHeroTitle() {
+      const box = document.querySelector('#heroSlide .title-hero-text');
+      const h1 = box?.querySelector('h1');
+      if (!box || !h1) return;
+      h1.style.fontSize = '';
+      const available = box.clientWidth;
+      if (available > 0 && h1.scrollWidth > available) {
+        const current = parseFloat(getComputedStyle(h1).fontSize);
+        h1.style.fontSize = `${Math.floor(current * (available / h1.scrollWidth) * 10) / 10}px`;
+      }
+    }
+    window.addEventListener('resize', fitHeroTitle);
+    document.fonts?.ready?.then(fitHeroTitle);
+    fitHeroTitle();
   </script>
 </body>
 </html>

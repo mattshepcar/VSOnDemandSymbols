@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="blue-skies">
+<html lang="en" data-theme="flash-gordon">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>On Demand Symbols — Building a VS Extension with AI</title>
   <style>
     /* ==========================================================================
-       THEMES (5 projection-ready palettes, Blue Skies default)
+       THEMES (5 projection-ready palettes, Flash! A-ah! default)
        ========================================================================== */
     :root,
     [data-theme="keynote-dark"] {
@@ -37,18 +37,22 @@
       --notes-bg: #f4f4f5;
     }
 
-    [data-theme="linear-slate"] {
-      --bg: #0f172a;
-      --bg-glow: radial-gradient(circle at 50% -15%, rgba(16, 185, 129, 0.14), transparent 55%);
-      --ink: #f8fafc;
-      --muted: #94a3b8;
-      --accent: #10b981;
-      --accent-soft: rgba(16, 185, 129, 0.14);
+    [data-theme="flash-gordon"] {
+      --bg: #0d0518;
+      --bg-glow: radial-gradient(circle at 50% -15%, rgba(250, 204, 21, 0.16), rgba(244, 63, 94, 0.10) 45%, transparent 70%);
+      --ink: #fefce8;
+      --muted: #d6c29f;
+      --accent: #facc15;
+      --accent-soft: rgba(250, 204, 21, 0.16);
       --danger: #f43f5e;
-      --bar-muted: #1e293b;
-      --rule: #1e293b;
-      --nav-bg: rgba(15, 23, 42, 0.88);
-      --notes-bg: #0b1120;
+      --bar-muted: #2a143d;
+      --rule: #3b1c54;
+      --nav-bg: rgba(20, 8, 34, 0.90);
+      --notes-bg: #160926;
+    }
+
+    [data-theme="flash-gordon"] .toggle-btn.active {
+      color: #0d0518;
     }
 
     [data-theme="warm-paper"] {
@@ -179,6 +183,10 @@
       display: flex;
       align-items: center;
       gap: clamp(2rem, 5vw, 4.5rem);
+    }
+
+    .title-hero h1 {
+      font-size: clamp(2.1rem, 3.85vw, 3.75rem);
     }
 
     .vsix-icon {
@@ -878,7 +886,7 @@
                 fill="url(#goldGrad)" stroke="#1E1E1E" stroke-width="7" stroke-linejoin="round" filter="url(#bolt-shadow)" />
         </svg>
         <div>
-          <h1>From a Weekend Idea<br />to a <span class="accent">Working VSIX</span></h1>
+          <h1>“Surely You Can’t Be Vibe Coding?”<br />I Am. And Don’t Call Me <span class="accent">Shirley</span></h1>
           <p class="subtitle" style="margin-top: 1.25rem;">~50 AI sessions &nbsp;·&nbsp; 7 days &nbsp;·&nbsp; ~$100</p>
           <p style="margin-top: 1rem; font-size: 1.05rem;">
             <a href="https://github.com/mattshepcar/VSOnDemandSymbols" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px;">github.com/mattshepcar/VSOnDemandSymbols ↗</a>
@@ -921,7 +929,7 @@
     </section>
 
 <section class="slide" data-notes="On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (e.g., 22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
-      <h2>On Demand Symbols: <span class="accent" data-count="11">11</span> PDBs instead of <span class="danger" data-count="950">950</span>.</h2>
+      <h2>On Demand Symbols:<br /><span class="accent" data-count="11">11</span> PDBs instead of <span class="danger" data-count="950">950</span>.</h2>
       <div class="split-2">
         <div class="contrast-block">
           <div class="contrast-kicker">Without Extension</div>
@@ -1144,7 +1152,7 @@
           <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" data-actual-width="100%" data-uncached-width="100%" style="width: 100%;"></div></div>
         </div>
       </div>
-      <p class="takeaway" id="costTakeaway"><strong>Flash</strong> carried 81% of turns (<em>“Gordon’s alive!”</em>)—and <strong>6s turns keep you in flow</strong>.</p>
+      <p class="takeaway" id="costTakeaway"><strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--danger); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong></p>
     </section>
 
 <section class="slide" data-notes="Only 6 of 50 development sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Across the whole project, those 982 tool errors ate ~3.8 hours of active engineering time (~20% of total dev time) and ~$20 in direct spend—concentrated in the two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
@@ -1265,7 +1273,7 @@
     </section>
 
     <!-- ACT V DIVIDER -->
-    <section class="slide act-slide" data-notes="Before we land: this was one person, one small tool and one week. Some big questions are still open, and I don't have the answers yet. The next few slides cover the ones I keep coming back to: maintainability at scale, what we should still code ourselves, and how we keep sharing knowledge as people. Then a few more I think we should all be asking. (Quote from Airplane!, 1980. Leslie Nielsen as Dr. Rumack.) These are serious questions... and don't call me Shirley.">
+    <section class="slide act-slide" data-notes="Before we land: this was one person, one small tool and one week. Some big questions are still open, and I don't have the answers yet. The next few slides cover the ones I keep coming back to: maintainability at scale, what we should still code ourselves, and how we keep sharing knowledge as people. Then a few more I think we should all be asking. (Quote from Airplane!, 1980 — Ted Striker on flying without a map.)">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M40 120 C28 120 22 110 26 101 C30 92 42 90 48 95 C50 82 64 74 77 79 C84 68 102 68 109 80 C122 76 134 86 131 99 C140 100 145 110 140 117 C137 120 133 120 130 120 Z"/>
         <path d="M20 170 Q 70 150 100 150 Q 130 150 150 135" stroke-dasharray="6 6"/>
@@ -1275,7 +1283,12 @@
       <div class="act-badge"><span class="act-emoji">🧭</span> Act V</div>
       <h1>Uncharted <span class="accent">Airspace</span></h1>
       <div class="act-rule"></div>
-      <p class="subtitle">“Surely you can’t be serious?” “I am serious… and don’t call me Shirley.”</p>
+      <p class="subtitle">
+        <span>“Nervous about AI at scale?”</span><br />
+        <span class="accent">“Yes.”</span><br />
+        <span>“First time?”</span><br />
+        <span class="accent">“No, I’ve been nervous lots of times.”</span>
+      </p>
     </section>
 
 <section class="slide" data-notes="Before we talk about codebases and teams, it is worth asking what this costs outside our own editor. Three ethical questions hang over AI coding. (1) Training data: models were trained on billions of lines of public open-source code without explicit consent or attribution. When an LLM absorbs GPL code and emits a functional equivalent into a proprietary repo, that is effectively 'license laundering'—stripping copyleft obligations and credit. (2) Energy and water: global data centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share jumping from ~20% to ~37%. A single large AI data centre can use 1 to 5 million gallons of water a day for cooling—the same as a town of 30,000 to 50,000 people—plus the indirect water used to generate that electricity. And agentic coding runs dozens of prompts per task, not one. (3) The job itself: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) contracting into a 'barbell' market—seniors are in demand to steer and review AI, while the boilerplate tasks that used to be the junior apprenticeship runway are disappearing. The job is shifting from writing code to auditing, architecting, and owning the outcome.">
@@ -1443,11 +1456,11 @@
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
     <button id="notesBtn" title="Toggle Notes (N)">Notes</button>
     <select id="themeSelect" title="Switch Theme (T)">
-      <option value="keynote-dark">Keynote Dark</option>
-      <option value="swiss-light">Swiss Light</option>
-      <option value="linear-slate">Product Minimal</option>
-      <option value="warm-paper">Warm Paper</option>
-      <option value="blue-skies" selected>Blue Skies</option>
+      <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
+      <option value="blue-skies">Blue Skies</option>
+      <option value="keynote-dark">Night Flight</option>
+      <option value="swiss-light">Flight Manual</option>
+      <option value="warm-paper">Pilot’s Logbook</option>
     </select>
   </nav>
 
@@ -1461,7 +1474,7 @@
     const themeSelect = document.getElementById('themeSelect');
     const overviewOverlay = document.getElementById('overviewOverlay');
     const overviewGrid = document.getElementById('overviewGrid');
-    const themes = ['keynote-dark', 'swiss-light', 'linear-slate', 'warm-paper', 'blue-skies'];
+    const themes = ['flash-gordon', 'blue-skies', 'keynote-dark', 'swiss-light', 'warm-paper'];
 
     let index = 0;
 
@@ -1494,7 +1507,7 @@
     }
 
     const slideIconRules = [
-      { match: /Weekend Idea|Working VSIX/i, icon: '🧩' },
+      { match: /Shirley|Vibe Coding|Working VSIX/i, icon: '🧩' },
       { match: /Tea break/i, icon: '🍵' },
       { match: /11 PDBs/i, icon: '⚡' },
       { match: /by the numbers/i, icon: '📊' },
@@ -1660,7 +1673,7 @@
           takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$208 (67%)</strong> across 494M tokens.';
         } else {
           heading.innerHTML = '<span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.';
-          takeaway.innerHTML = '<strong>Flash</strong> carried 81% of turns (<em>“Gordon’s alive!”</em>)—and <strong>6s turns keep you in flow</strong>.';
+          takeaway.innerHTML = '<strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--danger); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong>';
         }
       });
     });

@@ -54,7 +54,8 @@
       --notes-bg: #160926;
     }
 
-    [data-theme="flash-gordon"] .toggle-btn.active {
+    [data-theme="flash-gordon"] .toggle-btn.active,
+    [data-theme="flash-gordon"] .controls button.next-btn {
       color: #0d0518;
     }
 
@@ -86,7 +87,10 @@
       --notes-bg: #dbeafe;
     }
 
-    [data-theme="blue-skies"] .toggle-btn.active {
+    [data-theme="blue-skies"] .toggle-btn.active,
+    [data-theme="blue-skies"] .controls button.next-btn,
+    [data-theme="swiss-light"] .controls button.next-btn,
+    [data-theme="warm-paper"] .controls button.next-btn {
       color: #ffffff;
     }
 
@@ -408,6 +412,90 @@
     .controls button:hover,
     .controls select:hover {
       background: var(--accent-soft);
+    }
+
+    .controls button:disabled {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .controls button.next-btn {
+      background: var(--accent);
+      color: #09090b;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 0.45rem 1.15rem;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .controls button.next-btn:hover {
+      background: var(--accent);
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    body.is-first-slide .controls button.next-btn {
+      animation: nextPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes nextPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent);
+        transform: scale(1.04);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body.is-first-slide .controls button.next-btn,
+      .slide-next-btn {
+        animation: none;
+      }
+    }
+
+    /* ==========================================================================
+       HERO NEXT-SLIDE ARROW (First slide)
+       ========================================================================== */
+    .slide-next-btn {
+      position: absolute;
+      right: clamp(1rem, 2.5vw, 2.5rem);
+      top: calc(50% - 36px);
+      width: 72px;
+      height: 72px;
+      border-radius: 999px;
+      border: 2px solid var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      animation: nextPulse 2s ease-in-out infinite;
+      transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+
+    .slide-next-btn:hover {
+      background: var(--accent);
+      color: #09090b;
+    }
+
+    [data-theme="flash-gordon"] .slide-next-btn:hover {
+      color: #0d0518;
+    }
+
+    [data-theme="blue-skies"] .slide-next-btn:hover,
+    [data-theme="swiss-light"] .slide-next-btn:hover,
+    [data-theme="warm-paper"] .slide-next-btn:hover {
+      color: #ffffff;
+    }
+
+    .slide-next-btn svg {
+      width: 34px;
+      height: 34px;
+      transform: translateX(2px);
     }
 
     .controls select option {
@@ -896,6 +984,11 @@
           </p>
         </div>
       </div>
+      <button class="slide-next-btn" id="heroNextBtn" aria-label="Next slide" title="Next slide (Right Arrow / Space)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="9 5 16 12 9 19"></polyline>
+        </svg>
+      </button>
     </section>
 
     <!-- ACT I DIVIDER -->
@@ -1478,7 +1571,7 @@
   <nav class="controls" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
     <span class="counter" id="counter">1 / 30</span>
-    <button id="nextBtn" title="Next (Right Arrow / Space)">→</button>
+    <button id="nextBtn" class="next-btn" title="Next (Right Arrow / Space)">Next →</button>
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
     <button id="notesBtn" title="Toggle Notes (N)">Notes</button>
     <select id="themeSelect" title="Switch Theme (T)">
@@ -1495,6 +1588,8 @@
     const publicSlideCount = slides.filter((s) => s.dataset.secret !== 'true').length;
     const progress = document.getElementById('progress');
     const counter = document.getElementById('counter');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
     const notesDrawer = document.getElementById('notesDrawer');
     const notesText = document.getElementById('notesText');
     const themeSelect = document.getElementById('themeSelect');
@@ -1668,6 +1763,9 @@
     function render(i) {
       index = Math.max(0, Math.min(slides.length - 1, i));
       slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
+      document.body.classList.toggle('is-first-slide', index === 0);
+      prevBtn.disabled = index === 0;
+      nextBtn.disabled = index === slides.length - 1;
       counter.textContent = `${index + 1} / ${publicSlideCount}`;
       progress.style.width = `${Math.min(100, ((index + 1) / publicSlideCount) * 100)}%`;
       notesText.textContent = slides[index].dataset.notes || '';
@@ -1717,6 +1815,7 @@
 
     document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
     document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
+    document.getElementById('heroNextBtn').addEventListener('click', () => render(index + 1));
     document.getElementById('notesBtn').addEventListener('click', toggleNotes);
     document.getElementById('gridBtn').addEventListener('click', () => {
       const opening = !overviewOverlay.classList.contains('open');

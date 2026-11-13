@@ -871,17 +871,17 @@
     </section>
 
     <!-- ACT II DIVIDER -->
-    <section class="slide act-slide" data-notes="Before looking at what went wrong, here are the two places where AI felt like a genuine superpower.">
+    <section class="slide act-slide" data-notes="Before looking at what went wrong, here are the three places where AI felt like a genuine superpower.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="110,15 45,115 95,115 85,185 155,85 105,85"/>
       </svg>
       <div class="act-badge"><span class="act-emoji">⚡</span> Act II</div>
       <h1>Catching a <span class="accent">Tailwind</span></h1>
       <div class="act-rule"></div>
-      <p class="subtitle">Where AI gave us lift—cracking undocumented APIs and building its own autopilot.</p>
+      <p class="subtitle">Where AI gave us lift—cracking undocumented APIs, self-testing, and flying in formation.</p>
     </section>
 
-<section class="slide" data-notes="I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI reflected directly on VS's own installed DLLs (233 binary probes) to find exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up.">
+<section class="slide" data-notes="I would never have been able to build this without AI—not because of typing speed, but because of Visual Studio's sparse, often undocumented SDK. Instead of hunting dead forum threads, the AI dived straight into VS's own installed DLLs (233 binary probes) to reflect on exact interfaces, and used 168 web searches for undocumented config schemas. Doing that solo would have been soul-destroying—I would have just given up. (Bonus Brian Blessed / Flash Gordon Hawkmen energy: 'DIVE!' straight into the binaries.)">
       <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -897,7 +897,7 @@
           <div class="stat-label">Solo SDK trial-and-error saved</div>
         </div>
       </div>
-      <p class="takeaway">When docs are missing, don’t <strong>fly blind</strong>—let AI switch on <strong>radar</strong> and probe the binaries. 📡</p>
+      <p class="takeaway">When docs are missing, yell <strong>“DIVE!”</strong>—let AI plunge straight into the binaries. 🦅</p>
     </section>
 
 <section class="slide" data-notes="Normally, testing a Visual Studio extension against UE5 means manually pressing F5, waiting for Lyra to load, and checking output logs over and over—and a solo developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, building its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
@@ -915,6 +915,23 @@
         </div>
       </div>
       <p class="takeaway">Ask the AI to <strong>build its own test harness</strong>—even for GUI apps.</p>
+    </section>
+
+<section class="slide" data-notes="Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Fly, my beauties!'—fittingly, these were Flash subagents. Six autonomous read-only Gemini 3.8 Flash subagents explored the Unreal Engine source tree in parallel to verify module naming rules. Together they executed 55 minutes 20 seconds of aggregate research (328 turns, 305 tool calls) in just 22 minutes of human wall-clock time—for $0.57 ($0.62/hour). Subagents deliver two huge wins: (1) 2.5x wall-clock compression, cutting dead wait time so you stay engaged instead of tabbing away; and (2) context isolation—all 305 file searches stay out of your main session, keeping it lean and far away from compaction.">
+      <h2>“<span class="accent">Fly, my beauties!</span>”<br />Parallel wingmen cut the wait.</h2>
+      <div class="split-2">
+        <div class="contrast-block">
+          <div class="contrast-kicker">Aggregate AI Research</div>
+          <div class="stat-num">55 min</div>
+          <div class="stat-label">6 Flash subagents exploring Unreal Engine in parallel</div>
+        </div>
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">Human Clock &amp; Cost</div>
+          <div class="stat-num accent">22m · $0.57</div>
+          <div class="stat-label">2.5× faster wall-clock · main context stays clean</div>
+        </div>
+      </div>
+      <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
     </section>
 
     <!-- ACT III DIVIDER -->
@@ -958,18 +975,18 @@
       <p class="takeaway">Start minimal, then iterate—surgical edits averaged <strong>$0.08</strong> and <strong>0 compactions</strong>.</p>
     </section>
 
-<section class="slide" data-notes="AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 before we deleted 7,255 lines; V2 rebuilt it cleanly for $4.50). Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
-      <h2>AI generates abstractions. <span class="accent">You delete them.</span></h2>
+<section class="slide" data-notes="AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 and 2h 45m getting stuck in error loops before we deleted 7,255 lines). Once we pivoted to a simplified, native V2 plan, Gemini 3.8 Flash rebuilt the entire working extension in 4h 12m at a blistering 337 turns/hour for just $4.51 ($1.07/hr). A well-planned, simple design doesn't just save money—it lets cheap, fast models fly without tripping. Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
+      <h2>AI overbuilds. <span class="accent">Jettison the baggage.</span></h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
           <div class="contrast-kicker">V1 Speculative Stack</div>
           <div class="stat-num danger">$33</div>
-          <div class="stat-label">7,255 lines deleted in V2 clean-slate</div>
+          <div class="stat-label">2h 45m stalled · 7,255 lines deleted</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">V2 Native Rebuild</div>
           <div class="stat-num accent">$4.50</div>
-          <div class="stat-label">Lean, fast, 10.8k net LOC</div>
+          <div class="stat-label">4h 12m shipped on Flash · 337 turns/hr</div>
         </div>
       </div>
       <p class="takeaway">Your biggest win is asking: <strong>“Is this actually needed?”</strong></p>
@@ -991,7 +1008,7 @@
       <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
     </section>
 
-<section class="slide" data-notes="Exact development spend was $100.27 (~$100). Gemini 3.8 Flash handled 81% of all turns (3,821) for just $11.45 (11% of spend) and was also the fastest at 6.2s per turn on average. Gemini 4 Argon handled 17% of turns (804) for $38.80 (12.9s avg—2x slower). Claude Opus 5.5 handled 1.4% of turns (64) yet cost $49.65 (30.2s avg—5x slower). Once the plan is locked, Flash saves both money and wall-clock time. Toggle 'Without Cache' to see prompt caching savings ($308.01 down to $100.27).">
+<section class="slide" data-notes="Exact development spend was $100.27 (~$100). Gemini 3.8 Flash handled 81% of all turns (3,821) for just $11.45 (11% of spend) at 5.7s–6.3s per turn (p90 = 11–12s). Gemini 4 Argon handled 17% of turns (804) for $38.80 (13.4s–15.5s avg—2.3x slower). Claude Opus 5.5 handled 1.4% of turns (64) yet cost $49.65 (16.7s–30.2s avg, p90 = 81s—up to 5x slower). That latency gap is a hidden human tax: over 100 turns, Opus adds 25–40 minutes of dead waiting time. At ~6s per turn you stay in flow, reading diffs and steering; at 30–80s you tab away, get distracted, and stop supervising closely. Toggle 'Without Cache' to see prompt caching savings ($308.01 down to $100.27).">
       <div class="slide-header-row">
         <h2 id="costHeading"><span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.</h2>
         <div class="toggle-group" role="group" aria-label="Cost view toggle">
@@ -1022,10 +1039,10 @@
           <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" data-actual-width="100%" data-uncached-width="100%" style="width: 100%;"></div></div>
         </div>
       </div>
-      <p class="takeaway" id="costTakeaway">Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.</p>
+      <p class="takeaway" id="costTakeaway"><strong>6s turns keep you in flow</strong>; 30s+ turns make you tab away.</p>
     </section>
 
-<section class="slide" data-notes="Only 6 of 50 development sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
+<section class="slide" data-notes="Only 6 of 50 development sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Across the whole project, those 982 tool errors ate ~3.8 hours of active engineering time (~20% of total dev time) and ~$20 in direct spend—concentrated in the two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
       <h2><span class="accent">6</span> compacted sessions caused <span class="accent">71%</span> of spend.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -1056,13 +1073,13 @@
       <p class="subtitle">“You were the pilot steering us away from the mountain!”</p>
     </section>
 
-<section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
+<section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Notice the asymmetry in mid-session switching: stepping DOWN from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating UP to Opus mid-bloat was disastrous—two mid-session switches burned $38 in just 27 minutes (42 turns) re-reading old history at 17–30s per turn. Start a fresh session with a 1-page handoff.">
       <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
           <div class="contrast-kicker">Mid-Bloat Escalation</div>
           <div class="stat-num danger">$38</div>
-          <div class="stat-label">Burned in 42 Opus turns re-reading old context</div>
+          <div class="stat-label">Burned in 27m (42 Opus turns) re-reading old context</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Fresh Session</div>
@@ -1400,7 +1417,7 @@
           takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$208 (67%)</strong> across 494M tokens.';
         } else {
           heading.innerHTML = '<span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.';
-          takeaway.innerHTML = 'Once the plan is set, <strong>Flash is both cheaper and 2–5× faster</strong> per turn.';
+          takeaway.innerHTML = '<strong>6s turns keep you in flow</strong>; 30s+ turns make you tab away.';
         }
       });
     });

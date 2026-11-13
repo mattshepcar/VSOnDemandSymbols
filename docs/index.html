@@ -635,6 +635,90 @@
       font-weight: 600;
     }
 
+    .controls-secondary {
+      display: contents;
+    }
+
+    .controls-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+    }
+
+    .controls-icon-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .controls-icon-btn .ctrl-label {
+      display: none;
+    }
+
+    .controls-burger-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      padding: 0 !important;
+      border-radius: 999px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .controls-burger-btn[aria-expanded="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .controls button.copied,
+    .mobile-menu-btn.copied {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    body.controls-compact .controls-burger-btn {
+      display: inline-flex;
+    }
+
+    body.controls-compact .controls-secondary {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 0.55rem);
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.3rem;
+      min-width: 210px;
+      padding: 0.55rem;
+      background: var(--nav-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--rule);
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+    }
+
+    body.controls-compact .controls-secondary.open {
+      display: flex;
+    }
+
+    body.controls-compact .controls-secondary button,
+    body.controls-compact .controls-secondary select {
+      width: 100%;
+      text-align: left;
+      justify-content: flex-start;
+      padding: 0.5rem 0.75rem;
+      border-radius: 10px;
+    }
+
+    body.controls-compact .controls-icon-btn .ctrl-label {
+      display: inline;
+    }
+
     /* ==========================================================================
        NOTES DRAWER (Visible by default, toggle with 'N' key)
        ========================================================================== */
@@ -2516,20 +2600,37 @@
   </section>
 
   <!-- MINIMAL FLOATING CONTROLS -->
-  <nav class="controls" aria-label="Slide controls">
+  <nav class="controls" id="controlsNav" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
     <span class="counter" id="counter">1 / 30</span>
     <button id="nextBtn" class="next-btn" title="Next (Right Arrow / Space)">Next →</button>
-    <button id="presentBtn" title="Presentation Mode — 2nd monitor + notes (P)">Present</button>
-    <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
-    <button id="notesBtn" title="Toggle Notes (N)">Notes</button>
-    <select id="themeSelect" title="Switch Theme (T)">
-      <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
-      <option value="blue-skies">Blue Skies</option>
-      <option value="keynote-dark">Night Flight</option>
-      <option value="swiss-light">Flight Manual</option>
-      <option value="warm-paper">Pilot’s Logbook</option>
-    </select>
+    <div class="controls-secondary" id="controlsSecondary">
+      <button id="presentBtn" class="controls-icon-btn" title="Presentation Mode — 2nd monitor + notes (P)" aria-label="Presentation Mode — 2nd monitor + notes (P)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><polygon points="10 7.5 15.5 10.5 10 13.5 10 7.5" fill="currentColor" stroke="none"/></svg>
+        <span class="ctrl-label">Present</span>
+      </button>
+      <button id="gridBtn" class="controls-icon-btn" title="Slide Overview (G / Esc)" aria-label="Slide Overview (G / Esc)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="ctrl-label">Grid</span>
+      </button>
+      <button id="notesBtn" class="controls-icon-btn" title="Toggle Notes (N)" aria-label="Toggle Notes (N)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>
+        <span class="ctrl-label">Notes</span>
+      </button>
+      <button id="shareBtn" class="controls-icon-btn" title="Copy link to current slide to clipboard" aria-label="Copy link to current slide to clipboard">
+        <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <svg class="share-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+        <span class="ctrl-label">Share</span>
+      </button>
+      <select id="themeSelect" title="Switch Theme (T)">
+        <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
+        <option value="blue-skies">Blue Skies</option>
+        <option value="keynote-dark">Night Flight</option>
+        <option value="swiss-light">Flight Manual</option>
+        <option value="warm-paper">Pilot’s Logbook</option>
+      </select>
+    </div>
+    <button type="button" class="controls-burger-btn" id="controlsBurgerBtn" title="More controls" aria-label="More controls" aria-expanded="false" aria-controls="controlsSecondary">☰</button>
   </nav>
 
   <!-- MOBILE FLOATING PILL & BURGER MENU (<= 768px) -->
@@ -2537,6 +2638,7 @@
     <div class="mobile-menu" id="mobileMenu" role="menu" aria-hidden="true">
       <button type="button" class="mobile-menu-btn" id="mobileGridBtn" role="menuitem">Grid Overview</button>
       <button type="button" class="mobile-menu-btn" id="mobileAllNotesBtn" role="menuitem" aria-pressed="false">Show All Notes</button>
+      <button type="button" class="mobile-menu-btn" id="mobileShareBtn" role="menuitem" title="Copy link to current slide to clipboard">Share Slide Link</button>
       <label class="mobile-menu-label" for="mobileThemeSelect">Theme</label>
       <select class="mobile-menu-select" id="mobileThemeSelect" aria-label="Switch Theme">
         <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
@@ -2935,6 +3037,70 @@
       audienceWin = null;
     }
 
+    function parseSlideFromUrl() {
+      const hash = window.location.hash || '';
+      const hashMatch = hash.match(/^#(?:slide[=-])?(\d+)$/i);
+      const raw = hashMatch ? hashMatch[1] : new URLSearchParams(window.location.search).get('slide');
+      if (!raw || !/^\d+$/.test(raw)) return null;
+      const num = parseInt(raw, 10);
+      if (num < 1) return 0;
+      return Math.min(slides.length - 1, num - 1);
+    }
+
+    function buildCurrentSlideUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('mode');
+      url.hash = `slide=${index + 1}`;
+      return url.toString();
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (_) {}
+      }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    let shareFeedbackTimer = null;
+    async function handleShareClick(btn, defaultLabel, onDone) {
+      const url = buildCurrentSlideUrl();
+      const copied = await copyTextToClipboard(url);
+      if (!copied) return;
+      const labelEl = btn.querySelector('.ctrl-label');
+      const iconEl = btn.querySelector('.share-icon');
+      const checkEl = btn.querySelector('.share-check');
+      btn.classList.add('copied');
+      if (labelEl) labelEl.textContent = 'Copied!';
+      else btn.textContent = '✓ Copied!';
+      if (iconEl) iconEl.style.display = 'none';
+      if (checkEl) checkEl.style.display = '';
+      clearTimeout(shareFeedbackTimer);
+      shareFeedbackTimer = setTimeout(() => {
+        btn.classList.remove('copied');
+        if (labelEl) labelEl.textContent = defaultLabel;
+        else btn.textContent = defaultLabel;
+        if (iconEl) iconEl.style.display = '';
+        if (checkEl) checkEl.style.display = 'none';
+        if (onDone) onDone();
+      }, 1500);
+    }
+
     function render(i, fromSync = false) {
       index = Math.max(0, Math.min(slides.length - 1, i));
       slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
@@ -2950,7 +3116,11 @@
       }
       animateSlide(slides[index]);
       updatePresenterConsole();
+      updateControlsLayout();
       if (!fromSync && !isAudienceMode) {
+        try {
+          history.replaceState(null, '', `#slide=${index + 1}`);
+        } catch (_) {}
         postSync({ type: 'sync', index, theme: themeSelect.value, costMode: currentCostMode });
       }
     }
@@ -2960,6 +3130,7 @@
       themeSelect.value = theme;
       pThemeSelect.value = theme;
       if (mobileThemeSelect) mobileThemeSelect.value = theme;
+      updateControlsLayout();
       if (!fromSync && !isAudienceMode) {
         postSync({ type: 'sync', index, theme, costMode: currentCostMode });
       }
@@ -3006,6 +3177,7 @@
     function toggleNotes() {
       const open = notesDrawer.classList.toggle('open');
       document.body.classList.toggle('notes-open', open);
+      updateControlsLayout();
     }
 
     function toggleAudienceFullscreen() {
@@ -3048,15 +3220,71 @@
       ro.observe(nextPreviewBox);
     }
 
+    const controlsNav = document.getElementById('controlsNav');
+    const controlsSecondary = document.getElementById('controlsSecondary');
+    const controlsBurgerBtn = document.getElementById('controlsBurgerBtn');
+    const shareBtn = document.getElementById('shareBtn');
+
+    function setControlsMenuOpen(open) {
+      controlsSecondary.classList.toggle('open', open);
+      controlsBurgerBtn.setAttribute('aria-expanded', String(open));
+      controlsBurgerBtn.textContent = open ? '✕' : '☰';
+    }
+
+    function updateControlsLayout() {
+      if (isAudienceMode || isPresenterMode || window.innerWidth <= 768) return;
+      if (window.innerWidth <= 900) {
+        document.body.classList.add('controls-compact');
+        return;
+      }
+      if (!document.body.classList.contains('notes-open') || !notesText.textContent.trim()) {
+        document.body.classList.remove('controls-compact');
+        setControlsMenuOpen(false);
+        return;
+      }
+      document.body.classList.remove('controls-compact');
+      const controlsRect = controlsNav.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(notesText);
+      const textRect = range.getBoundingClientRect();
+      const overlapsNotes = textRect.width > 0 && controlsRect.left < textRect.right + 16;
+      document.body.classList.toggle('controls-compact', overlapsNotes);
+      if (!overlapsNotes) setControlsMenuOpen(false);
+    }
+
+    window.addEventListener('resize', updateControlsLayout);
+    document.fonts?.ready?.then(updateControlsLayout);
+
+    controlsBurgerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setControlsMenuOpen(!controlsSecondary.classList.contains('open'));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (controlsSecondary.classList.contains('open') && !controlsNav.contains(e.target)) {
+        setControlsMenuOpen(false);
+      }
+    });
+
     document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
     document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
     document.getElementById('heroNextBtn').addEventListener('click', () => render(index + 1));
-    document.getElementById('presentBtn').addEventListener('click', startPresentationMode);
-    document.getElementById('notesBtn').addEventListener('click', toggleNotes);
+    document.getElementById('presentBtn').addEventListener('click', () => {
+      setControlsMenuOpen(false);
+      startPresentationMode();
+    });
+    document.getElementById('notesBtn').addEventListener('click', () => {
+      setControlsMenuOpen(false);
+      toggleNotes();
+    });
     document.getElementById('gridBtn').addEventListener('click', () => {
+      setControlsMenuOpen(false);
       const opening = !overviewOverlay.classList.contains('open');
       if (opening) buildOverview();
       setOverviewOpen(opening);
+    });
+    shareBtn.addEventListener('click', () => {
+      handleShareClick(shareBtn, 'Share', () => setControlsMenuOpen(false));
     });
     document.getElementById('overviewClose').addEventListener('click', () => setOverviewOpen(false));
     themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
@@ -3080,6 +3308,11 @@
     document.getElementById('timerResetBtn').addEventListener('click', resetTimer);
 
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && controlsSecondary.classList.contains('open')) {
+        e.preventDefault();
+        setControlsMenuOpen(false);
+        return;
+      }
       if (e.key === 'Escape' || e.key.toLowerCase() === 'g') {
         if (isAudienceMode && e.key === 'Escape') return;
         e.preventDefault();
@@ -3146,7 +3379,14 @@
       setInterval(() => {
         if (isPresenterMode) updateAudienceConnectionUI();
       }, 1000);
-      render(0);
+      const initialIndex = parseSlideFromUrl();
+      render(initialIndex ?? 0);
+      window.addEventListener('hashchange', () => {
+        const targetIndex = parseSlideFromUrl();
+        if (targetIndex !== null && targetIndex !== index) {
+          render(targetIndex);
+        }
+      });
     }
     const mobileNav = document.getElementById('mobileNav');
     const mobileMenu = document.getElementById('mobileMenu');
@@ -3154,6 +3394,7 @@
     const mobileCounter = document.getElementById('mobileCounter');
     const mobileGridBtn = document.getElementById('mobileGridBtn');
     const mobileAllNotesBtn = document.getElementById('mobileAllNotesBtn');
+    const mobileShareBtn = document.getElementById('mobileShareBtn');
     const mobileThemeSelect = document.getElementById('mobileThemeSelect');
 
     function isMobileScrollMode() {
@@ -3229,6 +3470,10 @@
       setMobileMenuOpen(false);
     });
 
+    mobileShareBtn.addEventListener('click', () => {
+      handleShareClick(mobileShareBtn, 'Share Slide Link', () => setMobileMenuOpen(false));
+    });
+
     mobileThemeSelect.addEventListener('change', (e) => {
       setTheme(e.target.value);
     });
@@ -3253,6 +3498,9 @@
           mobileCounter.textContent = `${idx + 1} / ${publicSlideCount}`;
           mobileCounter.classList.toggle('is-secret-ready', idx >= publicSlideCount - 1);
           progress.style.width = `${Math.min(100, ((idx + 1) / publicSlideCount) * 100)}%`;
+          try {
+            history.replaceState(null, '', `#slide=${idx + 1}`);
+          } catch (_) {}
           if (entry.target.classList.contains('act-slide') || slides[idx + 1]?.classList.contains('act-slide')) {
             loadActMedia();
           }
@@ -3271,6 +3519,16 @@
 
       if (isMobileScrollMode()) {
         loadActMedia();
+        if (index > 0 && slides[index]) {
+          if (slides[index].dataset.secret === 'true') {
+            slides[index].classList.add('secret-revealed');
+            loadSecretSlideMedia();
+            mobileObserver.observe(slides[index]);
+          }
+          requestAnimationFrame(() => {
+            slides[index].scrollIntoView({ block: 'start' });
+          });
+        }
       }
     }
 

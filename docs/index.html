@@ -1936,8 +1936,9 @@
         </svg>
         <div class="title-hero-text">
           <h1>“Surely You Can’t Be Vibe Coding?”<br />I Am. And Don’t Call Me <span class="accent">Shirley</span></h1>
-          <p class="subtitle" style="margin-top: 1.25rem;">~50 AI sessions &nbsp;·&nbsp; 7 days &nbsp;·&nbsp; ~$100</p>
-          <p style="margin-top: 1rem; font-size: 1.05rem;">
+          <p class="subtitle" style="margin-top: 1.25rem;">Agentic Coding: Lessons from the Flight Deck</p>
+          <p style="margin-top: 0.75rem; font-size: 1.05rem; color: var(--muted);">~50 AI sessions &nbsp;·&nbsp; 7 days &nbsp;·&nbsp; ~$100</p>
+          <p style="margin-top: 0.75rem; font-size: 1.05rem;">
             <a href="https://github.com/mattshepcar/VSOnDemandSymbols" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px;">github.com/mattshepcar/VSOnDemandSymbols ↗</a>
           </p>
         </div>
@@ -1947,6 +1948,19 @@
           <polyline points="9 5 16 12 9 19"></polyline>
         </svg>
       </button>
+    </section>
+
+    <!-- SLIDE 2: RETROSPECTIVE FRAMING -->
+    <section class="slide" data-notes="Before we take off, here is what this deck is and isn't. It's a retrospective of my experience building a real software project with AI coding agents—what worked, what didn't, some surprising discoveries, and the techniques I found useful for getting better results. It isn't a guide to agentic coding or a definitive set of best practices.">
+      <div class="slide-center-wrap">
+        <h2>“What’s our <span class="accent">vector, Victor</span>?”</h2>
+        <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Pre-flight briefing: what this is (and isn’t).</p>
+        <ul class="big-list big-list-lg">
+          <li><span class="list-num">1.</span><span><strong>A real build retrospective</strong> — Seven days building a Visual Studio C++ debugger extension with AI coding agents.</span></li>
+          <li><span class="list-num">2.</span><span><strong>Field notes from the cockpit</strong> — What worked, what didn’t, some surprising discoveries, and techniques I found useful for better results.</span></li>
+          <li><span class="list-num">3.</span><span><strong>Not a manual or best-practices guide</strong> — I’m not claiming the one right way to use agents; this is just my flight log.</span></li>
+        </ul>
+      </div>
     </section>
 
     <!-- ACT I DIVIDER -->
@@ -2194,7 +2208,7 @@
           <div class="stat-label">4h 12m core rebuild on Flash · 337 turns/hr</div>
         </div>
       </div>
-      <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>
+      <p class="takeaway">Recognise dead ends early—save a <strong>handoff doc</strong> and reset.</p>
     </section>
 
 <section class="slide" data-notes="People assume you need the biggest frontier model for real code. Yet Gemini 3.8 Flash handled 81% of all turns at ~6 seconds each for $11. Opus took 1.4% of turns, cost $50, and ran up to 5x slower, turning a 100-turn session into half an hour of watching a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely.">
@@ -2245,11 +2259,11 @@
           <div class="stat-label">average cost &nbsp;·&nbsp; <strong>0</strong> compactions</div>
         </div>
       </div>
-      <p class="takeaway">Watch the <strong>fuel gauge</strong>—split early, stop after <strong>3 retries</strong>, and log quirks in <strong>AGENTS.md</strong>. ⛽</p>
+      <p class="takeaway">Keep sessions short, interrupt loops early, and log quirks in <strong>AGENTS.md</strong>.</p>
     </section>
 
     <!-- ACT IV DIVIDER -->
-    <section class="slide act-slide" data-notes="I actually asked the AI after reading all 50 dev transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through the session transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' So here are the practical lessons for flying an AI.">
+    <section class="slide act-slide" data-notes="I actually asked the AI after reading all 50 dev transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through the session transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' Here are my takeaways from 7 days in the cockpit.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <circle cx="100" cy="100" r="78"/>
         <path d="M32 108 L168 92" stroke-dasharray="6 5"/>
@@ -2257,14 +2271,14 @@
         <path d="M100 22 L100 36 M45 45 L55 55 M155 45 L145 55"/>
       </svg>
       <div class="act-badge"><span class="act-emoji">👨‍✈️</span> Act IV</div>
-      <h1>Aviate, Navigate, <span class="accent">Communicate</span></h1>
+      <h1>Lessons from the <span class="accent">Flight Deck</span></h1>
       <div class="act-rule"></div>
-      <p class="subtitle">“You were the pilot steering us away from the mountain!”</p>
-      <img class="act-photo" data-act-img="act4" alt="Act IV: Aviate, Navigate, Communicate" />
+      <p class="subtitle">“You were the pilot steering us away from the mountain!”<br /><span style="font-size: 0.82em; opacity: 0.85;">My takeaways from 7 days in the cockpit.</span></p>
+      <img class="act-photo" data-act-img="act4" alt="Act IV: Lessons from the Flight Deck" />
     </section>
 
-<section class="slide" data-notes="Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Stepping down from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating up to Opus mid-bloat was disastrous: two mid-session switches burned $38 in 27 minutes (42 turns) re-reading old history at 17–30s per turn. Start a fresh session with a 1-page handoff instead.">
-      <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
+<section class="slide" data-notes="What worked best for me was matching the model to the job: Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Stepping down from Argon to Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating up to Opus mid-bloat was my most expensive mistake: two mid-session switches burned $38 in 27 minutes (42 turns) re-reading old history at 17–30s per turn. If I hit that wall again, I'd start a fresh session with a 1-page handoff instead.">
+      <h2>Don’t escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
           <div class="contrast-kicker">Mid-Bloat Escalation</div>
@@ -2277,10 +2291,10 @@
           <div class="stat-label">Gemini 3.8 Flash for coding; Frontier for clean specs</div>
         </div>
       </div>
-      <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
+      <p class="takeaway">Context bloated? <strong>Start a fresh session</strong> with a 1-page handoff.</p>
     </section>
 
-<section class="slide" data-notes="Single-focus prompts were 4x cheaper ($1.64 vs $6.93). Draft a plan and lean rulebooks first (AGENTS.md for build flags, PRESENTATION_RULES.md for this deck), paste exact logs for bugs ($2.16 perf fix), and keep docs and comments current so stale notes do not send agents on side quests. Cross-check in a fresh session to catch drift and confirmation bias.">
+<section class="slide" data-notes="I found that single-focus prompts were 4x cheaper ($1.64 vs $6.93). What worked well for me was drafting a plan and lean rulebooks first (AGENTS.md for build flags, PRESENTATION_RULES.md for this deck), pasting exact logs for bugs ($2.16 perf fix), and keeping docs and comments current so stale notes didn't send agents on side quests. Cross-checking in a fresh session consistently caught drift and confirmation bias.">
       <h2>Single-focus plans, <span class="accent">cross-checked</span> fresh.</h2>
       <div class="split-2" style="align-items: center;">
         <div class="bars">
@@ -2302,8 +2316,8 @@
         </div>
         <ul class="big-list" style="gap: clamp(0.9rem, 2vh, 1.4rem);">
           <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">1.</span><span><strong>Plan &amp; codify first</strong> — draft a step-by-step plan and lean rulebooks (<code>AGENTS.md</code>), then run one step per prompt.</span></li>
-          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">2.</span><span><strong>Cross-check fresh</strong> — spin up another agent; never let the authoring session grade its own work.</span></li>
-          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">3.</span><span><strong>Demand proof</strong> — passing tests and benchmarks beat “it should work.”</span></li>
+          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">2.</span><span><strong>Cross-check fresh</strong> — spin up another agent instead of letting the authoring session grade its own work.</span></li>
+          <li style="font-size: clamp(1.2rem, 1.7vw, 1.6rem);"><span class="list-num">3.</span><span><strong>Ask for proof</strong> — passing tests and benchmarks beat “it should work.”</span></li>
         </ul>
       </div>
       <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
@@ -2337,15 +2351,15 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Five habits from the cockpit: (1) probe undocumented APIs and write AGENTS.md first; (2) default to a fast workhorse model and save frontier models for fresh sessions; (3) work one step at a time and cross-check fresh to avoid compaction; (4) start minimal and iterate; (5) delete aggressively. Full disclosure: this was my first time vibe coding in anger, so take these as early field notes.">
+<section class="slide" data-notes="If I started this project again, here are five habits from the cockpit I'd carry forward: (1) probe undocumented APIs and write AGENTS.md first; (2) default to a fast workhorse model and save frontier models for fresh sessions; (3) work one step at a time and cross-check fresh to avoid compaction; (4) start minimal and iterate; (5) delete aggressively. Full disclosure: this was my first time vibe coding in anger, so take these as early field notes.">
       <div class="slide-center-wrap">
-      <h2>5 <span class="accent">pre-flight</span> tips for AI projects. 📋</h2>
+      <h2>5 <span class="accent">takeaways</span> for next time. 📋</h2>
       <ul class="big-list">
         <li><span class="list-num">1.</span><span><strong>Research &amp; codify first</strong> — probe the unknowns and write <code>AGENTS.md</code>.</span></li>
         <li><span class="list-num">2.</span><span><strong>Fast workhorse models by default</strong> — frontier only in fresh sessions.</span></li>
-        <li><span class="list-num">3.</span><span><strong>Fear compaction</strong> — work one step at a time, prompt single-focus, cross-check.</span></li>
+        <li><span class="list-num">3.</span><span><strong>Watch out for compaction</strong> — work one step at a time, single-focus, cross-check.</span></li>
         <li><span class="list-num">4.</span><span><strong>Start minimal, iterate</strong> — surgical edits cost pennies; giant specs churn.</span></li>
-        <li><span class="list-num">5.</span><span><strong>Your highest-leverage skill is deletion</strong> — less is more.</span></li>
+        <li><span class="list-num">5.</span><span><strong>Delete aggressively</strong> — less is more; it was the highest-leverage move I had.</span></li>
       </ul>
       <p class="takeaway">Full disclosure: first time “vibe coding” in anger — <strong>I’m still winging it. 🤷‍♂️</strong></p>
       </div>
@@ -2688,6 +2702,7 @@
 
     const slideIconRules = [
       { match: /Shirley|Vibe Coding|Working VSIX/i, icon: '🧩' },
+      { match: /vector|Victor|flight log/i, icon: '✈️' },
       { match: /Tea break/i, icon: '🍵' },
       { match: /11 PDBs/i, icon: '⚡' },
       { match: /by the numbers/i, icon: '📊' },
@@ -2700,11 +2715,11 @@
       { match: /Jettison/i, icon: '🧳' },
       { match: /81%|Without caching/i, icon: '💸' },
       { match: /compacted sessions/i, icon: '🔥' },
-      { match: /Never escalate/i, icon: '🎚️' },
+      { match: /escalate/i, icon: '🎚️' },
       { match: /Single-focus/i, icon: '🎯' },
       { match: /cross-check/i, icon: '📐' },
       { match: /course corrections/i, icon: '🎛️' },
-      { match: /pre-flight/i, icon: '📋' },
+      { match: /pre-flight|takeaways/i, icon: '📋' },
       { match: /cost of the fuel/i, icon: '🌍' },
       { match: /Big codebases/i, icon: '🏗️' },
       { match: /still code ourselves/i, icon: '✍️' },
@@ -2741,15 +2756,19 @@
 
       const makeCard = (s, idx, actKey, actLabel) => {
         const isAct = s.classList.contains('act-slide');
+        const isTitle = s.id === 'heroSlide';
+        const isHeader = isAct || isTitle;
         const h = s.querySelector('h1, h2');
         const rawTitle = h ? getHeadingText(h) : `Slide ${idx + 1}`;
-        const title = rawTitle.replace(/\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?(\u200D[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?)*$/u, '').trim();
+        const title = isTitle
+          ? "Don't call me Shirley!"
+          : rawTitle.replace(/\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?(\u200D[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\uFE0F?)*$/u, '').trim();
         const icon = getSlideIcon(s, rawTitle, isAct);
         const card = document.createElement('button');
         card.dataset.act = actKey;
-        card.className = 'overview-card' + (isAct ? ' is-act' : '') + (idx === index ? ' current' : '');
+        card.className = 'overview-card' + (isHeader ? ' is-act' : '') + (idx === index ? ' current' : '');
 
-        const numLabel = isAct ? actLabel.replace(icon, '').trim() : `Slide ${idx + 1}`;
+        const numLabel = isTitle ? 'Title' : (isAct ? actLabel.replace(icon, '').trim() : `Slide ${idx + 1}`);
         card.innerHTML = `
           <div class="overview-card-top">
             <span class="overview-num">${numLabel}</span>
@@ -2770,12 +2789,14 @@
       };
 
       const groups = [];
-      let currentGroup = { actKey: 'intro', actLabel: 'Intro', actSlide: null, items: [] };
+      let currentGroup = { actKey: 'intro', actLabel: 'Title', actSlide: null, items: [] };
       groups.push(currentGroup);
 
       slides.forEach((s, idx) => {
         if (s.dataset.secret === 'true') return;
-        if (s.classList.contains('act-slide')) {
+        if (s.id === 'heroSlide') {
+          currentGroup.actSlide = { s, idx };
+        } else if (s.classList.contains('act-slide')) {
           currentActKey = actKeys[actCounter] || 'finale';
           actCounter++;
           const badge = s.querySelector('.act-badge');

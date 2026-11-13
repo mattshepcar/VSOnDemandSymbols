@@ -1187,6 +1187,17 @@
       <p class="subtitle">“Surely you can’t be serious?” “I am serious… and don’t call me Shirley.”</p>
     </section>
 
+<section class="slide" data-notes="Before we talk about codebases and teams, it is worth asking what this costs outside our own editor. Three ethical questions hang over AI coding. (1) Training data: models were trained on billions of lines of public open-source code without explicit consent or attribution. When an LLM absorbs GPL code and emits a functional equivalent into a proprietary repo, that is effectively 'license laundering'—stripping copyleft obligations and credit. (2) Energy and water: global data centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share jumping from ~20% to ~37%. A single large AI data centre can use 1 to 5 million gallons of water a day for cooling—the same as a town of 30,000 to 50,000 people—plus the indirect water used to generate that electricity. And agentic coding runs dozens of prompts per task, not one. (3) The job itself: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) contracting into a 'barbell' market—seniors are in demand to steer and review AI, while the boilerplate tasks that used to be the junior apprenticeship runway are disappearing. The job is shifting from writing code to auditing, architecting, and owning the outcome.">
+      <h2>What’s the <span class="accent">cost of the fuel</span>? 🌍</h2>
+      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The ethical bill behind “effortless” code.</p>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Training data</strong> — uncredited open source &amp; “license laundering”.</span></li>
+        <li><span class="list-num">02</span><span><strong>Energy &amp; water</strong> — agentic loops multiply the footprint.</span></li>
+        <li><span class="list-num">03</span><span><strong>Changing the job</strong> — fewer junior runways, more code auditing.</span></li>
+      </ul>
+      <p class="takeaway">Cheap tokens still have a <strong>real-world bill</strong>.</p>
+    </section>
+
 <section class="slide" data-notes="Open question 1. This was a small, self-contained tool with one author, so AI-written code was easy to live with. Bigger, long-lived codebases are different. 2026 write-ups (GitClear's code-change research, InfoQ coverage of Google's agent telemetry) describe AI as stuck in a 'perpetual V1': it writes fresh local code instead of reusing existing abstractions, so duplication goes up and refactoring goes down. Writers also talk about 'convenient debt': code that compiles and passes tests, but that nobody chose on purpose and nobody fully understands. What seems to work: humans own the interfaces and boundaries, and AI fills in the implementation. Use the 'explain it' rule at review time. Treat the context the agent reads (AGENTS.md, docs, comments, TODOs) as part of the codebase, because stale comments send agents on side quests. Code is now cheap to write. Understanding it is the expensive part.">
       <h2>Small tools are easy. <span class="accent">Big codebases</span>? 🏗️</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Will it still make sense in two years?</p>
@@ -1307,8 +1318,8 @@
       </div>
     </section>
 
-    <!-- SECRET SLIDE 30 -->
-    <section class="slide" data-notes="Secret Slide 30! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
+    <!-- SECRET SLIDE 31 -->
+    <section class="slide" data-secret="true" data-notes="Secret Slide 31! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <img src="princevultan.jpg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>
@@ -1351,6 +1362,7 @@
 
   <script>
     const slides = Array.from(document.querySelectorAll('.slide'));
+    const publicSlideCount = slides.filter((s) => s.dataset.secret !== 'true').length;
     const progress = document.getElementById('progress');
     const counter = document.getElementById('counter');
     const notesDrawer = document.getElementById('notesDrawer');
@@ -1393,6 +1405,7 @@
     function buildOverview() {
       overviewGrid.innerHTML = '';
       slides.forEach((s, idx) => {
+        if (s.dataset.secret === 'true') return;
         const h = s.querySelector('h1, h2');
         const title = h ? h.textContent.replace(/\s+/g, ' ').trim() : `Slide ${idx + 1}`;
         const card = document.createElement('button');
@@ -1409,8 +1422,8 @@
     function render(i) {
       index = Math.max(0, Math.min(slides.length - 1, i));
       slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
-      counter.textContent = `${index + 1} / ${slides.length}`;
-      progress.style.width = `${((index + 1) / slides.length) * 100}%`;
+      counter.textContent = `${index + 1} / ${publicSlideCount}`;
+      progress.style.width = `${Math.min(100, ((index + 1) / publicSlideCount) * 100)}%`;
       notesText.textContent = slides[index].dataset.notes || '';
       animateSlide(slides[index]);
     }

@@ -967,6 +967,29 @@
       </div>
     </section>
 
+<section class="slide" data-notes="People often ask what ~494M tokens actually costs the planet. Using conservative published inference benchmarks (~240 Wh per million blended tokens—especially realistic given our 95.4% prompt cache hit rate), the entire 7-day build used ~120 kWh of electricity: enough to power 1 typical UK home for ~17 days (at Ofgem's ~6.85 kWh/day average, or ~420 UK homes for an hour). Direct data-center cooling water is ~150 L, or ~2–3 showers—roughly the water needed to grow a single cup of coffee. At the UK grid average (0.196 kg CO2e/kWh, DESNZ), that's ~24 kg CO2, or ~1 rainforest tree working for a year (~90 miles in a petrol car). And the joking equivalent in junior developers? About 2.4 junior devs—who saved 1 bucket of tears shed over Visual Studio APIs.">
+      <h2>What 494M tokens <span class="accent">cost the planet</span>.</h2>
+      <div class="stats-grid-2x2 compact">
+        <div class="stat">
+          <div class="stat-num accent">~120 kWh</div>
+          <div class="stat-label">Powers <strong>1 UK home for ~17 days</strong> (or ~420 homes for 1 hr)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">~150L water</div>
+          <div class="stat-label">Direct cooling: <strong>~2–3 showers</strong>, or the water to grow 1 cup of coffee</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">~1 tree</div>
+          <div class="stat-label">Rainforest CO₂ offset for 1 yr (<strong>~24 kg CO₂</strong> · ~90 petrol-car miles)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num accent">~2.4 Jnr Devs</div>
+          <div class="stat-label">Saved <strong>1 bucket of tears</strong> shed over Visual Studio APIs</div>
+        </div>
+      </div>
+      <p class="takeaway">Conservative UK estimate (~240 Wh/MTok, 95.4% cached). <strong>Less carbon than a 90-mile drive.</strong></p>
+    </section>
+
 <section class="slide" data-notes="Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product for just $12. Days 5-6 added automated real-world benchmarking and performance tuning. Day 7 tackled multi-instance edge cases, which we caught and simplified mid-flight.">
       <h2>Seven days, <span class="accent">one aborted approach</span>.</h2>
       <div class="timeline">
@@ -1422,8 +1445,8 @@
       </div>
     </section>
 
-    <!-- SECRET SLIDE 31 -->
-    <section class="slide" data-secret="true" data-notes="Secret Slide 31! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
+    <!-- SECRET SLIDE 32 -->
+    <section class="slide" data-secret="true" data-notes="Secret Slide 32! Cue Brian Blessed as Prince Vultan in Flash Gordon (1980): 'Hawkmen, DIVE!'—fittingly, we launched 6 Flash subagents in parallel.">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <img id="secretSlideImg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>
@@ -1511,6 +1534,7 @@
       { match: /Tea break/i, icon: '🍵' },
       { match: /11 PDBs/i, icon: '⚡' },
       { match: /by the numbers/i, icon: '📊' },
+      { match: /cost the planet/i, icon: '🌱' },
       { match: /Seven days/i, icon: '📅' },
       { match: /VS’s own DLLs|VS's own DLLs/i, icon: '🔍' },
       { match: /self-test/i, icon: '🤖' },

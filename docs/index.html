@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="flash-gordon">
+<html lang="en" data-theme="blue-skies">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -15,7 +15,7 @@
   </script>
   <style>
     /* ==========================================================================
-       THEMES (5 projection-ready palettes, Flash! A-ah! default)
+       THEMES (5 projection-ready palettes, Blue Skies default)
        ========================================================================== */
     :root,
     [data-theme="keynote-dark"] {
@@ -2570,8 +2570,8 @@
         <button class="p-btn primary" id="pNextBtn" title="Next (Right Arrow / Space)">Next →</button>
         <button class="p-btn" id="pGridBtn" title="Slide Overview (G / Esc)">Grid</button>
         <select id="pThemeSelect" title="Switch Theme (T)">
-          <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
-          <option value="blue-skies">Blue Skies</option>
+          <option value="blue-skies" selected>Blue Skies</option>
+          <option value="flash-gordon">⚡ Flash! A-ah!</option>
           <option value="keynote-dark">Night Flight</option>
           <option value="swiss-light">Flight Manual</option>
           <option value="warm-paper">Pilot’s Logbook</option>
@@ -2629,8 +2629,8 @@
         <span class="ctrl-label">Share</span>
       </button>
       <select id="themeSelect" title="Switch Theme (T)">
-        <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
-        <option value="blue-skies">Blue Skies</option>
+        <option value="blue-skies" selected>Blue Skies</option>
+        <option value="flash-gordon">⚡ Flash! A-ah!</option>
         <option value="keynote-dark">Night Flight</option>
         <option value="swiss-light">Flight Manual</option>
         <option value="warm-paper">Pilot’s Logbook</option>
@@ -2647,8 +2647,8 @@
       <button type="button" class="mobile-menu-btn" id="mobileShareBtn" role="menuitem" title="Copy link to current slide to clipboard">Share Slide Link</button>
       <label class="mobile-menu-label" for="mobileThemeSelect">Theme</label>
       <select class="mobile-menu-select" id="mobileThemeSelect" aria-label="Switch Theme">
-        <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
-        <option value="blue-skies">Blue Skies</option>
+        <option value="blue-skies" selected>Blue Skies</option>
+        <option value="flash-gordon">⚡ Flash! A-ah!</option>
         <option value="keynote-dark">Night Flight</option>
         <option value="swiss-light">Flight Manual</option>
         <option value="warm-paper">Pilot’s Logbook</option>
@@ -2672,7 +2672,7 @@
     const themeSelect = document.getElementById('themeSelect');
     const overviewOverlay = document.getElementById('overviewOverlay');
     const overviewGrid = document.getElementById('overviewGrid');
-    const themes = ['flash-gordon', 'blue-skies', 'keynote-dark', 'swiss-light', 'warm-paper'];
+    const themes = ['blue-skies', 'flash-gordon', 'keynote-dark', 'swiss-light', 'warm-paper'];
 
     let index = 0;
 

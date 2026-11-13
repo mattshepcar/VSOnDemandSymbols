@@ -1,6 +1,6 @@
 # Presentation Design Rules & Learnings
 
-> **Source:** Lessons distilled while iterating on [presentation.html](file:///C:/Dev/VSOnDemandSymbols/chat_history/presentation.html) — turning raw engineering telemetry into a cohesive, projection-ready keynote.
+> **Source:** Lessons distilled while iterating on [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) — turning raw engineering telemetry into a cohesive, projection-ready keynote.
 
 ---
 

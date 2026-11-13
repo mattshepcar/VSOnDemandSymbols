@@ -40,13 +40,15 @@ The extension writes status updates, module matches, and symbol load events to t
 1. Open **View > Output** (or press `Ctrl+Alt+O`).
 2. In the **Show output from** dropdown, select **On-Demand Symbols**.
 
-## Built with (vibe coded)
+## Built with AI (Learning Project)
 
-This project was "vibe coded" with AI coding assistants:
+This was an AI-assisted learning project built with:
 
 * Claude Opus 5.5
 * Gemini 4 Argon
 * Written mostly by Gemini 3.8 Flash
+
+View the retrospective slide deck on how it was built, what it cost, and the lessons learned: **[Building a VS Extension with AI](https://mattshepcar.github.io/VSOnDemandSymbols/)**.
 
 ## License
 

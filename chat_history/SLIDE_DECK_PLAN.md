@@ -1,4 +1,4 @@
-# On-Demand Symbols: Final 29-Slide Presentation Plan
+# On-Demand Symbols: Final 30-Slide Presentation Plan
 
 > **Target Duration:** ~15 minutes  
 > **Output File:** [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) (live at `https://mattshepcar.github.io/VSOnDemandSymbols/`)  
@@ -36,12 +36,15 @@
 19. **Guardrails:** *Let AI write the rules—then cross-check fresh.* (Codify environment quirks in `AGENTS.md`, then verify in a clean session).
 20. **Pilot Quotes:** *Mid-flight course corrections. 🎛️* (Real verbatim steering quotes from the logs).
 21. **5 Pre-Flight Tips:** *5 pre-flight tips for your next AI project. 📋* + *"Full disclosure: first time 'vibe coding' in anger — I'm still winging it. 🤷‍♂️"* footnote.
-22. **Self-Reflection & Vibe Decking:** *"The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew."* + 2×2 stat grid (`~6 hrs`, `73.9M` tokens, `$14.31` on Gemini 4 Hydrogen, `$0.60 / slide`).
 
-## Act V — Uncharted Airspace *(Open Questions & Outro)*
-23. **Act V Divider:** *Uncharted Airspace* — *“Surely you can’t be serious?” “I am serious… and don’t call me Shirley.”* (Airplane!, 1980).
-24. **Open Q1 — Maintainability:** *Small tools are easy. Big codebases?* (Humans own the architecture · Can’t explain it? Don’t merge it · Context is code → *Code is cheap. Understanding isn’t.*)
-25. **Open Q2 — What to Code Ourselves:** *What should we still code ourselves?* (Keep the hard thinking · Debug first, ask second · Delegate the drudge → *Pilots still hand-fly to stay current.*)
-26. **Open Q3 — Human Collaboration:** *Keeping the human in the crew.* (Share the flight logs · Explain it to a human · Mentor judgement, not syntax → *Use the time AI saves to talk more, not less.*)
-27. **More Questions:** *Questions we should also be asking.* (Is it actually faster? · Who reviews the flood? · Where do the next seniors come from? · Who owns the bugs? · What happens when the subsidies end?) — sources and detail in speaker notes.
-28. **Landing / Q&A:** Aeroplane landing SVG + *Questions? 🙋‍♂️* (deferring hard ones to co-pilot Claude).
+## Act V — Uncharted Airspace *(Open Questions)*
+22. **Act V Divider:** *Uncharted Airspace* — *“Surely you can’t be serious?” “I am serious… and don’t call me Shirley.”* (Airplane!, 1980).
+23. **Open Q1 — Maintainability:** *Small tools are easy. Big codebases?* (Humans own the architecture · Can’t explain it? Don’t merge it · Context is code → *Code is cheap. Understanding isn’t.*)
+24. **Open Q2 — What to Code Ourselves:** *What should we still code ourselves?* (Keep the hard thinking · Debug first, ask second · Delegate the drudge → *Pilots still hand-fly to stay current.*)
+25. **Open Q3 — Human Collaboration:** *Keeping the human in the crew.* (Share the flight logs · Explain it to a human · Mentor judgement, not syntax → *Use the time AI saves to talk more, not less.*)
+26. **More Questions:** *Questions we should also be asking.* (Is it actually faster? · Who reviews the flood? · Where do the next seniors come from? · Who owns the bugs? · What happens when the subsidies end?) — sources and detail in speaker notes.
+
+## And Finally — Reading the Black Box *(Outro, not an act)*
+27. **And Finally Divider:** *Reading the Black Box* — *“This is your autopilot speaking. I’ve reviewed my own flight logs, and I’m delighted to report I was brilliant.”* (Black-box/flight-recorder SVG; badge “And Finally” instead of an act number.)
+28. **Self-Reflection & Vibe Decking:** *"The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew."* + 2×2 stat grid (`~6 hrs`, `73.9M` tokens, `$14.31` on Gemini 4 Hydrogen, `$0.60 / slide`).
+29. **Landing / Q&A:** Aeroplane landing SVG + *Questions? 🙋‍♂️* (deferring hard ones to co-pilot Claude).

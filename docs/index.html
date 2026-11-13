@@ -1142,29 +1142,6 @@
       <p class="takeaway">Full disclosure: first time “vibe coding” in anger — <strong>I’m still winging it. 🤷‍♂️</strong></p>
     </section>
 
-<section class="slide" data-notes="Every stat in this talk came from the AI reading all 50 dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64 total) and cross-checked by another member of the cabin crew against PRESENTATION_RULES.md that the AI wrote itself. Across 10 sessions (~6 active hours, 73.9M tokens, 733 tool calls), that analysis and deck-building pass cost $14.31 ($0.60/slide)—95% on Gemini 4 Hydrogen.">
-      <h2>Self-reflection &amp; <span class="accent">vibe decking</span>.</h2>
-      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
-      <div class="stats-grid-2x2">
-        <div class="stat">
-          <div class="stat-num accent">~6 hrs</div>
-          <div class="stat-label">Active time (10 sessions · 660 turns)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num"><span data-count="73.9" data-suffix="M">73.9M</span></div>
-          <div class="stat-label">Tokens (94% cache hit · 733 tool calls)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num accent">$14.31</div>
-          <div class="stat-label">Total spend (95% Gemini 4 Hydrogen)</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num">$0.60 / slide</div>
-          <div class="stat-label">$7.85 deck build · $6.46 log analysis</div>
-        </div>
-      </div>
-    </section>
-
     <!-- ACT V DIVIDER -->
     <section class="slide act-slide" data-notes="Before we land: this was one person, one small tool and one week. Some big questions are still open, and I don't have the answers yet. The next few slides cover the ones I keep coming back to: maintainability at scale, what we should still code ourselves, and how we keep sharing knowledge as people. Then a few more I think we should all be asking. (Quote from Airplane!, 1980. Leslie Nielsen as Dr. Rumack.) These are serious questions... and don't call me Shirley.">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -1221,6 +1198,43 @@
         <li><span class="list-num">4.</span><span><strong>Who owns the bugs?</strong></span></li>
         <li><span class="list-num">5.</span><span><strong>What happens when the subsidies end?</strong></span></li>
       </ul>
+    </section>
+
+    <!-- AND FINALLY DIVIDER -->
+    <section class="slide act-slide" data-notes="And finally: the black box. Every stat in this talk came from the AI reading its own flight recorder: all 50 development chat logs. (Fun fact: aircraft black boxes are actually bright orange so they are easy to find in the wreckage.) So yes, the AI marked its own homework, and then wrote the slides about how well it did.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="45" y="60" width="110" height="90" rx="8"/>
+        <path d="M45 82 L155 82 M45 128 L155 128" stroke-dasharray="5 5"/>
+        <path d="M60 105 L75 105 L82 92 L92 118 L102 98 L110 105 L140 105"/>
+        <path d="M85 60 L85 48 L115 48 L115 60"/>
+      </svg>
+      <div class="act-badge"><span class="act-emoji">&#x1F4FC;</span> And Finally</div>
+      <h1>Reading the <span class="accent">Black Box</span></h1>
+      <div class="act-rule"></div>
+      <p class="subtitle">&ldquo;This is your autopilot speaking. I&rsquo;ve reviewed my own flight logs, and I&rsquo;m delighted to report I was brilliant.&rdquo;</p>
+    </section>
+
+<section class="slide" data-notes="Every stat in this talk came from the AI reading all 50 dev transcripts and grading its own homework. Even these slides were 'vibe decked'—prototyped by 4 parallel subagents ($0.64 total) and cross-checked by another member of the cabin crew against PRESENTATION_RULES.md that the AI wrote itself. Across 10 sessions (~6 active hours, 73.9M tokens, 733 tool calls), that analysis and deck-building pass cost $14.31 ($0.60/slide)—95% on Gemini 4 Hydrogen.">
+      <h2>Self-reflection &amp; <span class="accent">vibe decking</span>.</h2>
+      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
+      <div class="stats-grid-2x2">
+        <div class="stat">
+          <div class="stat-num accent">~6 hrs</div>
+          <div class="stat-label">Active time (10 sessions · 660 turns)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num"><span data-count="73.9" data-suffix="M">73.9M</span></div>
+          <div class="stat-label">Tokens (94% cache hit · 733 tool calls)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num accent">$14.31</div>
+          <div class="stat-label">Total spend (95% Gemini 4 Hydrogen)</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">$0.60 / slide</div>
+          <div class="stat-label">$7.85 deck build · $6.46 log analysis</div>
+        </div>
+      </div>
     </section>
 
 <section class="slide" data-notes="Thanks for flying with us! Questions? (If they're hard, I'll defer to my co-pilot, Claude.)">
@@ -1282,7 +1296,7 @@
   <!-- MINIMAL FLOATING CONTROLS -->
   <nav class="controls" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
-    <span class="counter" id="counter">1 / 29</span>
+    <span class="counter" id="counter">1 / 30</span>
     <button id="nextBtn" title="Next (Right Arrow / Space)">→</button>
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
     <button id="notesBtn" title="Toggle Notes (N)">Notes</button>

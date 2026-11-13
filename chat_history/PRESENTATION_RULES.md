@@ -25,8 +25,9 @@
    - **Act I — Setup & Scale:** Problem → Solution → Numbers → Timeline.
    - **Act II — The Upside:** Where the approach genuinely surprised you.
    - **Act III — The Traps:** Churn, dead ends, and cost/context blowups.
-   - **Act IV — The Playbook:** Actionable rules, real quotes, tips, and how the deck was made.
-   - **Act V — Open Questions & Outro:** Honest unanswered questions (one per slide, detail in notes), then a human sign-off.
+   - **Act IV — The Playbook:** Actionable rules, real quotes, and tips.
+   - **Act V — Open Questions:** Honest unanswered questions (one per slide, detail in notes).
+   - **And Finally (not an act):** A *Reading the Black Box* divider, how the deck was made (vibe decking), then a human sign-off.
 2. **Always put the Problem before the Solution.**
    Establish the relatable pain (*"UE5 + F5 = Tea break time 🍵"*) on its own slide before showing the fix (*"11 PDBs instead of 950"*).
 3. **Keep related points together.**

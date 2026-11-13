@@ -1406,6 +1406,384 @@
         display: none;
       }
     }
+
+    /* ==========================================================================
+       MOBILE PAGELESS SCROLL, BURGER MENU & INLINE NOTES (<= 768px)
+       ========================================================================== */
+    .mobile-nav,
+    .mobile-notes-wrap {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      html:not(.force-paged),
+      body:not(.is-audience):not(.is-presenter) {
+        height: auto;
+        min-height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .deck {
+        width: 100%;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 5.5rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .slide,
+      body:not(.is-audience):not(.is-presenter).notes-open .slide {
+        position: relative;
+        inset: auto;
+        display: flex;
+        min-height: auto;
+        padding: 2.5rem 1.25rem 2rem;
+        gap: 1.25rem;
+        border-bottom: 1px solid var(--rule);
+        animation: none;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .slide[data-secret="true"] {
+        display: none !important;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .slide[data-secret="true"].secret-revealed {
+        display: flex !important;
+      }
+
+      .mobile-counter.is-secret-ready {
+        cursor: pointer;
+        color: var(--accent);
+      }
+
+      body:not(.is-audience):not(.is-presenter) .slide-center-wrap {
+        width: 100%;
+      }
+
+      body:not(.is-audience):not(.is-presenter) h1 {
+        font-size: clamp(2rem, 8.5vw, 3rem);
+      }
+
+      body:not(.is-audience):not(.is-presenter) h2 {
+        font-size: clamp(1.65rem, 6.8vw, 2.4rem);
+      }
+
+      body:not(.is-audience):not(.is-presenter) .subtitle,
+      body:not(.is-audience):not(.is-presenter) .takeaway {
+        font-size: clamp(1.05rem, 4.3vw, 1.35rem);
+      }
+
+      body:not(.is-audience):not(.is-presenter) .stat-num {
+        font-size: clamp(2.4rem, 10vw, 3.6rem);
+      }
+
+      body:not(.is-audience):not(.is-presenter) .stat-label {
+        font-size: clamp(1rem, 4vw, 1.25rem);
+      }
+
+      body:not(.is-audience):not(.is-presenter) .big-list li,
+      body:not(.is-audience):not(.is-presenter) .big-list.big-list-lg li {
+        font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+        gap: 0.7rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .bar-header {
+        font-size: clamp(1rem, 4vw, 1.25rem);
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .stats-grid-2x2,
+      body:not(.is-audience):not(.is-presenter) .split-2 {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .contrast-block {
+        padding-left: 1rem;
+        border-left-width: 4px;
+      }
+
+      body:not(.is-audience):not(.is-presenter) #heroSlide {
+        padding: 3rem 1.25rem 2.25rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) #heroSlide .title-hero {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.1rem;
+        width: 100%;
+      }
+
+      body:not(.is-audience):not(.is-presenter) #heroSlide .title-hero-text {
+        order: 1;
+        width: 100%;
+      }
+
+      body:not(.is-audience):not(.is-presenter) #heroSlide .title-hero h1 {
+        white-space: normal;
+        font-size: clamp(2rem, 9.5vw, 3.2rem);
+      }
+
+      body:not(.is-audience):not(.is-presenter) #heroSlide .vsix-icon {
+        order: 2;
+        width: 72px;
+        height: 72px;
+      }
+
+      /* Act divider slides: full-width text, photo/graphic below text */
+      body:not(.is-audience):not(.is-presenter) .act-slide > h1,
+      body:not(.is-audience):not(.is-presenter) .act-slide > .subtitle {
+        max-width: 100%;
+        width: 100%;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .act-photo {
+        position: relative;
+        right: auto;
+        top: auto;
+        transform: none;
+        width: 100%;
+        max-height: 260px;
+        margin-top: 0.25rem;
+        opacity: 1;
+        animation: none;
+        order: 2;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .act-art {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        transform: none;
+        width: 96px;
+        height: 96px;
+        margin-top: 0.25rem;
+        opacity: 0.35;
+        animation: none;
+        order: 2;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .act-slide .act-art {
+        display: none;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .mobile-notes-wrap {
+        order: 3;
+      }
+
+      /* Slide 7 timeline: stack vertically without staircase offset on mobile */
+      body:not(.is-audience):not(.is-presenter) .timeline {
+        gap: 0.85rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .tl-step,
+      body:not(.is-audience):not(.is-presenter) .tl-step:nth-child(n) {
+        margin-left: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+        padding: 0.2rem 0 0.2rem 0.9rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .tl-day {
+        min-width: 0;
+        font-size: 0.82rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .tl-title {
+        font-size: 1.15rem;
+        flex-shrink: 1;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .tl-desc {
+        font-size: 0.98rem;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .slide-next-btn,
+      body:not(.is-audience):not(.is-presenter) .vs-output-watermark,
+      body:not(.is-audience):not(.is-presenter) .vs-gutter,
+      body:not(.is-audience):not(.is-presenter) .vs-bp-dot,
+      body:not(.is-audience):not(.is-presenter) .vs-bp-line {
+        display: none;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .act-rule {
+        width: 100%;
+        animation: none;
+      }
+
+      /* Hide desktop floating controls and bottom drawer on mobile */
+      body:not(.is-audience):not(.is-presenter) .controls,
+      body:not(.is-audience):not(.is-presenter) .notes-drawer {
+        display: none !important;
+      }
+
+      /* Mobile floating pill + burger menu */
+      body:not(.is-audience):not(.is-presenter) .mobile-nav {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.6rem;
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 40;
+      }
+
+      .mobile-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: var(--nav-bg);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--rule);
+        border-radius: 999px;
+        padding: 0.35rem 0.5rem 0.35rem 0.85rem;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .mobile-counter {
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        color: var(--ink);
+        padding-right: 0.25rem;
+      }
+
+      .mobile-burger-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        border: none;
+        background: var(--accent);
+        color: #09090b;
+        font-size: 1.15rem;
+        font-weight: 800;
+        cursor: pointer;
+        line-height: 1;
+      }
+
+      [data-theme="flash-gordon"] .mobile-burger-btn {
+        color: #0d0518;
+      }
+
+      [data-theme="blue-skies"] .mobile-burger-btn,
+      [data-theme="swiss-light"] .mobile-burger-btn,
+      [data-theme="warm-paper"] .mobile-burger-btn {
+        color: #ffffff;
+      }
+
+      .mobile-menu {
+        display: none;
+        flex-direction: column;
+        gap: 0.45rem;
+        min-width: 220px;
+        padding: 0.75rem;
+        background: var(--nav-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--rule);
+        border-radius: 16px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+      }
+
+      .mobile-menu.open {
+        display: flex;
+      }
+
+      .mobile-menu-btn,
+      .mobile-menu-select {
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        border: 1px solid var(--rule);
+        color: var(--ink);
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        padding: 0.6rem 0.75rem;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+
+      .mobile-menu-btn:active,
+      .mobile-menu-btn.active {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .mobile-menu-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        padding: 0.2rem 0.25rem 0;
+      }
+
+      .mobile-menu-select option {
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      /* Per-slide inline expanding notes */
+      body:not(.is-audience):not(.is-presenter) .mobile-notes-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-top: 0.35rem;
+      }
+
+      .mobile-notes-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: var(--accent-soft);
+        border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+        color: var(--accent);
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 700;
+        padding: 0.38rem 0.8rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .mobile-notes-toggle .chevron {
+        display: inline-block;
+        transition: transform 0.18s ease;
+      }
+
+      .mobile-notes-toggle[aria-expanded="true"] .chevron {
+        transform: rotate(180deg);
+      }
+
+      .mobile-notes-body {
+        width: 100%;
+        background: var(--notes-bg);
+        border: 1px solid var(--rule);
+        border-left: 3px solid var(--accent);
+        border-radius: 10px;
+        padding: 0.85rem 1rem;
+        font-size: 0.96rem;
+        line-height: 1.55;
+        color: var(--ink);
+      }
+
+      .mobile-notes-body[hidden] {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -2154,6 +2532,26 @@
     </select>
   </nav>
 
+  <!-- MOBILE FLOATING PILL & BURGER MENU (<= 768px) -->
+  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile slide menu">
+    <div class="mobile-menu" id="mobileMenu" role="menu" aria-hidden="true">
+      <button type="button" class="mobile-menu-btn" id="mobileGridBtn" role="menuitem">Grid Overview</button>
+      <button type="button" class="mobile-menu-btn" id="mobileAllNotesBtn" role="menuitem" aria-pressed="false">Show All Notes</button>
+      <label class="mobile-menu-label" for="mobileThemeSelect">Theme</label>
+      <select class="mobile-menu-select" id="mobileThemeSelect" aria-label="Switch Theme">
+        <option value="flash-gordon" selected>⚡ Flash! A-ah!</option>
+        <option value="blue-skies">Blue Skies</option>
+        <option value="keynote-dark">Night Flight</option>
+        <option value="swiss-light">Flight Manual</option>
+        <option value="warm-paper">Pilot’s Logbook</option>
+      </select>
+    </div>
+    <div class="mobile-pill">
+      <span class="mobile-counter" id="mobileCounter">1 / 30</span>
+      <button type="button" class="mobile-burger-btn" id="mobileBurgerBtn" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
+    </div>
+  </nav>
+
   <script>
     const slides = Array.from(document.querySelectorAll('.slide'));
     const publicSlideCount = slides.filter((s) => s.dataset.secret !== 'true').length;
@@ -2272,7 +2670,11 @@
 
         card.addEventListener('click', () => {
           setOverviewOpen(false);
-          render(idx);
+          if (isMobileScrollMode()) {
+            slides[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            render(idx);
+          }
         });
         return card;
       };
@@ -2557,6 +2959,7 @@
       document.documentElement.setAttribute('data-theme', theme);
       themeSelect.value = theme;
       pThemeSelect.value = theme;
+      if (mobileThemeSelect) mobileThemeSelect.value = theme;
       if (!fromSync && !isAudienceMode) {
         postSync({ type: 'sync', index, theme, costMode: currentCostMode });
       }
@@ -2745,11 +3148,150 @@
       }, 1000);
       render(0);
     }
+    const mobileNav = document.getElementById('mobileNav');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileBurgerBtn = document.getElementById('mobileBurgerBtn');
+    const mobileCounter = document.getElementById('mobileCounter');
+    const mobileGridBtn = document.getElementById('mobileGridBtn');
+    const mobileAllNotesBtn = document.getElementById('mobileAllNotesBtn');
+    const mobileThemeSelect = document.getElementById('mobileThemeSelect');
+
+    function isMobileScrollMode() {
+      return window.innerWidth <= 768 && !isAudienceMode && !isPresenterMode;
+    }
+
+    function setMobileMenuOpen(open) {
+      mobileMenu.classList.toggle('open', open);
+      mobileMenu.setAttribute('aria-hidden', String(!open));
+      mobileBurgerBtn.setAttribute('aria-expanded', String(open));
+      mobileBurgerBtn.textContent = open ? '✕' : '☰';
+    }
+
+    // Build per-slide inline expanding notes for mobile pageless scroll
+    const mobileNoteControls = [];
+    slides.forEach((slide) => {
+      const notes = (slide.dataset.notes || '').trim();
+      if (!notes) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'mobile-notes-wrap';
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'mobile-notes-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.innerHTML = '<span>📝 Notes</span><span class="chevron" aria-hidden="true">▾</span>';
+
+      const body = document.createElement('div');
+      body.className = 'mobile-notes-body';
+      body.hidden = true;
+      body.textContent = notes;
+
+      const setSlideNoteOpen = (open) => {
+        body.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+      };
+
+      toggle.addEventListener('click', () => {
+        setSlideNoteOpen(body.hidden);
+        syncAllNotesButtonLabel();
+      });
+
+      wrap.appendChild(toggle);
+      wrap.appendChild(body);
+      slide.appendChild(wrap);
+      mobileNoteControls.push({ body, setSlideNoteOpen });
+    });
+
+    function syncAllNotesButtonLabel() {
+      if (!mobileNoteControls.length) return;
+      const allOpen = mobileNoteControls.every((item) => !item.body.hidden);
+      mobileAllNotesBtn.textContent = allOpen ? 'Hide All Notes' : 'Show All Notes';
+      mobileAllNotesBtn.classList.toggle('active', allOpen);
+      mobileAllNotesBtn.setAttribute('aria-pressed', String(allOpen));
+    }
+
+    mobileBurgerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMobileMenuOpen(!mobileMenu.classList.contains('open'));
+    });
+
+    mobileGridBtn.addEventListener('click', () => {
+      setMobileMenuOpen(false);
+      buildOverview();
+      setOverviewOpen(true);
+    });
+
+    mobileAllNotesBtn.addEventListener('click', () => {
+      const anyClosed = mobileNoteControls.some((item) => item.body.hidden);
+      mobileNoteControls.forEach((item) => item.setSlideNoteOpen(anyClosed));
+      syncAllNotesButtonLabel();
+      setMobileMenuOpen(false);
+    });
+
+    mobileThemeSelect.addEventListener('change', (e) => {
+      setTheme(e.target.value);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (mobileMenu.classList.contains('open') && !mobileNav.contains(e.target)) {
+        setMobileMenuOpen(false);
+      }
+    });
+
+    // Track scroll position & trigger slide animations on mobile pageless scroll
+    const animatedMobileSlides = new Set();
+    let mobileObserver = null;
+    if ('IntersectionObserver' in window) {
+      mobileObserver = new IntersectionObserver((entries) => {
+        if (!isMobileScrollMode()) return;
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const idx = slides.indexOf(entry.target);
+          if (idx === -1) return;
+          index = idx;
+          mobileCounter.textContent = `${idx + 1} / ${publicSlideCount}`;
+          mobileCounter.classList.toggle('is-secret-ready', idx >= publicSlideCount - 1);
+          progress.style.width = `${Math.min(100, ((idx + 1) / publicSlideCount) * 100)}%`;
+          if (entry.target.classList.contains('act-slide') || slides[idx + 1]?.classList.contains('act-slide')) {
+            loadActMedia();
+          }
+          if (!animatedMobileSlides.has(entry.target)) {
+            animatedMobileSlides.add(entry.target);
+            animateSlide(entry.target);
+          }
+        });
+      }, { threshold: 0.35 });
+
+      slides.forEach((slide) => {
+        if (slide.dataset.secret !== 'true') {
+          mobileObserver.observe(slide);
+        }
+      });
+
+      if (isMobileScrollMode()) {
+        loadActMedia();
+      }
+    }
+
+    mobileCounter.addEventListener('click', () => {
+      if (!isMobileScrollMode() || index < publicSlideCount - 1) return;
+      const secretSlide = slides.find((s) => s.dataset.secret === 'true');
+      if (!secretSlide) return;
+      secretSlide.classList.add('secret-revealed');
+      loadSecretSlideMedia();
+      if (mobileObserver) mobileObserver.observe(secretSlide);
+      requestAnimationFrame(() => {
+        secretSlide.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
     function fitHeroTitle() {
       const box = document.querySelector('#heroSlide .title-hero-text');
       const h1 = box?.querySelector('h1');
       if (!box || !h1) return;
       h1.style.fontSize = '';
+      if (isMobileScrollMode()) return;
       const available = box.clientWidth;
       if (available > 0 && h1.scrollWidth > available) {
         const current = parseFloat(getComputedStyle(h1).fontSize);

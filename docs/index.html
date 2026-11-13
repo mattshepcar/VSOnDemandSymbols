@@ -1964,7 +1964,7 @@
     </section>
 
     <!-- THE PROBLEM & SOLUTION: UE5 SYMBOL LOADING -->
-    <section class="slide" data-notes="Launching Unreal Engine 5 Editor under the Visual Studio debugger takes ages. On Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and Visual Studio loads ~950 PDBs at startup by default even if you only have breakpoints in a few files. On Demand Symbols switches VS to 'load only specified modules' mode, fills IncludeList from your breakpoints before launch, and loads call-stack PDBs only when you hit a break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%–62% (22.1s down to 8.5s warm).">
+    <section class="slide" data-notes="Launching Unreal Engine 5 Editor under the Visual Studio debugger takes ages. On Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and Visual Studio loads ~950 PDBs at startup by default even if you only have breakpoints in a few files. On Demand Symbols switches VS to 'load only specified modules' mode, fills IncludeList from your breakpoints before launch, and loads call-stack PDBs only when you hit a break. On Lyra, startup PDBs dropped from 950 to 11, making warm launch-to-breakpoint ~2.5x faster (22.1s down to 8.5s).">
       <h2>UE5 + F5 = <span class="danger">Tea break time</span> 🍵</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -1975,7 +1975,7 @@
         <div class="contrast-block highlight">
           <div class="contrast-kicker">On Demand Symbols</div>
           <div class="stat-num accent">8.5s</div>
-          <div class="stat-label">11 / 1,062 PDBs &nbsp;·&nbsp; <strong>30%–62% faster</strong></div>
+          <div class="stat-label">11 / 1,062 PDBs &nbsp;·&nbsp; <strong>~2.5× faster</strong></div>
         </div>
       </div>
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
@@ -2027,7 +2027,7 @@
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*UK estimate: ~4 Wh/turn across 4,850 tool calls (10–25 kWh range, 95.4% cached), 0.144 kg CO₂e/kWh (DESNZ 2026 Gen + T&amp;D).</p>
     </section>
 
-<section class="slide" data-notes="Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that complex V1 approach stalled after burning $31, so we deleted 7,255 lines and started clean. That reset was painless: it had only been a few hours of work, and the AI documented all its lessons before handing off to V2. Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14). Days 5–6 added automated benchmarking and performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20), which we simplified mid-flight.">
+<section class="slide" data-notes="Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that complex V1 approach stalled after burning ~$33, so we deleted 7,255 lines and started clean. That reset was painless: it had only been a few hours of work, and the AI documented all its lessons before handing off to V2. Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14 total, with the core Flash rebuild at $4.50). Days 5–6 added automated benchmarking and performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20), which we simplified mid-flight.">
       <div class="slide-center-wrap">
       <h2>Seven days, <span class="accent">one aborted approach</span>.</h2>
       <div class="timeline">
@@ -2041,7 +2041,7 @@
           <div class="tl-dot"></div>
           <div class="tl-day">Day 2</div>
           <div class="tl-title">Dead End &amp; Reset</div>
-          <div class="tl-desc">V1 stalled ($31) → clean-slate purge (-7,255 LOC)</div>
+          <div class="tl-desc">V1 stalled ($33) → clean-slate purge (-7,255 LOC)</div>
         </div>
         <div class="tl-step accent-step">
           <div class="tl-dot"></div>
@@ -2189,9 +2189,9 @@
           <div class="stat-label">2h 45m stalled · 7,255 lines deleted</div>
         </div>
         <div class="contrast-block highlight">
-          <div class="contrast-kicker">V2 Native Rebuild</div>
+          <div class="contrast-kicker">V2 Native Rebuild (Flash)</div>
           <div class="stat-num accent">$4.50</div>
-          <div class="stat-label">4h 12m shipped on Flash · 337 turns/hr</div>
+          <div class="stat-label">4h 12m core rebuild on Flash · 337 turns/hr</div>
         </div>
       </div>
       <p class="takeaway">Pull the <strong>ejector seat</strong> early—the AI packs your parachute with notes. 🪂</p>

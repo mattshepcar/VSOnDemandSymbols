@@ -1963,33 +1963,14 @@
       <img class="act-photo" data-act-img="act1" alt="Act I: Cleared for Takeoff" />
     </section>
 
-    <!-- THE PROBLEM: UE5 SYMBOL LOADING -->
-    <section class="slide" data-notes="If you've ever launched Unreal Engine 5 Editor under the Visual Studio debugger, you know the pain—it takes ages to start up. On a project like Lyra, UE5 maps over 1,000 DLLs and 26+ GB of PDB debug symbols. By default, Visual Studio eagerly loads ~950 PDBs at startup—even though you only have breakpoints in a tiny fraction of them.">
+    <!-- THE PROBLEM & SOLUTION: UE5 SYMBOL LOADING -->
+    <section class="slide" data-notes="If you've ever launched Unreal Engine 5 Editor under the Visual Studio debugger, you know the pain—it takes ages to start up. On a project like Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and by default Visual Studio eagerly loads ~950 PDBs at startup—even though you only have breakpoints in a tiny fraction of them. On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
       <h2>UE5 + F5 = <span class="danger">Tea break time</span> 🍵</h2>
-      <div class="stats-row">
-        <div class="stat">
-          <div class="stat-num" data-count="1062" data-comma="true">1,062</div>
-          <div class="stat-label">DLLs mapped when launching UE5 Lyra</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num danger">26+ GB</div>
-          <div class="stat-label">Debug symbols (PDBs) sitting on disk</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" data-count="950">950</div>
-          <div class="stat-label">PDBs Visual Studio loads eagerly at startup</div>
-        </div>
-      </div>
-      <p class="takeaway">A huge chunk of UE5’s startup wait is <strong>loading symbols you’ll never touch</strong>.</p>
-    </section>
-
-<section class="slide" data-notes="On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (e.g., 22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
-      <h2>On Demand Symbols:<br /><span class="accent" data-count="11">11</span> PDBs instead of <span class="danger" data-count="950">950</span>.</h2>
       <div class="split-2">
         <div class="contrast-block">
           <div class="contrast-kicker">Without Extension</div>
           <div class="stat-num">22.1s</div>
-          <div class="stat-label">950 / 1,062 PDBs loaded at launch</div>
+          <div class="stat-label">950 / 1,062 UE5 DLLs (26+ GB PDBs) loaded at launch</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">On Demand Symbols</div>

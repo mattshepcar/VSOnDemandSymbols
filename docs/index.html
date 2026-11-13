@@ -200,7 +200,111 @@
       width: clamp(110px, 14vw, 180px);
       height: clamp(110px, 14vw, 180px);
       flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+      filter: drop-shadow(0 0 38px var(--accent-soft));
     }
+
+    #heroSlide {
+      overflow: hidden;
+    }
+
+    #heroSlide .title-hero {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-bg-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Sunburst + diagonal slash */
+    .hero-bg-sunburst {
+      background:
+        repeating-conic-gradient(
+          from 0deg at 18% 48%,
+          var(--accent-soft) 0deg 6deg,
+          transparent 6deg 18deg
+        );
+      mask-image: radial-gradient(circle at 18% 48%, rgba(0, 0, 0, 0.9) 0%, transparent 65%);
+      -webkit-mask-image: radial-gradient(circle at 18% 48%, rgba(0, 0, 0, 0.9) 0%, transparent 65%);
+      opacity: 0.7;
+    }
+
+    .sunburst-slash {
+      position: absolute;
+      right: -10vw;
+      top: 0;
+      bottom: 0;
+      width: 28vw;
+      background: linear-gradient(135deg, transparent 48%, var(--accent-soft) 48.2%, transparent 62%);
+      opacity: 0.65;
+    }
+
+    /* Flight Path & Bolt Watermark */
+    .hero-bg-flight svg {
+      position: absolute;
+      right: -3vw;
+      bottom: -5vh;
+      width: min(82vw, 1100px);
+      height: auto;
+      color: var(--accent);
+      opacity: 0.13;
+    }
+
+    /* Visual Studio Breakpoint Gutter & Output Pane Watermark */
+    .vs-gutter {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: clamp(44px, 4.5vw, 68px);
+      border-right: 1px solid var(--rule);
+      background: linear-gradient(180deg, transparent, var(--accent-soft) 50%, transparent);
+      opacity: 0.55;
+    }
+
+    .vs-bp-dot {
+      position: absolute;
+      left: clamp(13px, 1.5vw, 22px);
+      top: 41%;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 0 6px rgba(244, 63, 94, 0.18), 0 0 24px var(--danger);
+    }
+
+    .vs-bp-line {
+      position: absolute;
+      left: clamp(44px, 4.5vw, 68px);
+      top: calc(41% + 10px);
+      width: 4vw;
+      height: 2px;
+      border-top: 2px dashed var(--danger);
+      opacity: 0.55;
+    }
+
+    .vs-output-watermark {
+      position: absolute;
+      right: 4.5vw;
+      bottom: 11.5vh;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: clamp(0.95rem, 1.35vw, 1.25rem);
+      color: var(--muted);
+      border: 1px solid var(--rule);
+      background: var(--nav-bg);
+      backdrop-filter: blur(8px);
+      padding: 1.1rem 1.5rem;
+      border-radius: 12px;
+      line-height: 1.6;
+      opacity: 0.85;
+    }
+
+    .vs-output-watermark .ok { color: var(--accent); font-weight: 700; }
 
     /* ==========================================================================
        STAT BLOCKS & COMPARISONS (Large, uncluttered)
@@ -1247,7 +1351,29 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" data-notes="This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the lessons we extracted.">
+    <section class="slide active" id="heroSlide" data-notes="This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the lessons we extracted.">
+      <div class="hero-bg-layer hero-bg-sunburst" aria-hidden="true">
+        <div class="sunburst-slash"></div>
+      </div>
+
+      <div class="hero-bg-layer hero-bg-flight" aria-hidden="true">
+        <svg viewBox="0 0 600 420" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 40 370 Q 220 210 520 90" stroke-width="5" stroke-dasharray="14 14" />
+          <path d="M 520 90 L 455 82 L 478 108 L 462 135 Z" fill="currentColor" stroke="none" />
+          <path d="M 380 120 L 445 120 L 370 230 L 432 230 L 295 390 L 348 265 L 292 265 Z" fill="currentColor" stroke="none" opacity="0.55" />
+        </svg>
+      </div>
+
+      <div class="hero-bg-layer hero-bg-breakpoint" aria-hidden="true">
+        <div class="vs-gutter"></div>
+        <div class="vs-bp-dot"></div>
+        <div class="vs-bp-line"></div>
+        <div class="vs-output-watermark">
+          <div>[OnDemandSymbols] Breakpoint hit in LyraCharacter.cpp</div>
+          <div class="ok">[OnDemandSymbols] Loaded 3 of 1,062 modules (0.4s)</div>
+        </div>
+      </div>
+
       <div class="title-hero">
         <svg class="vsix-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="On Demand Symbols Icon">
           <defs>
@@ -1388,7 +1514,7 @@
       <p class="takeaway">Conservative UK estimate (~240 Wh/MTok, 95.4% cached). <strong>Less carbon than a 90-mile drive.</strong></p>
     </section>
 
-<section class="slide" data-notes="Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product for just $12. Days 5-6 added automated real-world benchmarking and performance tuning. Day 7 tackled multi-instance edge cases, which we caught and simplified mid-flight.">
+<section class="slide" data-notes="Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product (~$12–$14). Days 5-6 added automated real-world benchmarking and performance tuning (~$13). Day 7 tackled multi-instance edge-case bug fixes (~$19–$20), which we caught and simplified mid-flight.">
       <h2>Seven days, <span class="accent">one aborted approach</span>.</h2>
       <div class="timeline">
         <div class="tl-step">
@@ -1413,16 +1539,16 @@
           <div class="tl-dot"></div>
           <div class="tl-day">Days 5–6</div>
           <div class="tl-title">Self-Test &amp; Perf</div>
-          <div class="tl-desc">Automated benchmarking &amp; speedup</div>
+          <div class="tl-desc">Automated benchmarking &amp; speedup (~$13)</div>
         </div>
         <div class="tl-step">
           <div class="tl-dot"></div>
           <div class="tl-day">Day 7</div>
           <div class="tl-title">Edge-Case Hardening</div>
-          <div class="tl-desc">Overbuilt ($18) → simplified -925 LOC</div>
+          <div class="tl-desc">Overbuilt (~$20) → simplified -925 LOC</div>
         </div>
       </div>
-      <p class="takeaway">Once we <strong>bailed out of V1</strong> on Day 2, <strong>shipping V2 cost only ~$12</strong>. 🪂</p>
+      <p class="takeaway">Once we <strong>bailed out of V1</strong> on Day 2, V2 cost <strong>~$12 to build</strong> and <strong>~$33 to optimise &amp; harden</strong>. 🪂</p>
     </section>
 
     <!-- ACT II DIVIDER -->

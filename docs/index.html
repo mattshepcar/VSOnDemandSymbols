@@ -2234,7 +2234,7 @@
           <div class="bar-track"><div class="bar-fill danger-bg" data-width="100%" data-actual-width="100%" data-uncached-width="100%" style="width: 100%;"></div></div>
         </div>
       </div>
-      <p class="takeaway" id="costTakeaway"><strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--danger); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong></p>
+      <p class="takeaway" id="costTakeaway"><strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--accent); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong></p>
     </section>
 
 <section class="slide" data-notes="Only 6 of 50 development sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Across the whole project, those 982 tool errors ate ~3.8 hours of active engineering time (~20% of total dev time) and ~$20 in direct spend—concentrated in the two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
@@ -3165,7 +3165,7 @@
         takeaway.innerHTML = '95% prompt cache hit rate saved <strong>$208 (67%)</strong> across 494M tokens.';
       } else {
         heading.innerHTML = '<span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.';
-        takeaway.innerHTML = '<strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--danger); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong>';
+        takeaway.innerHTML = '<strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--accent); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong>';
       }
       updatePresenterConsole();
       if (!fromSync && !isAudienceMode) {

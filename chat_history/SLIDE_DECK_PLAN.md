@@ -1,4 +1,4 @@
-# On-Demand Symbols: Final 24-Slide Presentation Plan
+# On-Demand Symbols: Final 29-Slide Presentation Plan
 
 > **Target Duration:** ~15 minutes  
 > **Output File:** [docs/index.html](file:///C:/Dev/VSOnDemandSymbols/docs/index.html) (live at `https://mattshepcar.github.io/VSOnDemandSymbols/`)  
@@ -29,7 +29,7 @@
 14. **Cheap Resets:** *Resetting is cheap with AI.* (Zero emotional attachment + AI preserves hard-won lessons in docs/ADRs).
 15. **Compaction & Cost:** *6 compacted sessions caused 71% of spend.* (`71%` of cost & `44%` of errors vs. `$0.12` avg / `0` compactions for short sessions).
 
-## Act IV — Aviate, Navigate, Communicate *(Playbook & Outro)*
+## Act IV — Aviate, Navigate, Communicate *(Playbook)*
 16. **Act IV Divider:** *Aviate, Navigate, Communicate*
 17. **Model Routing:** *Never escalate models mid-session.* (Fresh session `$0.15–$1.80` vs. mid-bloat escalation `$38` in 42 Opus turns; Flash 80% turns / `$10` vs. Opus 1.5% turns / `$50` + cache toggle).
 18. **Prompting Discipline:** *Single-focus prompts cost 4× less.* (`$1.64` vs. `$6.93` danger bar for bundled multi-part prompts).
@@ -37,4 +37,11 @@
 20. **Pilot Quotes:** *Mid-flight course corrections. 🎛️* (Real verbatim steering quotes from the logs).
 21. **5 Pre-Flight Tips:** *5 pre-flight tips for your next AI project. 📋* + *"Full disclosure: first time 'vibe coding' in anger — I'm still winging it. 🤷‍♂️"* footnote.
 22. **Self-Reflection & Vibe Decking:** *"The bots analysed all 50 chat logs, generated these slides, and had them cross-checked by another member of the cabin crew."* + 2×2 stat grid (`~6 hrs`, `73.9M` tokens, `$14.31` on Gemini 4 Hydrogen, `$0.60 / slide`).
-23. **Landing / Q&A:** Aeroplane landing SVG + *Questions? 🙋‍♂️* (deferring hard ones to co-pilot Claude).
+
+## Act V — Uncharted Airspace *(Open Questions & Outro)*
+23. **Act V Divider:** *Uncharted Airspace* — *“Surely you can’t be serious?” “I am serious… and don’t call me Shirley.”* (Airplane!, 1980).
+24. **Open Q1 — Maintainability:** *Small tools are easy. Big codebases?* (Humans own the architecture · Can’t explain it? Don’t merge it · Context is code → *Code is cheap. Understanding isn’t.*)
+25. **Open Q2 — What to Code Ourselves:** *What should we still code ourselves?* (Keep the hard thinking · Debug first, ask second · Delegate the drudge → *Pilots still hand-fly to stay current.*)
+26. **Open Q3 — Human Collaboration:** *Keeping the human in the crew.* (Share the flight logs · Explain it to a human · Mentor judgement, not syntax → *Use the time AI saves to talk more, not less.*)
+27. **More Questions:** *Questions we should also be asking.* (Is it actually faster? · Who reviews the flood? · Where do the next seniors come from? · Who owns the bugs? · What happens when the subsidies end?) — sources and detail in speaker notes.
+28. **Landing / Q&A:** Aeroplane landing SVG + *Questions? 🙋‍♂️* (deferring hard ones to co-pilot Claude).

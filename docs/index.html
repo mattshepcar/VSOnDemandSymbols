@@ -1165,6 +1165,64 @@
       </div>
     </section>
 
+    <!-- ACT V DIVIDER -->
+    <section class="slide act-slide" data-notes="Before we land: this was one person, one small tool and one week. Some big questions are still open, and I don't have the answers yet. The next few slides cover the ones I keep coming back to: maintainability at scale, what we should still code ourselves, and how we keep sharing knowledge as people. Then a few more I think we should all be asking. (Quote from Airplane!, 1980. Leslie Nielsen as Dr. Rumack.) These are serious questions... and don't call me Shirley.">
+      <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M40 120 C28 120 22 110 26 101 C30 92 42 90 48 95 C50 82 64 74 77 79 C84 68 102 68 109 80 C122 76 134 86 131 99 C140 100 145 110 140 117 C137 120 133 120 130 120 Z"/>
+        <path d="M20 170 Q 70 150 100 150 Q 130 150 150 135" stroke-dasharray="6 6"/>
+        <path d="M156 55 C156 42 182 42 182 57 C182 68 168 68 168 82"/>
+        <circle cx="168" cy="96" r="2.5" fill="currentColor"/>
+      </svg>
+      <div class="act-badge"><span class="act-emoji">🧭</span> Act V</div>
+      <h1>Uncharted <span class="accent">Airspace</span></h1>
+      <div class="act-rule"></div>
+      <p class="subtitle">“Surely you can’t be serious?” “I am serious… and don’t call me Shirley.”</p>
+    </section>
+
+<section class="slide" data-notes="Open question 1. This was a small, self-contained tool with one author, so AI-written code was easy to live with. Bigger, long-lived codebases are different. 2026 write-ups (GitClear's code-change research, InfoQ coverage of Google's agent telemetry) describe AI as stuck in a 'perpetual V1': it writes fresh local code instead of reusing existing abstractions, so duplication goes up and refactoring goes down. Writers also talk about 'convenient debt': code that compiles and passes tests, but that nobody chose on purpose and nobody fully understands. What seems to work: humans own the interfaces and boundaries, and AI fills in the implementation. Use the 'explain it' rule at review time. Treat the context the agent reads (AGENTS.md, docs, comments, TODOs) as part of the codebase, because stale comments send agents on side quests. Code is now cheap to write. Understanding it is the expensive part.">
+      <h2>Small tools are easy. <span class="accent">Big codebases</span>? 🏗️</h2>
+      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Will it still make sense in two years?</p>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Humans own the architecture.</strong></span></li>
+        <li><span class="list-num">02</span><span><strong>Can’t explain it? Don’t merge it.</strong></span></li>
+        <li><span class="list-num">03</span><span><strong>Context is code</strong> — stale docs mislead agents.</span></li>
+      </ul>
+      <p class="takeaway">Code is cheap. <strong>Understanding</strong> isn’t.</p>
+    </section>
+
+<section class="slide" data-notes="Open question 2. It is very tempting to hand everything to the AI, and I felt that pull on this project. In 2026 threads on r/ExperiencedDevs and r/learnprogramming, people describe skill atrophy: blank-screen panic when the AI is down, and approving code they no longer really understand. The common advice is to keep the thinking work: architecture, core algorithms, concurrency, security-sensitive paths and error recovery. Debug first: form your own hypothesis before you paste the stack trace. Delegate the drudge work: boilerplate, test stubs, glue code, and digging through undocumented SDKs, which was the superpower on this project. Offload memory, not thinking. Airline pilots have the same problem with autopilot, and they hand-fly regularly to keep their skills current.">
+      <h2>What should we <span class="accent">still code ourselves</span>? ✍️</h2>
+      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Resisting the urge to let AI do everything.</p>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Keep the hard thinking</strong> — architecture, algorithms, threading.</span></li>
+        <li><span class="list-num">02</span><span><strong>Debug first, ask second.</strong></span></li>
+        <li><span class="list-num">03</span><span><strong>Delegate the drudge</strong> — boilerplate, glue, SDK archaeology.</span></li>
+      </ul>
+      <p class="takeaway">Pilots still <strong>hand-fly</strong> to stay current. ✈️</p>
+    </section>
+
+<section class="slide" data-notes="Open question 3. AI coding can be a very solitary activity: one person, one chat window, and all the lessons stay in that person's transcript. 2026 articles on mentoring in AI teams make the same point: the friction that used to spread knowledge (juniors writing boilerplate, seniors reviewing small PRs, pairing) is disappearing. Ideas: share the flight logs by committing the rulebooks, decisions and handoff docs (AGENTS.md, DECISIONS.md) so the whole team benefits, not just one person's chat. Explain AI output to a human through walkthroughs and pairing, so understanding is shared and not just merged. Mentor judgement, not syntax: juniors try first, AI critiques, and seniors coach the 'why'. Use the time AI saves to talk to each other more, not less.">
+      <h2>Keeping the <span class="accent">human</span> in the crew. 🧑‍🤝‍🧑</h2>
+      <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Sharing knowledge with each other, not just with AI.</p>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Share the flight logs</strong> — rules and decisions, not just code.</span></li>
+        <li><span class="list-num">02</span><span><strong>Explain it to a human.</strong></span></li>
+        <li><span class="list-num">03</span><span><strong>Mentor judgement, not syntax.</strong></span></li>
+      </ul>
+      <p class="takeaway">Use the time AI saves to <strong>talk more</strong>, not less.</p>
+    </section>
+
+<section class="slide" data-notes="Other questions we should be asking. (1) Is it actually faster? In METR's 2025 randomised trial, experienced open-source developers believed AI made them about 20% faster, but they were measured as 19% slower. The 2026 follow-ups say this is hard to measure as tools change, but feeling fast is not the same as shipping fast. (2) Who reviews the flood? 2026 data from LinearB and Faros says review is now the bottleneck. AI PRs wait longer and senior reviewers burn out, so the risk is rubber-stamping. (3) Where do the next seniors come from, if juniors never do the grunt work that used to teach them? (4) Who owns the bugs? 'The AI wrote it' is never an excuse in a post-mortem. There are also licensing and copyright questions, and questions about which code we may send to cloud models. (5) What happens when the subsidies end? This whole project ran on a £1.89 trial, but the equivalent API bill was about $100. Teams report $200 to $2,000+ per engineer per month on tokens. What happens when the subsidies end?">
+      <h2>Questions we <span class="accent">should also</span> be asking. 🧭</h2>
+      <ul class="big-list">
+        <li><span class="list-num">1.</span><span><strong>Is it actually faster?</strong> Feeling fast ≠ shipping fast.</span></li>
+        <li><span class="list-num">2.</span><span><strong>Who reviews the flood?</strong></span></li>
+        <li><span class="list-num">3.</span><span><strong>Where do the next seniors come from?</strong></span></li>
+        <li><span class="list-num">4.</span><span><strong>Who owns the bugs?</strong></span></li>
+        <li><span class="list-num">5.</span><span><strong>What happens when the subsidies end?</strong></span></li>
+      </ul>
+    </section>
+
 <section class="slide" data-notes="Thanks for flying with us! Questions? (If they're hard, I'll defer to my co-pilot, Claude.)">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <svg viewBox="0 0 360 150" width="380" height="158" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Aeroplane landing on runway" style="color: var(--accent);">
@@ -1224,7 +1282,7 @@
   <!-- MINIMAL FLOATING CONTROLS -->
   <nav class="controls" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
-    <span class="counter" id="counter">1 / 24</span>
+    <span class="counter" id="counter">1 / 29</span>
     <button id="nextBtn" title="Next (Right Arrow / Space)">→</button>
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
     <button id="notesBtn" title="Toggle Notes (N)">Notes</button>

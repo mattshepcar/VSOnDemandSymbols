@@ -40,6 +40,12 @@ META_SESSION_IDS = {
     "425584b7-a7bf-4f00-aa26-601da6afbd92",  # S63: update presentation with unanswered questions
     "f9e84bf8-a7d2-454f-9413-5e4e26445bb3",  # S64: learnings from time analysis
     "207fab11-e74e-4cbe-94b1-734f24b18fed",  # S65: update self-reflection stats in presentation
+    "ae5026a2-4d7f-43b9-9181-86f1277605d2",  # S66: research ethical concerns about AI coding
+    "e4b80ab5-0c0e-4490-aa93-32bb151c7812",  # S67: improve presentation grid view
+    "b40c261d-06b3-4c89-98eb-421ea6fdb8f9",  # S68: ~500m token spend equivalence
+    "7465b370-484f-4203-ae73-d3316127069a",  # S69: add next slide button to deck
+    "52611b4f-7da2-4721-9237-2028e886e583",  # S70: check $12 claim on slide 7
+    "8a54109e-6cce-4042-87ea-175a6026b8cf",  # S71: improve presentation title page
 }
 
 META_PROMPT_PATTERNS = (

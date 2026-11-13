@@ -51,6 +51,8 @@ META_SESSION_IDS = {
     "76566b18-d600-45d9-b811-89376bcc2ac7",  # S81: better use of horizontal space on slides
     "899b4a7e-162d-4f83-9c0e-7e9dc181dc04",  # S82: make slide deck mobile friendly
     "44033a64-e16a-4a49-a7a2-fe836f7595ea",  # S83: add share button to slide deck
+    "aafe59be-ae47-47f5-ab67-dc6de9644ac6",  # S84: update META_ANALYSIS.md
+    "a7d71f44-04e8-4d70-a87d-e483be8bd56a",  # S85: expand slide 25 details
 }
 
 META_PROMPT_PATTERNS = (

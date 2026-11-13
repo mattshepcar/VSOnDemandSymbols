@@ -36,6 +36,10 @@ META_SESSION_IDS = {
     "8aab4909-a978-4306-a246-9fd7170b74b5",  # S58: presentation.html review
     "0890d259-ddf6-44a3-8aab-4801579dbc2f",  # S59: presentation_rules.md review
     "ddb7a4e5-20ac-47ee-8a41-60a7c9ddfe5d",  # S60: re-run extract_chat_history & split meta sessions
+    "d4adee65-8891-495d-aba9-1d82f7af4434",  # S62: dimension 4 time analysis
+    "425584b7-a7bf-4f00-aa26-601da6afbd92",  # S63: update presentation with unanswered questions
+    "f9e84bf8-a7d2-454f-9413-5e4e26445bb3",  # S64: learnings from time analysis
+    "207fab11-e74e-4cbe-94b1-734f24b18fed",  # S65: update self-reflection stats in presentation
 }
 
 META_PROMPT_PATTERNS = (

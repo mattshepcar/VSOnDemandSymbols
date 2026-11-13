@@ -247,6 +247,7 @@ def collect_vson_demand_sessions():
         current_model = prev_session_model
         model_transitions = []
         per_model_usage = {}
+        step_timestamps = []
         
         input_tokens = 0
         output_tokens = 0
@@ -270,6 +271,7 @@ def collect_vson_demand_sessions():
                             if first_time is None:
                                 first_time = t_str
                             last_time = t_str
+                            step_timestamps.append((t_str, current_model))
                         stype = obj.get("type")
                         content = obj.get("content", "")
                         
@@ -374,6 +376,22 @@ def collect_vson_demand_sessions():
             except Exception:
                 pass
 
+        active_duration_seconds = 0.0
+        model_active_sec = {}
+        for i in range(len(step_timestamps) - 1):
+            try:
+                t0 = datetime.strptime(step_timestamps[i][0][:19], "%Y-%m-%dT%H:%M:%S")
+                t1 = datetime.strptime(step_timestamps[i+1][0][:19], "%Y-%m-%dT%H:%M:%S")
+                gap = (t1 - t0).total_seconds()
+                if 0 <= gap <= 600:
+                    active_duration_seconds += gap
+                    m_mod = step_timestamps[i][1]
+                    model_active_sec[m_mod] = model_active_sec.get(m_mod, 0.0) + gap
+            except Exception:
+                pass
+        if active_duration_seconds == 0 and duration_seconds > 0:
+            active_duration_seconds = min(duration_seconds, 600)
+
         total_tool_calls = sum(tools_by_name.values())
 
         sessions.append({
@@ -381,6 +399,7 @@ def collect_vson_demand_sessions():
             "start_time": first_time or "1970-01-01T00:00:00Z",
             "end_time": last_time or first_time or "1970-01-01T00:00:00Z",
             "duration_seconds": duration_seconds,
+            "active_duration_seconds": int(round(active_duration_seconds)),
             "is_subagent": is_subagent,
             "parent_id": parent_id or step_0_sender,
             "first_prompt": first_prompt_clean,
@@ -389,6 +408,7 @@ def collect_vson_demand_sessions():
             "per_model_usage": {
                 k: {
                     "turns": v["turns"],
+                    "active_seconds": int(round(model_active_sec.get(k, 0.0))),
                     "input_tokens": v["input_tokens"],
                     "cache_read_tokens": v["cache_read_tokens"],
                     "output_tokens": v["output_tokens"],
@@ -619,14 +639,16 @@ def main():
         cat_bucket["total_tool_errors"] += s["tools"]["error_calls"]
         cat_bucket["compactions_count"] += s["compactions_count"]
         cat_bucket["estimated_cost_usd"] += s["estimated_cost_usd"]
+        cat_bucket["active_time_seconds"] = cat_bucket.get("active_time_seconds", 0) + s.get("active_duration_seconds", 0)
 
         for m_name, m_stats in s["per_model_usage"].items():
             for summary_dict in (global_model_summary, cat_bucket["models_summary"]):
                 if m_name not in summary_dict:
                     summary_dict[m_name] = {
-                        "sessions": 0, "turns": 0, "input_tokens": 0, "cache_read_tokens": 0, "output_tokens": 0, "cost_usd": 0.0
+                        "sessions": 0, "turns": 0, "active_seconds": 0, "input_tokens": 0, "cache_read_tokens": 0, "output_tokens": 0, "cost_usd": 0.0
                     }
                 summary_dict[m_name]["turns"] += m_stats["turns"]
+                summary_dict[m_name]["active_seconds"] = summary_dict[m_name].get("active_seconds", 0) + m_stats.get("active_seconds", 0)
                 summary_dict[m_name]["input_tokens"] += m_stats["input_tokens"]
                 summary_dict[m_name]["cache_read_tokens"] += m_stats["cache_read_tokens"]
                 summary_dict[m_name]["output_tokens"] += m_stats["output_tokens"]
@@ -660,6 +682,7 @@ def main():
             "start_time": s["start_time"],
             "end_time": s["end_time"],
             "duration_seconds": s["duration_seconds"],
+            "active_duration_seconds": s["active_duration_seconds"],
             "role": "Subagent" if s["is_subagent"] else "Main Session",
             "parent_id": s["parent_id"],
             "primary_model": s["primary_model"],

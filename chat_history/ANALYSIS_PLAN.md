@@ -138,9 +138,9 @@ We will quantify moments where the AI struggled, repeated actions, or burned cyc
 
 ---
 
-### Dimension 4: Token Economics and Cost Modeling
+### Dimension 4: Token Economics, Time Allocation, and Cost Modeling
 
-We will produce an exact accounting of token consumption and cost modeling across all sessions.
+We will produce an exact accounting of token consumption, active engineering time, turn latencies, and cost modeling across all sessions.
 
 #### Pricing Models to Apply:
 Using official token rates (standard API pricing per million tokens):
@@ -148,19 +148,20 @@ Using official token rates (standard API pricing per million tokens):
 | Model | Input (Uncached) / 1M | Prompt Cache Read / 1M | Output / 1M |
 |---|---|---|---|
 | **Gemini 3.8 Flash** | \$0.10 | \$0.025 | \$0.40 |
+| **Gemini 4 Hydrogen** | \$0.80 | \$0.20 | \$3.20 |
 | **Gemini 4 Argon** | \$1.25 | \$0.30 | \$5.00 |
 | **Claude Opus 5.5** | \$15.00 | \$3.75 | \$75.00 |
 
-#### Cost Analysis Goals:
-1. **Total Estimated Development Cost:** Calculate the exact dollar figure spent building the entire VSIX project from scratch.
-2. **Cost per Component/Milestone:**
-   - Phase 1 (Core Module Resolution): \$X
-   - Phase 2 (Unreal Codebase Verification via Subagents): \$Y
-   - Phase 3 & 4 (Debugger Events & Triggers): \$Z
-   - Integration Testing & Profiling (MiniUnreal / Lyra): \$W
-3. **Prompt Cache Savings:** Calculate how many thousands of dollars prompt caching saved across 409M cached tokens compared to un-cached API calls.
-4. **Cost of Errors:** Calculate the direct dollar cost of tool error loops in Sessions 10 and 21.
-5. **Effectiveness of Mid-Session Model Switching:** Evaluate all 7 sessions with mid-session model switches (`S03`, `S10`, `S11`, `S27`, `S43`, `S44`, `S51`). Did escalating to Argon or Opus mid-session resolve blockers faster, or did inheriting a bloated context inflate cost without proportionate gain—and what model-routing strategy would have been more effective?
+#### Cost & Time Analysis Goals:
+1. **Total Estimated Development Cost & Time:** Calculate the exact dollar figure and active human-agent interactive hours spent building the entire VSIX project from scratch.
+2. **Cost and Time per Component/Milestone:**
+   - Active duration, calendar span, turn volume, and dollar spend across all 10 milestones (Spec, Core, Subagents, V1 Concord, V2 Rewrite, UI/Icon/Stats, Integration Tests, Break-Mode Perf, Multi-Instance, Release).
+3. **Model Time Allocation & Turn Latency:**
+   - Time spent in the driving seat for each model (hours, percentage share, and effective $/active hour rate).
+   - Turn generation latency (avg, median, p90) comparing workhorse models (Flash ~6s) against frontier models (Argon ~14s, Opus ~20-30s).
+4. **Prompt Cache Savings:** Calculate how many hundreds of dollars prompt caching saved across 468M cached tokens compared to un-cached API calls.
+5. **Cost of Errors:** Calculate the direct dollar cost and wasted active hours of tool error loops in Sessions 10, 21, and 51.
+6. **Effectiveness of Mid-Session Model Switching:** Evaluate all 7 sessions with mid-session model switches (`S03`, `S10`, `S11`, `S27`, `S43`, `S44`, `S51`). Did escalating to Argon or Opus mid-session resolve blockers faster or inflate cost and latency—and what model-routing strategy is optimal?
 
 ---
 

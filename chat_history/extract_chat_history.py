@@ -53,6 +53,7 @@ META_SESSION_IDS = {
     "44033a64-e16a-4a49-a7a2-fe836f7595ea",  # S83: add share button to slide deck
     "aafe59be-ae47-47f5-ab67-dc6de9644ac6",  # S84: update META_ANALYSIS.md
     "a7d71f44-04e8-4d70-a87d-e483be8bd56a",  # S85: expand slide 25 details
+    "8ae62220-5119-412a-805c-e2b8625f8a88",  # S86: fix energy estimates in presentation
 }
 
 META_PROMPT_PATTERNS = (

@@ -139,6 +139,15 @@
       animation: fadeIn 0.22s ease-out;
     }
 
+    .slide-center-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: inherit;
+      width: fit-content;
+      max-width: 100%;
+      margin-inline: auto;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -166,7 +175,7 @@
     .muted { color: var(--muted); }
 
     .subtitle {
-      font-size: clamp(1.5rem, 2.4vw, 2.25rem);
+      font-size: clamp(1.5rem, 2.4vw, 2.7rem);
       font-weight: 500;
       color: var(--muted);
       line-height: 1.35;
@@ -174,7 +183,7 @@
     }
 
     .takeaway {
-      font-size: clamp(1.45rem, 2.2vw, 2rem);
+      font-size: clamp(1.45rem, 2.25vw, 2.5rem);
       font-weight: 600;
       color: var(--muted);
       line-height: 1.35;
@@ -461,17 +470,21 @@
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: clamp(1.1rem, 2.4vh, 1.9rem);
+      gap: clamp(1.1rem, 2.5vh, 2.1rem);
       width: 100%;
       max-width: 100%;
     }
 
     .big-list li {
-      font-size: clamp(1.45rem, 2.15vw, 2.05rem);
+      font-size: clamp(1.48rem, 2.15vw, 2.5rem);
       line-height: 1.35;
       display: flex;
       align-items: baseline;
       gap: 1.1rem;
+    }
+
+    .big-list.big-list-lg li {
+      font-size: clamp(1.55rem, 2.35vw, 2.8rem);
     }
 
     .list-num {
@@ -698,11 +711,11 @@
       border-left: 4px solid var(--rule);
     }
 
-    .tl-step:nth-child(1) { margin-left: 0%; }
-    .tl-step:nth-child(2) { margin-left: 4%; }
-    .tl-step:nth-child(3) { margin-left: 8%; }
-    .tl-step:nth-child(4) { margin-left: 12%; }
-    .tl-step:nth-child(5) { margin-left: 16%; }
+    .tl-step:nth-child(1) { margin-left: 0; }
+    .tl-step:nth-child(2) { margin-left: 1.5rem; }
+    .tl-step:nth-child(3) { margin-left: 3rem; }
+    .tl-step:nth-child(4) { margin-left: 4.5rem; }
+    .tl-step:nth-child(5) { margin-left: 6rem; }
 
     .tl-step.accent-step { border-left-color: var(--accent); }
     .tl-step.danger-step { border-left-color: var(--danger); }
@@ -712,7 +725,7 @@
     }
 
     .tl-day {
-      font-size: clamp(1.2rem, 1.6vw, 1.55rem);
+      font-size: clamp(1.25rem, 1.7vw, 2rem);
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -725,14 +738,14 @@
     .tl-step.danger-step .tl-day { color: var(--danger); }
 
     .tl-title {
-      font-size: clamp(1.5rem, 2.25vw, 2.15rem);
+      font-size: clamp(1.55rem, 2.35vw, 2.75rem);
       font-weight: 800;
       line-height: 1.2;
       flex-shrink: 0;
     }
 
     .tl-desc {
-      font-size: clamp(1.3rem, 1.8vw, 1.7rem);
+      font-size: clamp(1.35rem, 1.9vw, 2.35rem);
       color: var(--muted);
       line-height: 1.3;
     }
@@ -755,13 +768,13 @@
     }
 
     .quote-text {
-      font-size: clamp(1.28rem, 1.75vw, 1.65rem);
+      font-size: clamp(1.32rem, 1.85vw, 2.25rem);
       font-weight: 700;
       line-height: 1.25;
     }
 
     .quote-meta {
-      font-size: clamp(1rem, 1.25vw, 1.2rem);
+      font-size: clamp(1.05rem, 1.35vw, 1.55rem);
       color: var(--muted);
     }
 
@@ -1034,7 +1047,11 @@
 
     .act-slide > h1,
     .act-slide > .subtitle {
-      max-width: calc(100% - clamp(380px, 46vw, 780px));
+      max-width: calc(100% - clamp(340px, 41vw, 700px));
+    }
+
+    .act-slide > .subtitle {
+      font-size: clamp(1.6rem, 2.5vw, 2.85rem);
     }
 
     .act-photo {
@@ -1550,6 +1567,7 @@
     </section>
 
 <section class="slide" data-notes="Here is how those 7 days unfolded. Day 1 started with an ambitious upfront spec and domain research (~$20). On Day 2, that complex V1 approach stalled—burning $31—so we threw it out and started clean, deleting 7,255 lines. Remarkably, that reset was painless: I felt zero attachment to the code, it had only been a few hours of work, and the AI itself preserved all the hard-won lessons in docs before handing off to V2. Days 3-4 rebuilt and polished the lean V2 product (~$12–$14). Days 5-6 added automated real-world benchmarking and performance tuning (~$13). Day 7 tackled multi-instance edge-case bug fixes (~$19–$20), which we caught and simplified mid-flight.">
+      <div class="slide-center-wrap">
       <h2>Seven days, <span class="accent">one aborted approach</span>.</h2>
       <div class="timeline">
         <div class="tl-step">
@@ -1584,6 +1602,7 @@
         </div>
       </div>
       <p class="takeaway">Once we <strong>bailed out of V1</strong> on Day 2, V2 cost <strong>~$12 to build</strong> and <strong>~$33 to optimise &amp; harden</strong>. 🪂</p>
+      </div>
     </section>
 
     <!-- ACT II DIVIDER -->
@@ -1818,6 +1837,7 @@
     </section>
 
 <section class="slide" data-notes="Reading back through 202 prompts, keeping the AI on track didn't require fancy prompt engineering—just blunt human reality checks. Whether it was catching hung builds, interrupting a 44-search spiral, noticing zombie references to deleted features, critiquing an off-center icon, or questioning 925 lines of over-engineering.">
+      <div class="slide-center-wrap">
       <h2>Mid-flight <span class="accent">course corrections</span>. 🎛️</h2>
       <div class="quotes-list">
         <div class="quote-card">
@@ -1841,9 +1861,11 @@
           <div class="quote-meta">Multi-instance lock — Cut 925 lines of over-engineering mid-flight.</div>
         </div>
       </div>
+      </div>
     </section>
 
 <section class="slide" data-notes="Five tips for Monday morning: (1) Use AI as a research engine first—probe undocumented APIs and codify rules in AGENTS.md before coding; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—execute the plan one step at a time, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion. Full disclosure: this was my first time vibe coding in anger—so take these as early field notes, not gospel.">
+      <div class="slide-center-wrap">
       <h2>5 <span class="accent">pre-flight</span> tips for AI projects. 📋</h2>
       <ul class="big-list">
         <li><span class="list-num">1.</span><span><strong>Research &amp; codify first</strong> — probe the unknowns and write <code>AGENTS.md</code>.</span></li>
@@ -1853,6 +1875,7 @@
         <li><span class="list-num">5.</span><span><strong>Your highest-leverage skill is deletion</strong> — less is more.</span></li>
       </ul>
       <p class="takeaway">Full disclosure: first time “vibe coding” in anger — <strong>I’m still winging it. 🤷‍♂️</strong></p>
+      </div>
     </section>
 
     <!-- ACT V DIVIDER -->
@@ -1876,58 +1899,68 @@
     </section>
 
 <section class="slide" data-notes="Before we talk about codebases and teams, it is worth asking what this costs outside our own editor. Three ethical questions hang over AI coding. (1) Training data: models were trained on billions of lines of public open-source code without explicit consent or attribution. When an LLM absorbs GPL code and emits a functional equivalent into a proprietary repo, that is effectively 'license laundering'—stripping copyleft obligations and credit. (2) Energy and water: global data centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share jumping from ~20% to ~37%. A single large AI data centre can use 1 to 5 million gallons of water a day for cooling—the same as a town of 30,000 to 50,000 people—plus the indirect water used to generate that electricity. And agentic coding runs dozens of prompts per task, not one. (3) The job itself: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) contracting into a 'barbell' market—seniors are in demand to steer and review AI, while the boilerplate tasks that used to be the junior apprenticeship runway are disappearing. The job is shifting from writing code to auditing, architecting, and owning the outcome.">
+      <div class="slide-center-wrap">
       <h2>What’s the <span class="accent">cost of the fuel</span>? 🌍</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The ethical bill behind “effortless” code.</p>
-      <ul class="big-list">
+      <ul class="big-list big-list-lg">
         <li><span class="list-num">01</span><span><strong>Training data</strong> — uncredited open source &amp; “license laundering”.</span></li>
         <li><span class="list-num">02</span><span><strong>Energy &amp; water</strong> — agentic loops multiply the footprint.</span></li>
         <li><span class="list-num">03</span><span><strong>Changing the job</strong> — fewer junior runways, more code auditing.</span></li>
       </ul>
       <p class="takeaway">Cheap tokens still have a <strong>real-world bill</strong>.</p>
+      </div>
     </section>
 
 <section class="slide" data-notes="Open question 1. This was a small, self-contained tool with one author, so AI-written code was easy to live with. Bigger, long-lived codebases are different. 2026 write-ups (GitClear's code-change research, InfoQ coverage of Google's agent telemetry) describe AI as stuck in a 'perpetual V1': it writes fresh local code instead of reusing existing abstractions, so duplication goes up and refactoring goes down. Writers also talk about 'convenient debt': code that compiles and passes tests, but that nobody chose on purpose and nobody fully understands. What seems to work: humans own the interfaces and boundaries, and AI fills in the implementation. Use the 'explain it' rule at review time. Treat the context the agent reads (AGENTS.md, docs, comments, TODOs) as part of the codebase, because stale comments send agents on side quests. Code is now cheap to write. Understanding it is the expensive part.">
+      <div class="slide-center-wrap">
       <h2>Small tools are easy. <span class="accent">Big codebases</span>? 🏗️</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Will it still make sense in two years?</p>
-      <ul class="big-list">
+      <ul class="big-list big-list-lg">
         <li><span class="list-num">01</span><span><strong>Humans own the architecture.</strong></span></li>
         <li><span class="list-num">02</span><span><strong>Can’t explain it? Don’t merge it.</strong></span></li>
         <li><span class="list-num">03</span><span><strong>Context is code</strong> — stale docs mislead agents.</span></li>
       </ul>
       <p class="takeaway">Code is cheap. <strong>Understanding</strong> isn’t.</p>
+      </div>
     </section>
 
 <section class="slide" data-notes="Open question 2. It is very tempting to hand everything to the AI, and I felt that pull on this project. In 2026 threads on r/ExperiencedDevs and r/learnprogramming, people describe skill atrophy: blank-screen panic when the AI is down, and approving code they no longer really understand. The common advice is to keep the thinking work: architecture, core algorithms, concurrency, security-sensitive paths and error recovery. Debug first: form your own hypothesis before you paste the stack trace. Delegate the drudge work: boilerplate, test stubs, glue code, and digging through undocumented SDKs, which was the superpower on this project. Offload memory, not thinking. Airline pilots have the same problem with autopilot, and they hand-fly regularly to keep their skills current.">
+      <div class="slide-center-wrap">
       <h2>What should we <span class="accent">still code ourselves</span>? ✍️</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Resisting the urge to let AI do everything.</p>
-      <ul class="big-list">
+      <ul class="big-list big-list-lg">
         <li><span class="list-num">01</span><span><strong>Keep the hard thinking</strong> — architecture, algorithms, threading.</span></li>
         <li><span class="list-num">02</span><span><strong>Debug first, ask second.</strong></span></li>
         <li><span class="list-num">03</span><span><strong>Delegate the drudge</strong> — boilerplate, glue, SDK archaeology.</span></li>
       </ul>
       <p class="takeaway">Pilots still <strong>hand-fly</strong> to stay current. ✈️</p>
+      </div>
     </section>
 
 <section class="slide" data-notes="Open question 3. AI coding can be a very solitary activity: one person, one chat window, and all the lessons stay in that person's transcript. 2026 articles on mentoring in AI teams make the same point: the friction that used to spread knowledge (juniors writing boilerplate, seniors reviewing small PRs, pairing) is disappearing. Ideas: share the flight logs by committing the rulebooks, decisions and handoff docs (AGENTS.md, DECISIONS.md) so the whole team benefits, not just one person's chat. Explain AI output to a human through walkthroughs and pairing, so understanding is shared and not just merged. Mentor judgement, not syntax: juniors try first, AI critiques, and seniors coach the 'why'. Use the time AI saves to talk to each other more, not less.">
+      <div class="slide-center-wrap">
       <h2>Keeping the <span class="accent">human</span> in the crew. 🧑‍🤝‍🧑</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Sharing knowledge with each other, not just with AI.</p>
-      <ul class="big-list">
+      <ul class="big-list big-list-lg">
         <li><span class="list-num">01</span><span><strong>Share the flight logs</strong> — rules and decisions, not just code.</span></li>
         <li><span class="list-num">02</span><span><strong>Explain it to a human.</strong></span></li>
         <li><span class="list-num">03</span><span><strong>Mentor judgement, not syntax.</strong></span></li>
       </ul>
       <p class="takeaway">Use the time AI saves to <strong>talk more</strong>, not less.</p>
+      </div>
     </section>
 
 <section class="slide" data-notes="Other questions we should be asking. (1) Is it actually faster? In METR's 2025 randomised trial, experienced open-source developers believed AI made them about 20% faster, but they were measured as 19% slower. The 2026 follow-ups say this is hard to measure as tools change, but feeling fast is not the same as shipping fast. (2) Who reviews the flood? 2026 data from LinearB and Faros says review is now the bottleneck. AI PRs wait longer and senior reviewers burn out, so the risk is rubber-stamping. (3) Where do the next seniors come from, if juniors never do the grunt work that used to teach them? (4) Who owns the bugs? 'The AI wrote it' is never an excuse in a post-mortem. There are also licensing and copyright questions, and questions about which code we may send to cloud models. (5) What happens when the subsidies end? This whole project ran on a £1.89 trial, but the equivalent API bill was about $100. Teams report $200 to $2,000+ per engineer per month on tokens. What happens when the subsidies end?">
+      <div class="slide-center-wrap">
       <h2>Questions we <span class="accent">should also</span> be asking. 🧭</h2>
-      <ul class="big-list">
+      <ul class="big-list big-list-lg">
         <li><span class="list-num">1.</span><span><strong>Is it actually faster?</strong> Feeling fast ≠ shipping fast.</span></li>
         <li><span class="list-num">2.</span><span><strong>Who reviews the flood?</strong></span></li>
         <li><span class="list-num">3.</span><span><strong>Where do the next seniors come from?</strong></span></li>
         <li><span class="list-num">4.</span><span><strong>Who owns the bugs?</strong></span></li>
         <li><span class="list-num">5.</span><span><strong>What happens when the subsidies end?</strong></span></li>
       </ul>
+      </div>
     </section>
 
     <!-- AND FINALLY DIVIDER -->

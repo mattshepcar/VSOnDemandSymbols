@@ -2003,20 +2003,20 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Using ~240 Wh per million blended tokens (with our 95.4% cache hit rate), the 7-day build used ~120 kWh of electricity. That powers 1 typical UK home for ~17 days (at Ofgem's ~6.85 kWh/day average), or ~420 UK homes for an hour. Direct cooling water is ~150 L, about 2–3 showers or the water needed to grow one cup of coffee. At the UK grid average (0.196 kg CO2e/kWh, DESNZ), that is ~24 kg CO2, or ~1 rainforest tree working for a year (~90 petrol-car miles). At macro scale, global data-centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share rising from ~20% to ~37%. And agentic coding runs dozens of prompts per task.">
+<section class="slide" data-notes="Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent inference benchmarks, accounting for our 95.4% prompt cache hit rate), the 7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh). That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average), or ~70 UK homes for an hour. Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). At macro scale, global data-centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share rising from ~20% to ~37%. And agentic coding runs thousands of turns per project—multiplying a ~1.5 kWh chat baseline by &gt;10x.">
       <h2>What 494M tokens <span class="accent">cost the planet</span>.</h2>
       <div class="stats-grid-2x2 compact">
         <div class="stat">
-          <div class="stat-num accent">~120 kWh</div>
-          <div class="stat-label">Powers <strong>1 UK home for ~17 days</strong> (or ~420 homes for 1 hr)</div>
+          <div class="stat-num accent">~20 kWh</div>
+          <div class="stat-label">Powers <strong>1 UK home for ~3 days</strong> (or ~70 homes for 1 hr)</div>
         </div>
         <div class="stat">
-          <div class="stat-num">~150L water</div>
-          <div class="stat-label">Direct cooling: <strong>~2–3 showers</strong>, or the water to grow 1 cup of coffee</div>
+          <div class="stat-num">~25L water</div>
+          <div class="stat-label">Direct cooling: <strong>~2 dishwasher cycles</strong>, or a 3-minute shower</div>
         </div>
         <div class="stat">
-          <div class="stat-num">~1 tree</div>
-          <div class="stat-label">Rainforest CO₂ offset for 1 yr (<strong>~24 kg CO₂</strong> · ~90 petrol-car miles)</div>
+          <div class="stat-num">~11 car miles</div>
+          <div class="stat-label"><strong>~2.9 kg CO₂e</strong> (1 rainforest tree working for ~6 weeks)</div>
         </div>
         <div class="stat">
           <div class="stat-num accent">~2.4 Jnr Devs</div>
@@ -2024,7 +2024,7 @@
         </div>
       </div>
       <p class="takeaway">Agentic loops multiply the footprint — <strong>cheap tokens have real world cost.</strong></p>
-      <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*Conservative UK estimate (~240 Wh/MTok, 95.4% cached, 0.196 kg CO₂e/kWh).</p>
+      <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*UK estimate: ~4 Wh/turn across 4,850 tool calls (10–25 kWh range, 95.4% cached), 0.144 kg CO₂e/kWh (DESNZ 2026 Gen + T&amp;D).</p>
     </section>
 
 <section class="slide" data-notes="Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that complex V1 approach stalled after burning $31, so we deleted 7,255 lines and started clean. That reset was painless: it had only been a few hours of work, and the AI documented all its lessons before handing off to V2. Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14). Days 5–6 added automated benchmarking and performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20), which we simplified mid-flight.">
@@ -2131,13 +2131,13 @@
       <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
     </section>
 
-<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.5/5.6 Mini, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec. On coding benchmarks like SWE-bench, they match last generation's frontier flagships at 5–10x lower cost. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
+<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.5/5.6 Mini, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec. On coding benchmarks like SWE-bench, they match last generation's frontier flagships at 2.5–10x lower cost. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
       <div class="slide-center-wrap">
       <h2>Fast &amp; cheap models <span class="accent">got seriously good</span>. ⚡</h2>
       <ul class="big-list big-list-lg">
         <li><span class="list-num">1.</span><span><strong>Not just autocomplete</strong> — Flash, Haiku &amp; Mini for multi-file edits.</span></li>
         <li><span class="list-num">2.</span><span><strong>Thinking at 150+ tok/s</strong> — without the frontier wait.</span></li>
-        <li><span class="list-num">3.</span><span><strong>Huge context, tiny bill</strong> — 1M+ context, 5–10× cheaper.</span></li>
+        <li><span class="list-num">3.</span><span><strong>Huge context, tiny bill</strong> — 1M+ context, 2.5–10× cheaper.</span></li>
       </ul>
       <p class="takeaway"><strong class="accent">Flash! A-ah!</strong> Saviour of the token budget! ⚡</p>
       </div>

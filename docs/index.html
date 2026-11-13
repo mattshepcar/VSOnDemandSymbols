@@ -7,6 +7,12 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
+  <script>
+    try {
+      const savedTheme = localStorage.getItem('deck-theme');
+      if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    } catch (_) {}
+  </script>
   <style>
     /* ==========================================================================
        THEMES (5 projection-ready palettes, Flash! A-ah! default)
@@ -3131,6 +3137,9 @@
       pThemeSelect.value = theme;
       if (mobileThemeSelect) mobileThemeSelect.value = theme;
       updateControlsLayout();
+      if (!fromSync) {
+        try { localStorage.setItem('deck-theme', theme); } catch (_) {}
+      }
       if (!fromSync && !isAudienceMode) {
         postSync({ type: 'sync', index, theme, costMode: currentCostMode });
       }
@@ -3177,6 +3186,7 @@
     function toggleNotes() {
       const open = notesDrawer.classList.toggle('open');
       document.body.classList.toggle('notes-open', open);
+      try { localStorage.setItem('deck-notes-open', String(open)); } catch (_) {}
       updateControlsLayout();
     }
 
@@ -3375,6 +3385,15 @@
       render(0, true);
       postSync({ type: 'ready' });
     } else {
+      try {
+        const savedTheme = localStorage.getItem('deck-theme');
+        if (savedTheme && themes.includes(savedTheme)) setTheme(savedTheme, true);
+        else setTheme(themes[0], true);
+        const savedNotes = localStorage.getItem('deck-notes-open');
+        if (savedNotes !== null) {
+          notesDrawer.classList.toggle('open', savedNotes === 'true');
+        }
+      } catch (_) {}
       document.body.classList.toggle('notes-open', notesDrawer.classList.contains('open'));
       setInterval(() => {
         if (isPresenterMode) updateAudienceConnectionUI();

@@ -208,6 +208,19 @@
       font-weight: 800;
       line-height: 1;
       letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    [data-count] {
+      font-variant-numeric: tabular-nums;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      background: var(--accent-soft);
+      padding: 0.08em 0.35em;
+      border-radius: 6px;
     }
 
     .stat-label {
@@ -237,6 +250,10 @@
       border-left-color: var(--accent);
     }
 
+    .contrast-block.danger-block {
+      border-left-color: var(--danger);
+    }
+
     .contrast-kicker {
       font-size: clamp(1.25rem, 1.7vw, 1.6rem);
       font-weight: 700;
@@ -247,6 +264,10 @@
 
     .contrast-block.highlight .contrast-kicker {
       color: var(--accent);
+    }
+
+    .contrast-block.danger-block .contrast-kicker {
+      color: var(--danger);
     }
 
     /* ==========================================================================
@@ -492,13 +513,13 @@
     }
 
     .quote-text {
-      font-size: clamp(1.15rem, 1.6vw, 1.48rem);
+      font-size: clamp(1.28rem, 1.75vw, 1.65rem);
       font-weight: 700;
       line-height: 1.25;
     }
 
     .quote-meta {
-      font-size: clamp(0.92rem, 1.2vw, 1.12rem);
+      font-size: clamp(1rem, 1.25vw, 1.2rem);
       color: var(--muted);
     }
 
@@ -699,7 +720,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" data-notes="Opening (~0.5 min): This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. Over 7 days, it turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of API spend—resulting in a working VSIX extension. Here is what happened and the playbook we extracted.">
+    <section class="slide active" data-notes="Opening (~0.5 min): This started as a quick weekend project to fix slow UE5 debugging in Visual Studio. I built it using Google Antigravity inside Visual Studio 2026 on a £1.89 one-month introductory trial of Google AI Pro—which turned into ~50 AI sessions, ~4,400 turns, and roughly $100 of equivalent API spend over 7 days, resulting in a working VSIX extension. Here is what happened and the playbook we extracted.">
       <div class="title-hero">
         <svg class="vsix-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-label="On Demand Symbols Icon">
           <defs>
@@ -771,7 +792,7 @@
     </section>
 
 <section class="slide" data-notes="The Solution (~1 min): On Demand Symbols puts VS into 'load only specified modules' mode, pre-populates IncludeList for breakpoints before launch, and loads call-stack PDBs on demand when you break. On Lyra, startup PDBs dropped from 950 to 11, cutting launch-to-breakpoint time by 30%-62% (e.g., 22.1s down to 8.5s warm), making debugger launch comparable to launching without the debugger.">
-      <h2>On Demand Symbols: <span class="accent" data-count="11">11</span> PDBs instead of <span class="accent" data-count="950">950</span>.</h2>
+      <h2>On Demand Symbols: <span class="accent" data-count="11">11</span> PDBs instead of <span class="danger" data-count="950">950</span>.</h2>
       <div class="split-2">
         <div class="contrast-block">
           <div class="contrast-kicker">Without Extension</div>
@@ -787,7 +808,7 @@
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
     </section>
 
-<section class="slide" data-notes="By the Numbers (~1 min): Across 7 calendar days (~50 sessions), we logged ~27 hours of active AI + pilot time (excluding idle gaps >10 min). Token volume hit 450M total: 21M uncached input, 426M cached read (95% cache hit rate, saving $205), and 2.5M output. The AI made 4,553 tool calls—and 20% (915) failed on the first try. Total bill: ~$100 ($98.88).">
+<section class="slide" data-notes="By the Numbers (~1 min): Across 7 calendar days (~50 sessions), we logged ~27 hours of active AI + pilot time (excluding idle gaps >10 min). Token volume hit 450M total: 21M uncached input, 426M cached read (95% cache hit rate, saving $205), and 2.5M output. The AI made 4,553 tool calls—and 20% (915) failed on the first try. Total equivalent API bill: ~$100 ($98.88)—all covered by that £1.89 Google AI Pro trial.">
       <h2>The project <span class="accent">by the numbers</span>.</h2>
       <div class="stats-grid-2x2">
         <div class="stat">
@@ -861,19 +882,19 @@
       <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
       <div class="stats-row">
         <div class="stat">
-          <div class="stat-num accent">214 + 19</div>
-          <div class="stat-label">.NET Reflection &amp; <code>ildasm</code> probes of VS binaries</div>
+          <div class="stat-num accent" data-count="233">233</div>
+          <div class="stat-label">Probes of VS binaries</div>
         </div>
         <div class="stat">
           <div class="stat-num">168</div>
-          <div class="stat-label">Web searches for undocumented schemas (<code>registration.json</code>)</div>
+          <div class="stat-label">Web searches for undocumented JSON schemas</div>
         </div>
         <div class="stat">
           <div class="stat-num">~3 wks</div>
           <div class="stat-label">Solo SDK trial-and-error saved</div>
         </div>
       </div>
-      <p class="takeaway">Humans hunt sparse docs; AI <strong>disassembled VS 17.14</strong> for exact COM signatures.</p>
+      <p class="takeaway">When docs are missing, don’t <strong>fly blind</strong>—let AI switch on <strong>radar</strong> and probe the binaries. 📡</p>
     </section>
 
 <section class="slide" data-notes="Playbook 4 (~1.5 min): For weeks, testing meant me pressing F5 in Visual Studio, loading UE5 Lyra, and pasting Output logs back to the AI. Normally a developer wouldn't spend days writing Windows ROT COM automation just to avoid pressing F5. But for AI, writing its own test harness was easy—so it built a tool that launches VS, loads the real Unreal project, sets breakpoints, and measures its own timings. Even when testing seems like something only a human can do, AI finds a way.">
@@ -887,7 +908,7 @@
         <div class="contrast-block highlight">
           <div class="contrast-kicker">AI-Built Harness</div>
           <div class="stat-num accent">Autopilot</div>
-          <div class="stat-label">AI drives VS via ROT COM and benchmarks Lyra itself</div>
+          <div class="stat-label">AI drives VS programmatically and benchmarks itself</div>
         </div>
       </div>
       <p class="takeaway">Ask the AI to <strong>build its own test harness</strong>—even for GUI apps.</p>
@@ -902,7 +923,7 @@
       <div class="act-badge"><span class="act-emoji">🌩️</span> Act III</div>
       <h1><span class="danger">Turbulence</span> &amp; Headwinds</h1>
       <div class="act-rule"></div>
-      <p class="subtitle">What happens when autopilot builds the wrong thing—and burns half your fuel.</p>
+      <p class="subtitle">“Please keep your seatbelts fastened at all times.” 💺</p>
     </section>
 
 <section class="slide" data-notes="Timeline & Output (~1 min): Built Nov 5 to Nov 12 across 51 sessions (44 main, 7 subagents), 4,386 turns, and 71 Git commits. The most surprising metric: +26,251 insertions and -15,470 deletions, landing at 10,781 net LOC. Nearly 60% of all code ever written was deleted.">
@@ -925,7 +946,7 @@
     </section>
 
 <section class="slide" data-notes="Why the deletions happened (~1 min): AI has near-zero friction for building whatever you put in the spec—even bad ideas. Three root causes drove nearly two-thirds of the code being deleted: (1) overspecifying on Day 1 before proving the core loop; (2) AI defaulting to complex custom architectures early on; and (3) not questioning the model's choices soon enough. Meanwhile, small surgical edits later averaged just $0.08 and 0 compactions. Lesson: start with the smallest possible spec and add complexity only when proven necessary.">
-      <h2>Why did we delete <span class="accent">⅔</span> of the code?</h2>
+      <h2>Why did we delete <span class="accent">60%</span> of the code?</h2>
       <ul class="big-list">
         <li><span class="list-num">01</span><span><strong>Overspecifying on Day 1</strong> — AI has zero friction for building speculative features.</span></li>
         <li><span class="list-num">02</span><span><strong>Early overengineering</strong> — AI defaults to complex custom architectures.</span></li>
@@ -937,9 +958,9 @@
 <section class="slide" data-notes="The Meta-Lesson (~1 min): AI has near-zero friction for generating abstractions, so it will happily over-engineer (V1 Concord + MSBuild burned $33 before we deleted 7,255 lines; V2 rebuilt it cleanly for $4.50). Almost every major simplification happened when the human pilot asked: 'Do we actually need this?'">
       <h2>AI generates abstractions. <span class="accent">You delete them.</span></h2>
       <div class="split-2">
-        <div class="contrast-block">
+        <div class="contrast-block danger-block">
           <div class="contrast-kicker">V1 Speculative Stack</div>
-          <div class="stat-num">$33</div>
+          <div class="stat-num danger">$33</div>
           <div class="stat-label">7,255 lines deleted in V2 clean-slate</div>
         </div>
         <div class="contrast-block highlight">
@@ -1004,10 +1025,10 @@
 <section class="slide" data-notes="Playbook 2 (~1.5 min): Only 5 of 51 sessions crossed context compaction, yet they caused 52% of total spend ($52.23) and 35% of all tool errors (316/915). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Watch for loop tells: 37x repeated file reads, 40k-char thinking traces, and 20% overall tool errors. Document environment quirks in AGENTS.md early—once sandbox build flags were written down, build hangs dropped to zero.">
       <h2><span class="accent">5</span> compacted sessions caused <span class="accent">52%</span> of spend.</h2>
       <div class="split-2">
-        <div class="contrast-block">
+        <div class="contrast-block danger-block">
           <div class="contrast-kicker">5 Compacted Sessions</div>
-          <div class="stat-num">52%</div>
-          <div class="stat-label">of total cost &nbsp;·&nbsp; <strong>35%</strong> of all tool errors</div>
+          <div class="stat-num danger">~$10 avg</div>
+          <div class="stat-label"><strong>52%</strong> of total spend &nbsp;·&nbsp; <strong>35%</strong> of tool errors</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Short Sessions (≤40 turns)</div>
@@ -1035,15 +1056,15 @@
 <section class="slide" data-notes="Playbook 1 (~1.5 min): Match the model to the job. Use Opus or Argon High in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Golden rule: NEVER escalate to Opus mid-stream inside a bloated session—two mid-session switches burned $38 in just 42 turns re-reading old history. Start a fresh session with a 1-page handoff.">
       <h2>Never escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
+        <div class="contrast-block danger-block">
+          <div class="contrast-kicker">Mid-Bloat Escalation</div>
+          <div class="stat-num danger">$38</div>
+          <div class="stat-label">Burned in 42 Opus turns re-reading old context</div>
+        </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Fresh Session</div>
           <div class="stat-num accent">$0.15–$1.80</div>
           <div class="stat-label">Gemini 3.8 Flash for coding; Frontier for clean specs</div>
-        </div>
-        <div class="contrast-block">
-          <div class="contrast-kicker">Mid-Bloat Escalation</div>
-          <div class="stat-num">$38</div>
-          <div class="stat-label">Burned in 42 Opus turns re-reading old context</div>
         </div>
       </div>
       <p class="takeaway">Don’t swap engines mid-air—<strong>land and make a new flight plan</strong>. 🛬</p>
@@ -1068,6 +1089,16 @@
         </div>
       </div>
       <p class="takeaway">Use a <strong>Design Gate</strong> before coding, and paste exact <strong>output logs</strong> for bugs.</p>
+    </section>
+
+<section class="slide" data-notes="Rules & Cross-Check (~1 min): One of the highest-leverage habits in late 2026 is context engineering: having the AI write lean rulebooks for itself (AGENTS.md for build flags and conventions, PRESENTATION_RULES.md for this deck) and then spinning up another agent with a fresh context to cross-check work against those rules. Never let an authoring session grade its own homework—a fresh agent catches drift, confirmation bias, and blind spots.">
+      <h2>Let AI write the rules—then <span class="accent">cross-check</span> fresh.</h2>
+      <ul class="big-list">
+        <li><span class="list-num">01</span><span><strong>Codify the rules</strong> — have AI maintain lean rulebooks (<code>AGENTS.md</code>, <code>RULES.md</code>) so every session starts smart.</span></li>
+        <li><span class="list-num">02</span><span><strong>Cross-check with another agent</strong> — never let the authoring session grade its own work.</span></li>
+        <li><span class="list-num">03</span><span><strong>Demand deterministic proof</strong> — passing tests and benchmarks beat “it should work.”</span></li>
+      </ul>
+      <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
     </section>
 
 <section class="slide" data-notes="Refocusing Prompts (~1 min): Reading back through 202 prompts, keeping the AI on track didn't require fancy prompt engineering—just blunt human reality checks. Whether it was catching hung builds, interrupting a 44-search spiral, noticing zombie references to deleted features, critiquing an off-center icon, or questioning 925 lines of over-engineering.">
@@ -1096,23 +1127,23 @@
       </div>
     </section>
 
-<section class="slide" data-notes="Closing (~1 min): Five tips for Monday morning: (1) Use AI as a research engine first; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—split early and prompt single-focus; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion.">
+<section class="slide" data-notes="Closing (~1 min): Five tips for Monday morning: (1) Use AI as a research engine first and codify rules in AGENTS.md; (2) Default to a fast, cheap workhorse model and save frontier models for fresh sessions; (3) Fear compaction—split early, prompt single-focus, and cross-check fresh; (4) Start minimal and iterate; (5) Your highest-leverage skill as an AI pilot is deletion.">
       <h2>5 <span class="accent">pre-flight</span> tips for your next AI project. 📋</h2>
       <ul class="big-list">
-        <li><span class="list-num">1.</span><span><strong>Research first</strong> — cheap subagents beat weeks of guessing.</span></li>
+        <li><span class="list-num">1.</span><span><strong>Research &amp; rules first</strong> — <code>AGENTS.md</code> and cheap subagents beat guessing.</span></li>
         <li><span class="list-num">2.</span><span><strong>Fast workhorse models by default</strong> — frontier only in fresh sessions.</span></li>
-        <li><span class="list-num">3.</span><span><strong>Fear compaction</strong> — split early, prompt single-focus.</span></li>
+        <li><span class="list-num">3.</span><span><strong>Fear compaction</strong> — split early, prompt single-focus, cross-check fresh.</span></li>
         <li><span class="list-num">4.</span><span><strong>Start minimal, iterate</strong> — surgical edits cost pennies; giant specs churn.</span></li>
         <li><span class="list-num">5.</span><span><strong>Your highest-leverage skill is deletion.</strong></span></li>
       </ul>
     </section>
 
-<section class="slide" data-notes="Outro (~0.5 min): One last confession—this was my very first time 'vibe coding' a real project in anger, so take these as early field notes, not commandments. Also, every single stat in this talk came from the AI reading its own 51 chat transcripts, and yes—even these slides were 'vibe decked.' Thanks! Questions? (If they're too hard, I'll spin up a Flash subagent.)">
+<section class="slide" data-notes="Outro (~0.5 min): One last confession—this was my very first time 'vibe coding' a real project in anger, so take these as early field notes, not commandments. Every single stat in this talk came from the AI reading its own 51 chat transcripts, and yes—even these slides were 'vibe decked' and then cross-checked by another member of the cabin crew against a PRESENTATION_RULES.md the AI wrote itself. Thanks! Questions? (If they're too hard, I'll spin up a Flash subagent.)">
       <h2>Full disclosure: I’m still <span class="accent">winging it</span>. 🤷‍♂️</h2>
       <ul class="big-list">
         <li><span class="list-num">🔥</span><span><strong>First time “vibe coding” in anger</strong> — early field notes, not gospel.</span></li>
         <li><span class="list-num">🤖</span><span><strong>100% AI-analyzed</strong> — the bots read all 51 transcripts and graded their own homework.</span></li>
-        <li><span class="list-num">✨</span><span><strong>Even these slides were “vibe decked”</strong> — HTML, animations, and self-deprecation included.</span></li>
+        <li><span class="list-num">✨</span><span><strong>Even these slides were “vibe decked”</strong> — then cross-checked by another member of the cabin crew against rules the AI wrote itself.</span></li>
       </ul>
       <p class="takeaway">Questions? 🙋‍♂️ <strong>(If they’re hard, I’ll spin up a Flash subagent.)</strong></p>
     </section>
@@ -1137,7 +1168,7 @@
   <!-- MINIMAL FLOATING CONTROLS -->
   <nav class="controls" aria-label="Slide controls">
     <button id="prevBtn" title="Previous (Left Arrow)">←</button>
-    <span class="counter" id="counter">1 / 14</span>
+    <span class="counter" id="counter">1 / 22</span>
     <button id="nextBtn" title="Next (Right Arrow / Space)">→</button>
     <button id="gridBtn" title="Slide Overview (G / Esc)">Grid</button>
     <button id="notesBtn" title="Toggle Speaker Notes (N)">Notes</button>
@@ -1200,7 +1231,7 @@
         card.className = 'overview-card' + (idx === index ? ' current' : '');
         card.innerHTML = `<span class="overview-num">Slide ${idx + 1}</span><span class="overview-title">${title}</span>`;
         card.addEventListener('click', () => {
-          overviewOverlay.classList.remove('open');
+          setOverviewOpen(false);
           render(idx);
         });
         overviewGrid.appendChild(card);
@@ -1246,24 +1277,30 @@
       });
     });
 
+    function setOverviewOpen(open) {
+      overviewOverlay.classList.toggle('open', open);
+      overviewOverlay.setAttribute('aria-hidden', String(!open));
+    }
+
     document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
     document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
     document.getElementById('notesBtn').addEventListener('click', () => notesDrawer.classList.toggle('open'));
     document.getElementById('gridBtn').addEventListener('click', () => {
-      buildOverview();
-      overviewOverlay.classList.toggle('open');
+      const opening = !overviewOverlay.classList.contains('open');
+      if (opening) buildOverview();
+      setOverviewOpen(opening);
     });
-    document.getElementById('overviewClose').addEventListener('click', () => overviewOverlay.classList.remove('open'));
+    document.getElementById('overviewClose').addEventListener('click', () => setOverviewOpen(false));
     themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' || e.key.toLowerCase() === 'g') {
         e.preventDefault();
         if (overviewOverlay.classList.contains('open')) {
-          overviewOverlay.classList.remove('open');
+          setOverviewOpen(false);
         } else {
           buildOverview();
-          overviewOverlay.classList.add('open');
+          setOverviewOpen(true);
         }
         return;
       }

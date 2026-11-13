@@ -1881,7 +1881,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" id="heroSlide" data-notes="This started as a weekend project to fix slow UE5 debugging in Visual Studio. I built it with Google Antigravity inside Visual Studio 2026 on a £1.89 one-month trial of Google AI Pro. Over 7 days, that turned into ~50 sessions, ~4,400 turns, and about $100 of equivalent API spend. The result is a working VSIX extension. Here is what happened and what I learned.">
+    <section class="slide active" id="heroSlide" data-notes="This started as a weekend project to fix slow UE5 debugging in Visual Studio. I built it with Google Antigravity inside Visual Studio 2026 on a £1.89 one-month trial of Google AI Pro. Over 7 days, that turned into 50 sessions, ~4,700 turns, and about $100 of equivalent API spend. The result is a working VSIX extension. Here is what happened and what I learned.">
       <div class="hero-bg-layer hero-bg-sunburst" aria-hidden="true">
         <div class="sunburst-slash"></div>
       </div>
@@ -1998,12 +1998,12 @@
         </div>
         <div class="stat">
           <div class="stat-num accent">~$100</div>
-          <div class="stat-label">Dev spend (95% cache saved $208)</div>
+          <div class="stat-label">API spend (95% cache saved $208)</div>
         </div>
       </div>
     </section>
 
-<section class="slide" data-notes="Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent inference benchmarks, accounting for our 95.4% prompt cache hit rate), the 7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh). That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average), or ~70 UK homes for an hour. Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). At macro scale, global data-centre electricity is climbing from ~415 TWh in 2024 toward ~545 TWh in 2026, with AI's share rising from ~20% to ~37%. And agentic coding runs thousands of turns per project—multiplying a ~1.5 kWh chat baseline by &gt;10x.">
+<section class="slide" data-notes="Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent inference benchmarks, accounting for our 95.4% prompt cache hit rate), the 7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh). That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average), or ~70 UK homes for an hour. Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). Agentic coding runs thousands of turns with huge contexts—easily 10x the energy of standard single-turn chat.">
       <h2>What 494M tokens <span class="accent">cost the planet</span>.</h2>
       <div class="stats-grid-2x2 compact">
         <div class="stat">
@@ -2131,11 +2131,11 @@
       <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
     </section>
 
-<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.5/5.6 Mini, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec. On coding benchmarks like SWE-bench, they match last generation's frontier flagships at 2–5x lower cost per task. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
+<section class="slide" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.6 Luna, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows, and reliable multi-step tool calling at 150–200+ tokens/sec. On coding benchmarks like SWE-bench, they match last generation's frontier flagships at 2–5x lower cost per task. That shift is what made a £1.89 trial viable for a real Visual Studio extension.">
       <div class="slide-center-wrap">
       <h2>Fast &amp; cheap models <span class="accent">got seriously good</span>. ⚡</h2>
       <ul class="big-list big-list-lg">
-        <li><span class="list-num">1.</span><span><strong>Not just autocomplete</strong> — Flash, Haiku &amp; Mini for multi-file edits.</span></li>
+        <li><span class="list-num">1.</span><span><strong>Not just autocomplete</strong> — Flash, Haiku &amp; Luna for multi-file edits.</span></li>
         <li><span class="list-num">2.</span><span><strong>Thinking at 150+ tok/s</strong> — without the frontier wait.</span></li>
         <li><span class="list-num">3.</span><span><strong>Huge context, tiny bill</strong> — 1M+ context, 2–5× cheaper per task.</span></li>
       </ul>
@@ -2175,7 +2175,7 @@
       <p class="takeaway">Overspecifying on Day 1 + not asking <strong>“why?”</strong> drove the churn—surgical edits averaged <strong>$0.08</strong>.</p>
     </section>
 
-<section class="slide" data-notes="AI generates abstractions with near-zero friction, so it will happily over-engineer. Our V1 Concord + MSBuild stack burned $33 and 2h 45m in error loops before we deleted 7,255 lines. GitClear's code-change research and InfoQ coverage of Google's agent telemetry describe the same trap as a 'perpetual V1': AI writes fresh local code instead of reusing abstractions, so duplication rises and refactoring drops. With AI, resetting is cheap. You have zero attachment after a few hours' work, and the AI documented what failed before handing off to V2. Once we simplified, Gemini 3.8 Flash rebuilt the working extension in 4h 12m at 337 turns/hour for $4.51 ($1.07/hr). Almost every big simplification happened when I asked: 'Do we actually need this?'">
+<section class="slide" data-notes="AI generates abstractions with near-zero friction, so it will happily over-engineer. Our V1 Concord + MSBuild stack burned $33 and 2h 45m in error loops before we deleted 7,255 lines. It's an easy trap—a 'perpetual V1' where AI writes fresh local code instead of reusing abstractions, so duplication rises unless you step in. With AI, resetting is cheap. You have zero attachment after a few hours' work, and the AI documented what failed before handing off to V2. Once we simplified, Gemini 3.8 Flash rebuilt the working extension in 4h 12m at 337 turns/hour for $4.51 ($1.07/hr). Almost every big simplification happened when I asked: 'Do we actually need this?'">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <path d="M35 85 A65 65 0 0 1 165 85 Z"/>
         <path d="M35 85 L100 165 M78 85 L100 165 M122 85 L100 165 M165 85 L100 165"/>
@@ -2371,7 +2371,7 @@
       <img class="act-photo" data-act-img="act5" alt="Act V: Uncharted Airspace" />
     </section>
 
-<section class="slide" data-notes="Three ethical questions hang over AI coding. (1) Training data: models learned from billions of lines of public open-source code without consent or credit. When an LLM absorbs GPL code and emits a working equivalent into a proprietary repo, that strips copyleft obligations ('license laundering'). (2) Cooling water: a single large AI data centre can use 1 to 5 million gallons of water a day, matching a town of 30,000 to 50,000 people, plus the indirect water used to generate its electricity. (3) The job: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer and review AI, while the boilerplate work that used to train juniors is disappearing.">
+<section class="slide" data-notes="Three ethical questions hang over AI coding. (1) Training data: models learned from billions of lines of public open-source code without consent or credit. When an LLM absorbs GPL code and emits a working equivalent into a proprietary repo, that strips copyleft obligations ('license laundering'). (2) Cooling water: hyperscale AI data centres consume vast amounts of water for cooling—plus the indirect water behind their electricity—putting real pressure on local watersheds. (3) The job: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer and review AI, while the boilerplate work that used to train juniors is disappearing.">
       <div class="slide-center-wrap">
       <h2>What’s the <span class="accent">cost of the fuel</span>? 🌍</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The ethical bill behind “effortless” code.</p>
@@ -2410,7 +2410,7 @@
       </div>
     </section>
 
-<section class="slide" data-notes="(1) In METR's 2025 trial, experienced developers thought AI made them 20% faster, yet they measured 19% slower. Feeling fast differs from shipping fast. (2) LinearB and Faros data shows review is now the bottleneck: AI PRs wait longer, reviewers burn out, and rubber-stamping rises, so own every commit. (3) If AI does the grunt work, how do juniors build the experience to become seniors? (4) 'The AI wrote it' never works in a post-mortem, and cloud models raise copyright and data-policy questions. (5) My £1.89 trial equalled ~$100 in API usage, and teams report $200 to $2,000+ per engineer a month. What happens when the subsidies end?">
+<section class="slide" data-notes="(1) In METR's 2025 trial, experienced developers thought AI made them 20% faster, yet they measured 19% slower. Feeling fast differs from shipping fast. (2) Code review is now the bottleneck: AI makes it easy to flood PRs, burn out reviewers, and invite rubber-stamping—so own every commit. (3) If AI does the grunt work, how do juniors build the experience to become seniors? (4) 'The AI wrote it' never works in a post-mortem, and cloud models raise copyright and data-policy questions. (5) My £1.89 trial equalled ~$100 of API usage in one week—at team scale, that adds up fast once the subsidies end.">
       <div class="slide-center-wrap">
       <h2>Questions we <span class="accent">should also</span> be asking. 🧭</h2>
       <ul class="big-list big-list-lg">

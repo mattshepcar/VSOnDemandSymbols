@@ -9,12 +9,13 @@
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
   <script>
+    const themeColors = { 'blue-skies': '#d8effd', 'swiss-light': '#f6f2e8', 'flash-gordon': '#140418', 'keynote-dark': '#070a10' };
+    window.themeColors = themeColors;
     try {
       const savedTheme = localStorage.getItem('deck-theme');
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       const activeTheme = savedTheme || (prefersDark ? 'flash-gordon' : 'blue-skies');
       document.documentElement.setAttribute('data-theme', activeTheme);
-      const themeColors = { 'blue-skies': '#d8effd', 'swiss-light': '#f6f2e8', 'flash-gordon': '#140418', 'keynote-dark': '#070a10' };
       const meta = document.getElementById('themeColorMeta');
       if (meta && themeColors[activeTheme]) meta.setAttribute('content', themeColors[activeTheme]);
     } catch (_) {}
@@ -2755,12 +2756,6 @@
     const themeSelect = document.getElementById('themeSelect');
     const mobileThemeSelect = document.getElementById('mobileThemeSelect');
     const themeColorMeta = document.getElementById('themeColorMeta');
-    const themeColors = {
-      'blue-skies': '#d8effd',
-      'swiss-light': '#f6f2e8',
-      'flash-gordon': '#140418',
-      'keynote-dark': '#070a10'
-    };
     const overviewOverlay = document.getElementById('overviewOverlay');
     const overviewGrid = document.getElementById('overviewGrid');
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;

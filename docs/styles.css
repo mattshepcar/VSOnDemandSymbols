@@ -1605,3 +1605,31 @@ body.is-presenter .presenter-console { display: grid; }
   box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.55));
   object-fit: contain;
 }
+
+.split-2.split-1-2 {
+  grid-template-columns: 1fr 2fr;
+}
+
+.contrast-block.col-between {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.loop-svg {
+  width: 100%;
+  max-height: 320px;
+  height: auto;
+  margin: auto 0;
+  overflow: visible;
+}
+
+.briefing-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  font-size: clamp(1.2rem, 1.65vw, 1.75rem);
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}

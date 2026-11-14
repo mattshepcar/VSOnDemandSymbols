@@ -11,6 +11,7 @@ const themeSelect = $('themeSelect');
 const mobileThemeSelect = $('mobileThemeSelect');
 const mobileCounter = $('mobileCounter');
 const themeColorMeta = $('themeColorMeta');
+const themeColors = { 'blue-skies': '#d8effd', 'flight-manual': '#f6f2e8', 'flash-gordon': '#140418', 'night-flight': '#070a10' };
 const overviewOverlay = $('overviewOverlay');
 const overviewGrid = $('overviewGrid');
 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -46,16 +47,22 @@ function animateSlide(slide) {
 
   // Subtle count-up animation for hero numbers
   slide.querySelectorAll('[data-count]').forEach((el) => {
-    const target = parseInt(el.dataset.count, 10);
+    const rawCount = el.dataset.count;
+    const decimals = rawCount.includes('.') ? rawCount.split('.')[1].length : 0;
+    const target = parseFloat(rawCount);
+    const prefix = el.dataset.prefix || '';
     const suffix = el.dataset.suffix || '';
     const useComma = el.dataset.comma === 'true';
-    const duration = 450;
+    const duration = 1500;
     const start = performance.now();
     function tick(now) {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - Math.pow(1 - t, 3);
-      const val = Math.round(target * eased);
-      el.textContent = (useComma ? val.toLocaleString() : val) + suffix;
+      const val = target * eased;
+      const formatted = decimals > 0
+        ? val.toFixed(decimals)
+        : (useComma ? Math.round(val).toLocaleString() : Math.round(val));
+      el.textContent = prefix + formatted + suffix;
       if (t < 1) requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
@@ -464,7 +471,6 @@ function setTheme(theme, fromSync = false) {
   if (themeColorMeta && themeColors[theme]) {
     themeColorMeta.setAttribute('content', themeColors[theme]);
   }
-  fitHeroTitle();
   updatePresenterConsole();
   updateControlsLayout();
   if (!fromSync) {
@@ -888,19 +894,3 @@ mobileCounter.addEventListener('click', () => {
     secretSlide.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 });
-
-function fitHeroTitle() {
-  const box = document.querySelector('#heroSlide .title-hero-text');
-  const h1 = box?.querySelector('h1');
-  if (!box || !h1) return;
-  h1.style.fontSize = '';
-  if (isMobileScrollMode()) return;
-  const available = box.clientWidth;
-  if (available > 0 && h1.scrollWidth > available) {
-    const current = parseFloat(getComputedStyle(h1).fontSize);
-    h1.style.fontSize = Math.floor(current * (available / h1.scrollWidth) * 10) / 10 + 'px';
-  }
-}
-window.addEventListener('resize', fitHeroTitle);
-document.fonts?.ready?.then(fitHeroTitle);
-fitHeroTitle();

@@ -9,15 +9,10 @@
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="apple-touch-icon" href="favicon.png" />
   <script>
-    const themeColors = { 'blue-skies': '#d8effd', 'flight-manual': '#f6f2e8', 'flash-gordon': '#140418', 'night-flight': '#070a10' };
-    window.themeColors = themeColors;
     try {
-      const savedTheme = localStorage.getItem('deck-theme');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const activeTheme = savedTheme || (prefersDark ? 'flash-gordon' : 'blue-skies');
-      document.documentElement.setAttribute('data-theme', activeTheme);
-      const meta = document.getElementById('themeColorMeta');
-      if (meta && themeColors[activeTheme]) meta.setAttribute('content', themeColors[activeTheme]);
+      const saved = localStorage.getItem('deck-theme');
+      const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', saved || (dark ? 'flash-gordon' : 'blue-skies'));
     } catch (_) {}
   </script>
   <link rel="stylesheet" href="styles.css" />
@@ -185,7 +180,7 @@
       <h2>The project <span class="accent">by the numbers</span>.</h2>
       <div class="stats-grid-2x2">
         <div class="stat">
-          <div class="stat-num accent">~19 hrs</div>
+          <div class="stat-num accent" data-count="19" data-prefix="~" data-suffix=" hrs">~19 hrs</div>
           <div class="stat-label">Active AI + pilot time across 7 days</div>
         </div>
         <div class="stat">
@@ -197,7 +192,7 @@
           <div class="stat-label">Tool calls across 4,694 turns (20% failed 1st try)</div>
         </div>
         <div class="stat">
-          <div class="stat-num accent">~$100</div>
+          <div class="stat-num accent" data-count="100" data-prefix="~$">~$100</div>
           <div class="stat-label">Equiv. API spend* (95% cache saved $208)</div>
         </div>
       </div>
@@ -331,11 +326,11 @@
           <div class="stat-label">Probes of VS binaries</div>
         </div>
         <div class="stat">
-          <div class="stat-num">168</div>
+          <div class="stat-num" data-count="168">168</div>
           <div class="stat-label">Web searches for undocumented JSON schemas</div>
         </div>
         <div class="stat">
-          <div class="stat-num">~3 wks</div>
+          <div class="stat-num" data-count="3" data-prefix="~" data-suffix=" wks">~3 wks</div>
           <div class="stat-label">Solo SDK trial-and-error saved</div>
         </div>
       </div>
@@ -459,15 +454,15 @@
       <h2><span class="accent">~60%</span> of all lines added were deleted.</h2>
       <div class="stats-row">
         <div class="stat">
-          <div class="stat-num">7 days</div>
+          <div class="stat-num" data-count="7" data-suffix=" days">7 days</div>
           <div class="stat-label">50 dev sessions &nbsp;·&nbsp; 71 commits</div>
         </div>
         <div class="stat">
-          <div class="stat-num accent">+26.3k<br />-15.5k</div>
+          <div class="stat-num accent"><span data-count="26.3" data-prefix="+" data-suffix="k">+26.3k</span><br /><span data-count="15.5" data-prefix="-" data-suffix="k">-15.5k</span></div>
           <div class="stat-label">Lines added vs. deleted</div>
         </div>
         <div class="stat">
-          <div class="stat-num">10.8k</div>
+          <div class="stat-num" data-count="10.8" data-suffix="k">10.8k</div>
           <div class="stat-label">Net lines in the working VSIX</div>
         </div>
       </div>
@@ -619,12 +614,12 @@
       <div class="split-2">
         <div class="contrast-block danger-block">
           <div class="contrast-kicker">Mid-Bloat Escalation</div>
-          <div class="stat-num danger">$38</div>
+          <div class="stat-num danger" data-count="38" data-prefix="$">$38</div>
           <div class="stat-label">Burned in 27m (42 Opus turns) re-reading old context</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Fresh Session</div>
-          <div class="stat-num accent">$0.15–$1.80</div>
+          <div class="stat-num accent"><span data-count="0.15" data-prefix="$">$0.15</span>–<span data-count="1.80" data-prefix="$">$1.80</span></div>
           <div class="stat-label">Workhorse model for coding; Frontier for clean specs</div>
         </div>
       </div>
@@ -932,7 +927,7 @@
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50+ chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
       <div class="stats-grid-2x2 compact">
         <div class="stat">
-          <div class="stat-num accent">~14 hours</div>
+          <div class="stat-num accent" data-count="14" data-prefix="~" data-suffix=" hours">~14 hours</div>
           <div class="stat-label">Active time (34 sessions · 2,086 turns)</div>
         </div>
         <div class="stat">
@@ -940,11 +935,11 @@
           <div class="stat-label">Tokens (94.4% cache hit · 2,202 tool calls)</div>
         </div>
         <div class="stat">
-          <div class="stat-num accent">$44.23</div>
+          <div class="stat-num accent" data-count="44.23" data-prefix="$">$44.23</div>
           <div class="stat-label">Total spend (74% Hydrogen · 23.5% Opus from 1.2% of turns)</div>
         </div>
         <div class="stat">
-          <div class="stat-num">$1.47 / slide</div>
+          <div class="stat-num" data-count="1.47" data-prefix="$" data-suffix=" / slide">$1.47 / slide</div>
           <div class="stat-label">$34.78 deck build · $9.45 log analysis</div>
         </div>
       </div>

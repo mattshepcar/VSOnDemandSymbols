@@ -2608,7 +2608,7 @@
     <!-- SECRET SLIDE -->
     <section class="slide" data-icon="🦅" data-secret="true" data-notes="Secret Slide! We launched 6 Flash subagents in parallel." data-title="“Hawkmen, DIVE!”">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
-        <img id="secretSlideImg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid var(--photo-border, var(--rule)); box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.55)); object-fit: contain;"/>
+        <img id="secretSlideImg" data-act-img="secret" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid var(--photo-border, var(--rule)); box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.55)); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>
         <p class="subtitle" style="margin: 0;">&mdash; Prince Vultan (Brian Blessed), <em>Flash Gordon</em> (1980)</p>
       </div>
@@ -2886,26 +2886,16 @@
       }
     }
 
-    function loadSecretSlideMedia() {
-      const img = document.getElementById('secretSlideImg');
-      if (!img || img.src) return;
-      ensureFlightData(() => {
-        if (!window.__flightData || img.src) return;
-        img.src = decodeFlightBlobUrl(window.__flightData);
-      });
-    }
-
-    function loadActMedia() {
+    function loadFlightMedia() {
       const imgs = document.querySelectorAll('img[data-act-img]');
       const hasUnloaded = Array.from(imgs).some((img) => !img.src);
       if (!hasUnloaded) return;
       ensureFlightData(() => {
-        if (!window.__actMedia) return;
         imgs.forEach((img) => {
+          if (img.src) return;
           const key = img.dataset.actImg;
-          if (!img.src && key && window.__actMedia[key]) {
-            img.src = decodeFlightBlobUrl(window.__actMedia[key]);
-          }
+          const b64 = key === 'secret' ? window.__flightData : window.__actMedia?.[key];
+          if (b64) img.src = decodeFlightBlobUrl(b64);
         });
       });
     }
@@ -3157,9 +3147,8 @@
       counter.textContent = `${index + 1} / ${publicSlideCount}`;
       progress.style.width = `${Math.min(100, ((index + 1) / publicSlideCount) * 100)}%`;
       notesText.textContent = slides[index].dataset.notes || '';
-      if (slides[index].dataset.secret === 'true') loadSecretSlideMedia();
-      if (slides[index].classList.contains('act-slide') || slides[index + 1]?.classList.contains('act-slide')) {
-        loadActMedia();
+      if (slides[index].dataset.secret === 'true' || slides[index].dataset.act || slides[index + 1]?.dataset.act) {
+        loadFlightMedia();
       }
       animateSlide(slides[index]);
       updatePresenterConsole();
@@ -3533,8 +3522,8 @@
           try {
             history.replaceState(null, '', `#slide=${idx + 1}`);
           } catch (_) {}
-          if (entry.target.classList.contains('act-slide') || slides[idx + 1]?.classList.contains('act-slide')) {
-            loadActMedia();
+          if (entry.target.dataset.act || slides[idx + 1]?.dataset.act) {
+            loadFlightMedia();
           }
           if (!animatedMobileSlides.has(entry.target)) {
             animatedMobileSlides.add(entry.target);
@@ -3550,11 +3539,11 @@
       });
 
       if (isMobileScrollMode()) {
-        loadActMedia();
+        loadFlightMedia();
         if (index > 0 && slides[index]) {
           if (slides[index].dataset.secret === 'true') {
             slides[index].classList.add('secret-revealed');
-            loadSecretSlideMedia();
+            loadFlightMedia();
             mobileObserver.observe(slides[index]);
           }
           requestAnimationFrame(() => {
@@ -3569,7 +3558,7 @@
       const secretSlide = slides.find((s) => s.dataset.secret === 'true');
       if (!secretSlide) return;
       secretSlide.classList.add('secret-revealed');
-      loadSecretSlideMedia();
+      loadFlightMedia();
       if (mobileObserver) mobileObserver.observe(secretSlide);
       requestAnimationFrame(() => {
         secretSlide.scrollIntoView({ behavior: 'smooth', block: 'start' });

@@ -438,6 +438,12 @@ function setOverviewOpen(open) {
   overviewOverlay.setAttribute('aria-hidden', String(!open));
 }
 
+function toggleOverview() {
+  const opening = !overviewOverlay.classList.contains('open');
+  if (opening) buildOverview();
+  setOverviewOpen(opening);
+}
+
 function toggleNotes() {
   const open = notesDrawer.classList.toggle('open');
   document.body.classList.toggle('notes-open', open);
@@ -543,24 +549,28 @@ document.getElementById('notesBtn').addEventListener('click', () => {
 });
 document.getElementById('gridBtn').addEventListener('click', () => {
   setControlsMenuOpen(false);
-  const opening = !overviewOverlay.classList.contains('open');
-  if (opening) buildOverview();
-  setOverviewOpen(opening);
+  toggleOverview();
+});
+counter.addEventListener('click', () => {
+  setControlsMenuOpen(false);
+  toggleOverview();
 });
 shareBtn.addEventListener('click', () => {
   handleShareClick(shareBtn, 'Share', () => setControlsMenuOpen(false));
 });
 document.getElementById('overviewClose').addEventListener('click', () => setOverviewOpen(false));
+overviewOverlay.addEventListener('click', (e) => {
+  if (!e.target.closest('.overview-card, button')) {
+    setOverviewOpen(false);
+  }
+});
 themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 
 // Presenter Console controls
 pPrevBtn.addEventListener('click', () => render(index - 1));
 pNextBtn.addEventListener('click', () => render(index + 1));
-document.getElementById('pGridBtn').addEventListener('click', () => {
-  const opening = !overviewOverlay.classList.contains('open');
-  if (opening) buildOverview();
-  setOverviewOpen(opening);
-});
+document.getElementById('pGridBtn').addEventListener('click', toggleOverview);
+pCounter.addEventListener('click', toggleOverview);
 pThemeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 document.getElementById('exitPresentBtn').addEventListener('click', exitPresentationMode);
 reopenAudienceBtn.addEventListener('click', () => {
@@ -807,7 +817,12 @@ if ('IntersectionObserver' in window) {
 }
 
 mobileCounter.addEventListener('click', () => {
-  if (!isMobileScrollMode() || index < publicSlideCount - 1) return;
+  if (!isMobileScrollMode()) return;
+  if (index < publicSlideCount - 1) {
+    setMobileMenuOpen(false);
+    toggleOverview();
+    return;
+  }
   const secretSlide = slides.find((s) => s.dataset.secret === 'true');
   if (!secretSlide) return;
   secretSlide.classList.add('secret-revealed');

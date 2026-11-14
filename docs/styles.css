@@ -626,7 +626,7 @@ body.is-first-slide .controls button.next-btn { animation: nextPulse 2s ease-in-
 .slide-next-btn:hover { background: var(--accent); color: var(--btn-ink); }
 .slide-next-btn svg { width: 34px; height: 34px; transform: translateX(2px); }
 
-.counter { padding: 0 0.45rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+.counter { padding: 0 0.45rem; font-variant-numeric: tabular-nums; font-weight: 600; cursor: pointer; }
 .controls-secondary {
   display: contents;
   border: none;
@@ -1431,7 +1431,13 @@ body.is-presenter .presenter-console { display: grid; }
     font-size: 0.88rem;
   }
 
-  .mobile-counter { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--ink); padding-right: 0.25rem; }
+  .mobile-counter {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--ink);
+    padding-right: 0.25rem;
+    cursor: pointer;
+  }
 
   .mobile-burger-btn {
     display: inline-flex;

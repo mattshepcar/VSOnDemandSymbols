@@ -170,16 +170,13 @@
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
       <aside class="notes">
         <p>
-          Launching Unreal Engine 5 Editor under the Visual Studio debugger takes ages.
-          On Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and Visual Studio
-          loads ~950 PDBs at startup by default even if you only have breakpoints in a
-          few files.
+          Debugging Unreal Engine in Visual Studio causes slower editor startup because VS
+          loads almost all the debugging symbols, whether you need them or not.
         </p>
         <p>
-          On Demand Symbols switches VS to 'load only specified modules' mode, fills
-          <code>IncludeList</code> from your breakpoints before launch, and loads
-          call-stack PDBs only when you hit a break. On Lyra, startup PDBs dropped from
-          950 to 11, making warm launch-to-breakpoint ~2.5x faster (22.1s down to 8.5s).
+          This extension fixes that without changing your workflow. It tells VS to load
+          symbols only for modules with breakpoints, and pulls in the rest of the call
+          stack only when you break.
         </p>
       </aside>
     </section>
@@ -403,14 +400,12 @@
       <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
       <aside class="notes">
         <p>
-          Six read-only Gemini 3.8 Flash subagents searched the Unreal Engine source tree
-          in parallel to verify module naming rules. They ran 55 minutes 20 seconds of
-          total research (328 turns, 305 tool calls) in 22 minutes of human clock time,
-          for $0.57 ($0.62/hour).
+          Bulk research is a great fit for parallel read-only subagents. Here, they
+          combed through the Unreal Engine source to verify module naming rules.
         </p>
         <p>
-          Subagents give you two wins: 2.5x faster wall-clock time so you stay engaged,
-          and context isolation so 305 file searches never bloat your main session.
+          You get your answer faster, and hundreds of file reads never clutter your main
+          chat.
         </p>
       </aside>
     </section>
@@ -557,14 +552,12 @@
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.25rem;">*Equivalent API spend at Nov 2026 list prices.</p>
       <aside class="notes">
         <p>
-          People assume you need the biggest frontier model for real code. Yet Gemini 3.8
-          Flash handled 81% of all turns at ~6 seconds each for $11 (at Nov 2026 list
-          prices).
+          You do not need a frontier model for every turn. Using a fast model for
+          routine coding saves money and keeps you in flow.
         </p>
         <p>
-          Claude Opus 5.5 took 1.4% of turns, cost $50, and ran up to 5x slower, turning a
-          100-turn session into half an hour of watching a spinner. Fast turns keep you in
-          flow; slow ones make you tab away and stop watching closely.
+          30+ second turns leave you staring at a spinner. You risk tabbing away and
+          letting mistakes slip through.
         </p>
       </aside>
     </section>
@@ -644,17 +637,15 @@
       <p class="takeaway">Context bloated? <strong>Start a fresh session</strong> with a 1-page handoff.</p>
       <aside class="notes">
         <p>
-          What worked best for me was matching the model to the job: Claude Opus 5.5 or
-          Gemini 4 Argon (High) in fresh sessions (&lt;=25 turns) for architecture and
-          reviews, and Gemini 3.8 Flash for bounded coding and research subagents.
-          Stepping down from Gemini 4 Argon to Gemini 3.8 Flash once a plan was locked
-          cut turn latency 2.1x–2.7x cleanly.
+          Matching the model to the job worked best. I used frontier models in short,
+          fresh sessions for architecture and reviews, then stepped down to Flash once
+          the plan was locked.
         </p>
         <p>
-          Escalating up to Claude Opus 5.5 mid-bloat was my most expensive mistake: two
-          mid-session switches burned $38 in 27 minutes (42 turns) re-reading old
-          history at 17–30s per turn. If I hit that wall again, I'd start a fresh
-          session with a 1-page handoff instead.
+          My most expensive mistake was switching up to Claude Opus 5.5 mid-session
+          after context had already bloated. It spent most of its time re-reading old
+          chat history slowly. Next time, I would start a fresh session with a
+          one-page handoff.
         </p>
         <p>
           Even better in reverse: use a fast model to explore, sharpen your prompt, and
@@ -693,15 +684,13 @@
       <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
       <aside class="notes">
         <p>
-          I found that single-focus prompts were 4x cheaper ($1.64 vs $6.93).
+          Small, focused prompts beat big bundled requests every time.
         </p>
         <p>
-          What worked well for me was drafting a plan and lean rulebooks first
-          (<code>AGENTS.md</code> for build flags, <code>PRESENTATION_RULES.md</code>
-          for this deck), pasting exact logs for bugs ($2.16 perf fix), and keeping docs
-          and comments current so stale notes didn't send agents on side quests.
-          Cross-checking in a fresh session consistently caught drift and confirmation
-          bias.
+          Writing short rulebooks early, like <code>AGENTS.md</code> for build flags,
+          kept sessions on track. Pasting exact error logs and keeping docs current
+          stopped agents from chasing stale clues, and a fresh-session review caught
+          drift before it spread.
         </p>
       </aside>
     </section>

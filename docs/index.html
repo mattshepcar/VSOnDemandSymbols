@@ -160,7 +160,52 @@
       </aside>
     </section>
 
-    <!-- SLIDE 3: PILOT BRIEFING — HOW IT WORKS + REAL SESSION LOOP -->
+    <!-- SLIDE 3: WHY I STARTED PAYING ATTENTION -->
+    <section class="slide" data-icon="🧐" data-title="AI sucks. We’re all doomed.">
+      <div class="slide-center-wrap">
+        <h2><span class="danger">AI sucks. We’re all doomed.</span></h2>
+        <p class="subtitle subtitle-compact">
+          Anyway, here’s some interesting stuff people are building.
+        </p>
+        <ul class="big-list big-list-lg">
+          <li>
+            <span class="list-num">1.</span><span>
+              <strong>PS4 Dreams → PC</strong> — exporting creations out of save files, and fixing up
+              <code>shadPS4</code> to be able to emulate the crazy compute shaders.
+            </span>
+          </li>
+          <li>
+            <span class="list-num">2.</span><span>
+              <strong>Retro ROMs → browser ports</strong> — statically recompiling classic console and 32-bit games into C and WebAssembly.
+            </span>
+          </li>
+          <li>
+            <span class="list-num">3.</span><span>
+              <strong>Modding without source</strong> — tracing call graphs in old game binaries to patch hardcoded limits and bugs.
+            </span>
+          </li>
+        </ul>
+      </div>
+      <aside class="notes">
+        <p>
+          I was, and remain, pretty sceptical. The hype and one-prompt demos never did much for me.
+          What got my attention was seeing people tackle interesting, niche engineering problems—like
+          creators on <code>r/PS4Dreams</code> exporting sculpts to PC and patching <code>shadPS4</code>
+          so <em>Dreams</em> can run at all.
+        </p>
+        <p>
+          Over the last few months, models have become much better at writing complicated
+          code that compiles on the first try. They stay on task longer and hallucinate far less
+          than they used to.
+        </p>
+        <p>
+          That made me curious enough to try an AI coding agent on a problem of my own.
+          The result was On-Demand Symbols.
+        </p>
+      </aside>
+    </section>
+
+    <!-- SLIDE 4: PILOT BRIEFING — HOW IT WORKS + REAL SESSION LOOP -->
     <section class="slide" data-icon="🔄" data-title="Agentic coding: we’re not just vibing">
       <h2>Agentic coding: <span class="accent">we’re not just vibing</span>.</h2>
       <div class="split-2 split-1-2">
@@ -1169,89 +1214,35 @@
       </aside>
     </section>
 
-    <section class="slide" data-icon="✍️" data-title="What should we still code ourselves?">
-      <div class="slide-center-wrap">
-        <h2>What should we <span class="accent">still code ourselves</span>? ✍️</h2>
-        <p class="subtitle subtitle-compact">
-          Resisting the urge to let AI do everything.
-        </p>
-        <ul class="big-list big-list-lg">
-          <li>
-            <span class="list-num">1.</span><span>
-              <strong>Keep the hard thinking</strong> — architecture, algorithms, threading.
-            </span>
-          </li>
-          <li>
-            <span class="list-num">2.</span><span>
-              <strong>Debug first, ask second</strong> — read the failure, form a theory.
-            </span>
-          </li>
-          <li>
-            <span class="list-num">3.</span><span>
-              <strong>Delegate the drudge</strong> — boilerplate, glue, SDK archaeology.
-            </span>
-          </li>
-        </ul>
-        <p class="takeaway">Pilots still <strong>hand-fly</strong> to stay current. ✈️</p>
+    <section class="slide" data-icon="🧑‍✈️" data-title="Keep the human in the crew">
+      <h2>Keep the <span class="accent">human in the crew</span>.</h2>
+      <div class="split-2">
+        <div class="contrast-block highlight">
+          <div class="contrast-kicker">Keep the craft</div>
+          <ul class="briefing-list">
+            <li><strong>Architecture &amp; algorithms</strong> — keep hold of the hard thinking.</li>
+            <li><strong>Debugging &amp; understanding</strong> — read the failure; form a theory.</li>
+            <li><strong>Quality</strong> — care about the product and the code underneath it.</li>
+          </ul>
+        </div>
+        <div class="contrast-block">
+          <div class="contrast-kicker">Keep the crew</div>
+          <ul class="briefing-list">
+            <li><strong>Share decisions</strong> — rules and reasoning, not just code.</li>
+            <li><strong>Explain things</strong> — teaching is still a good way to learn.</li>
+            <li><strong>Mentor &amp; collaborate</strong> — don't let every lesson stay in one chat.</li>
+          </ul>
+        </div>
       </div>
+      <p class="takeaway">AI can write the code. <strong>We still own the result.</strong></p>
       <aside class="notes">
         <p>
-          This was a small, single-author tool. Long-lived codebases are harder, because
-          AI creates convenient debt. The code compiles and passes tests, yet nobody
-          chose the design or understands how it works.
+          This was a small, single-author tool. In a team, the risk is convenient debt:
+          code that compiles, but nobody chose the design or understands how it works.
         </p>
         <p>
-          It is tempting to hand everything over, and many developers already report
-          rusty skills and blank-screen panic when their AI is down. Use AI to offload
-          memory and boilerplate, while you keep the core design, debugging, and
-          judgment.
-        </p>
-        <p>
-          This is where a human programmer adds value. Years of writing and reviewing
-          code teach you what a polished product looks like, and what clean,
-          well-architected code looks like underneath it. AI stops as soon as the code
-          compiles and passes tests. Experience helps you get to a good result in a
-          pleasing way.
-        </p>
-      </aside>
-    </section>
-
-    <section class="slide" data-icon="🧑‍🤝‍🧑" data-title="Keeping the human in the crew">
-      <div class="slide-center-wrap">
-        <h2>Keeping the <span class="accent">human</span> in the crew. 🧑‍🤝‍🧑</h2>
-        <p class="subtitle subtitle-compact">
-          Sharing knowledge with each other, not just with AI.
-        </p>
-        <ul class="big-list big-list-lg">
-          <li>
-            <span class="list-num">1.</span><span>
-              <strong>Share the flight logs</strong> — rules and decisions, not just code.
-            </span>
-          </li>
-          <li>
-            <span class="list-num">2.</span><span>
-              <strong>Explain it to a human</strong> — teaching = learning.
-            </span>
-          </li>
-          <li>
-            <span class="list-num">3.</span><span>
-              <strong>“Why”, not “how”</strong> — architecture &amp; algorithms over nitpicks.
-            </span>
-          </li>
-        </ul>
-        <p class="takeaway">Use the time AI saves to <strong>talk more</strong>, not less.</p>
-      </div>
-      <aside class="notes">
-        <p>
-          AI coding can be solitary. One person sits in one chat window, and every
-          lesson stays trapped in that transcript. The small habits that used to spread
-          knowledge across a team, like pairing and small code reviews, are fading.
-        </p>
-        <p>
-          Commit your rulebooks and decision docs, such as <code>AGENTS.md</code> and
-          <code>DECISIONS.md</code>, so the whole team learns. Walk through AI-written
-          code together. Juniors can try first, let AI give quick feedback, and seniors
-          can coach the design.
+          Keep the core design, debugging and judgement human. Share the decisions,
+          walk through the code together, and use the time saved to mentor and collaborate.
         </p>
       </aside>
     </section>
@@ -1309,6 +1300,50 @@
             week. At team scale, that bill grows fast once subsidies end.
           </li>
         </ol>
+      </aside>
+    </section>
+
+    <section class="slide" data-icon="🪁" data-title="Blue skies ahead?">
+      <div class="slide-center-wrap">
+        <h2>Blue <span class="accent">skies ahead</span>?</h2>
+        <p class="subtitle subtitle-compact">
+          The upside: more room to manoeuvre.
+        </p>
+        <div class="split-2">
+          <div class="contrast-block highlight">
+            <div class="contrast-kicker">Bespoke tooling</div>
+            <ul class="briefing-list">
+              <li><strong>Throwaway helpers</strong> — scripts, visualisers, and test harnesses built for an afternoon, then binned.</li>
+              <li><strong>Worth the detour</strong> — on-demand symbol loading, this web deck, or a custom editor plugin.</li>
+            </ul>
+          </div>
+          <div class="contrast-block">
+            <div class="contrast-kicker">New flight paths</div>
+            <ul class="briefing-list">
+              <li><strong>Explore unfamiliar territory</strong> — shaders, raymarching, fluid sims, cloth physics, inverse kinematics, GOAP AI, pathfinding, procedural meshes, DSP audio.</li>
+              <li><strong>Cross the aisle</strong> — try ideas outside your lane, whether art or code, and share them with the crew.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="takeaway">More things become worth <strong>having a go at.</strong></p>
+      </div>
+      <aside class="notes">
+        <p>
+          AI makes one-off tools cheap enough to build for an afternoon: a script,
+          visualiser or test harness you can delete when the job is done. It also makes
+          unfamiliar areas feel more approachable.
+        </p>
+        <p>
+          Take a particle effect. You do not have to wrestle with Niagara or write every
+          line of HLSL boilerplate yourself. With your guidance, AI can draft the shader
+          code and expose simple controls for artists to tune. You lower the barrier to
+          entry, and you often get a cleaner, faster effect because nobody had to do battle
+          with Niagara.
+        </p>
+        <p>
+          What you're reading now is another example. I hate PowerPoint so I made this
+          presentation with AI instead.
+        </p>
       </aside>
     </section>
 

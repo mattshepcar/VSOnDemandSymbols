@@ -9,6 +9,7 @@ const notesDrawer = $('notesDrawer');
 const notesText = $('notesText');
 const themeSelect = $('themeSelect');
 const mobileThemeSelect = $('mobileThemeSelect');
+const mobileCounter = $('mobileCounter');
 const themeColorMeta = $('themeColorMeta');
 const overviewOverlay = $('overviewOverlay');
 const overviewGrid = $('overviewGrid');
@@ -18,6 +19,20 @@ const themes = prefersDark
   : ['blue-skies', 'flash-gordon', 'flight-manual', 'night-flight'];
 
 let index = 0;
+let secretHintTimer = null;
+
+function updateSecretHint(isLastPublicSlide) {
+  clearTimeout(secretHintTimer);
+  counter.classList.remove('is-secret-hint');
+  if (mobileCounter) mobileCounter.classList.remove('is-secret-hint');
+  if (!isLastPublicSlide) return;
+  secretHintTimer = setTimeout(() => {
+    if (index === publicSlideCount - 1) {
+      counter.classList.add('is-secret-hint');
+      if (mobileCounter) mobileCounter.classList.add('is-secret-hint');
+    }
+  }, 5000);
+}
 
 function animateSlide(slide) {
   // Animate horizontal bars from 0% to target width
@@ -259,6 +274,7 @@ function cloneSlideToStage(slideEl, stage) {
 function updatePresenterConsole() {
   if (!isPresenterMode) return;
   pCounter.textContent = `${index + 1} / ${publicSlideCount}`;
+  pCounter.classList.toggle('is-secret-ready', index === publicSlideCount - 1);
   pPrevBtn.disabled = index === 0;
   pNextBtn.disabled = index === slides.length - 1;
 
@@ -397,8 +413,10 @@ function render(i, fromSync = false) {
   slides.forEach((s, idx) => s.classList.toggle('active', idx === index));
   document.body.classList.toggle('is-first-slide', index === 0);
   prevBtn.disabled = index === 0;
-  nextBtn.disabled = index === slides.length - 1;
+  nextBtn.disabled = index >= publicSlideCount - 1;
   counter.textContent = `${index + 1} / ${publicSlideCount}`;
+  counter.classList.toggle('is-secret-ready', index === publicSlideCount - 1);
+  updateSecretHint(index === publicSlideCount - 1);
   progress.style.width = `${Math.min(100, ((index + 1) / publicSlideCount) * 100)}%`;
   notesText.innerHTML = getSlideNotesHtml(slides[index]);
   if (slides[index].dataset.secret === 'true' || slides[index].dataset.act || slides[index + 1]?.dataset.act) {
@@ -554,7 +572,11 @@ $('gridBtn').addEventListener('click', () => {
 });
 counter.addEventListener('click', () => {
   setControlsMenuOpen(false);
-  toggleOverview();
+  if (index === publicSlideCount - 1) {
+    render(slides.length - 1);
+  } else {
+    toggleOverview();
+  }
 });
 shareBtn.addEventListener('click', () => {
   handleShareClick(shareBtn, 'Share', () => setControlsMenuOpen(false));
@@ -571,7 +593,13 @@ themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 pPrevBtn.addEventListener('click', () => render(index - 1));
 pNextBtn.addEventListener('click', () => render(index + 1));
 $('pGridBtn').addEventListener('click', toggleOverview);
-pCounter.addEventListener('click', toggleOverview);
+pCounter.addEventListener('click', () => {
+  if (index === publicSlideCount - 1) {
+    render(slides.length - 1);
+  } else {
+    toggleOverview();
+  }
+});
 pThemeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 $('exitPresentBtn').addEventListener('click', exitPresentationMode);
 reopenAudienceBtn.addEventListener('click', () => {
@@ -602,6 +630,7 @@ document.addEventListener('keydown', (e) => {
   if (overviewOverlay.classList.contains('open')) return;
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
     e.preventDefault();
+    if (!isPresenterMode && !isAudienceMode && index >= publicSlideCount - 1) return;
     if (isAudienceMode) {
       render(index + 1, true);
       postSync({ type: 'nav', delta: 1 });
@@ -677,7 +706,6 @@ if (isAudienceMode) {
 const mobileNav = $('mobileNav');
 const mobileMenu = $('mobileMenu');
 const mobileBurgerBtn = $('mobileBurgerBtn');
-const mobileCounter = $('mobileCounter');
 const mobileGridBtn = $('mobileGridBtn');
 const mobileAllNotesBtn = $('mobileAllNotesBtn');
 const mobileShareBtn = $('mobileShareBtn');
@@ -782,6 +810,7 @@ if ('IntersectionObserver' in window) {
       index = idx;
       mobileCounter.textContent = `${idx + 1} / ${publicSlideCount}`;
       mobileCounter.classList.toggle('is-secret-ready', idx >= publicSlideCount - 1);
+      updateSecretHint(idx === publicSlideCount - 1);
       progress.style.width = `${Math.min(100, ((idx + 1) / publicSlideCount) * 100)}%`;
       try {
         history.replaceState(null, '', '#slide=' + (idx + 1));
@@ -827,6 +856,7 @@ mobileCounter.addEventListener('click', () => {
   const secretSlide = slides.find((s) => s.dataset.secret === 'true');
   if (!secretSlide) return;
   secretSlide.classList.add('secret-revealed');
+  updateSecretHint(false);
   loadFlightMedia();
   if (mobileObserver) mobileObserver.observe(secretSlide);
   requestAnimationFrame(() => {

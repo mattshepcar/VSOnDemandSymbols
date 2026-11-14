@@ -627,6 +627,22 @@ body.is-first-slide .controls button.next-btn { animation: nextPulse 2s ease-in-
 .slide-next-btn svg { width: 34px; height: 34px; transform: translateX(2px); }
 
 .counter { padding: 0 0.45rem; font-variant-numeric: tabular-nums; font-weight: 600; cursor: pointer; }
+.counter.is-secret-ready { color: var(--accent); }
+.counter.is-secret-hint,
+.mobile-counter.is-secret-hint {
+  display: inline-block;
+  animation: secretHintPulse 2s ease-in-out infinite;
+}
+@keyframes secretHintPulse {
+  0%, 100% {
+    transform: scale(1);
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    transform: scale(1.06);
+    text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+}
 .controls-secondary {
   display: contents;
   border: none;

@@ -13,8 +13,8 @@ const overviewOverlay = document.getElementById('overviewOverlay');
 const overviewGrid = document.getElementById('overviewGrid');
 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const themes = prefersDark
-  ? ['flash-gordon', 'blue-skies', 'keynote-dark', 'swiss-light']
-  : ['blue-skies', 'flash-gordon', 'keynote-dark', 'swiss-light'];
+  ? ['flash-gordon', 'blue-skies', 'night-flight', 'flight-manual']
+  : ['blue-skies', 'flash-gordon', 'night-flight', 'flight-manual'];
 
 let index = 0;
 

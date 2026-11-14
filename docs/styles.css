@@ -1,9 +1,9 @@
 /* ==========================================================================
    THEMES (4 projection-ready palettes: 2 dark, 2 light)
-   - keynote-dark ("Night Flight HC"): WCAG AAA + Okabe-Ito colorblind-safe dark
+   - night-flight ("Night Flight HC"): WCAG AAA + Okabe-Ito colorblind-safe dark
    - flash-gordon ("Flash! A-ah!"): 1980 film Mongo crimson, gold & cosmic violet
    - blue-skies ("Blue Skies"): Cool daylight sky gradient, navy & cobalt
-   - swiss-light ("Flight Manual"): Warm archival paper, editorial serif & teal/vermilion
+   - flight-manual ("Flight Manual"): Warm archival paper, editorial serif & teal/vermilion
    ========================================================================== */
 
 :root {
@@ -16,7 +16,7 @@
       Anti-halation obsidian-slate canvas (#070a10) + soft white (#f4f7fb) prevents
       projector/astigmatism bloom while maintaining >18:1 text & >3.5:1 UI border contrast. */
 :root,
-[data-theme="keynote-dark"] {
+[data-theme="night-flight"] {
   --bg: #070a10;
   --bg-glow: radial-gradient(circle at 50% -20%, rgba(92, 225, 255, 0.08), transparent 60%);
   --ink: #f4f7fb;
@@ -38,7 +38,7 @@
 }
 
 /* Non-color differentiators for Night Flight (HC): pattern + double border on danger items */
-[data-theme="keynote-dark"] .bar-fill.danger-bg {
+[data-theme="night-flight"] .bar-fill.danger-bg {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 10px,
@@ -46,17 +46,17 @@
   );
 }
 
-[data-theme="keynote-dark"] .contrast-block.danger-block,
-[data-theme="keynote-dark"] .tl-step.danger-step {
+[data-theme="night-flight"] .contrast-block.danger-block,
+[data-theme="night-flight"] .tl-step.danger-step {
   border-left-style: double;
   border-left-width: 8px;
 }
 
-[data-theme="keynote-dark"] .hero-bg-sunburst { opacity: 0.32; }
+[data-theme="night-flight"] .hero-bg-sunburst { opacity: 0.32; }
 
 /* 2. LIGHT (Editorial / Technical Monograph): Warm archival paper + Avionics Teal & Vermilion
       Width-calibrated Palatino/serif display headings + monospace technical badges. */
-[data-theme="swiss-light"] {
+[data-theme="flight-manual"] {
   --bg: #f6f2e8;
   --bg-glow: radial-gradient(circle at 50% 0%, #faf8f2 0%, #f6f2e8 60%, #ece5d5 100%);
   --ink: #161514;
@@ -77,17 +77,17 @@
   --h-tracking: -0.026em;
 }
 
-[data-theme="swiss-light"] h1,
-[data-theme="swiss-light"] h2,
-[data-theme="swiss-light"] .quote-text {
+[data-theme="flight-manual"] h1,
+[data-theme="flight-manual"] h2,
+[data-theme="flight-manual"] .quote-text {
   font-family: var(--font-display);
   font-variant-numeric: lining-nums tabular-nums;
 }
 
-[data-theme="swiss-light"] .act-badge,
-[data-theme="swiss-light"] .contrast-kicker,
-[data-theme="swiss-light"] .tl-day,
-[data-theme="swiss-light"] .list-num {
+[data-theme="flight-manual"] .act-badge,
+[data-theme="flight-manual"] .contrast-kicker,
+[data-theme="flight-manual"] .tl-day,
+[data-theme="flight-manual"] .list-num {
   font-family: var(--font-kicker);
   letter-spacing: 0.05em;
 }
@@ -888,13 +888,13 @@ body.controls-compact .controls-icon-btn .ctrl-label { display: inline; }
 [data-theme="flash-gordon"] [data-act="finale"] { --card-color: #fb923c; --card-tint: rgba(251, 146, 60, 0.16); }
 
 /* Night Flight HC (Okabe-Ito colorblind-safe high-luminance palette, all >= 7.5:1 AAA) */
-[data-theme="keynote-dark"] [data-act="intro"]  { --card-color: #5ce1ff; --card-tint: rgba(92, 225, 255, 0.16); }
-[data-theme="keynote-dark"] [data-act="act-1"]  { --card-color: #7cc4ff; --card-tint: rgba(124, 196, 255, 0.16); }
-[data-theme="keynote-dark"] [data-act="act-2"]  { --card-color: #38e5b5; --card-tint: rgba(56, 229, 181, 0.15); }
-[data-theme="keynote-dark"] [data-act="act-3"]  { --card-color: #ff7724; --card-tint: rgba(255, 119, 36, 0.16); }
-[data-theme="keynote-dark"] [data-act="act-4"]  { --card-color: #f5d110; --card-tint: rgba(245, 209, 16, 0.15); }
-[data-theme="keynote-dark"] [data-act="act-5"]  { --card-color: #e88cff; --card-tint: rgba(232, 140, 255, 0.15); }
-[data-theme="keynote-dark"] [data-act="finale"] { --card-color: #ffae38; --card-tint: rgba(255, 174, 56, 0.16); }
+[data-theme="night-flight"] [data-act="intro"]  { --card-color: #5ce1ff; --card-tint: rgba(92, 225, 255, 0.16); }
+[data-theme="night-flight"] [data-act="act-1"]  { --card-color: #7cc4ff; --card-tint: rgba(124, 196, 255, 0.16); }
+[data-theme="night-flight"] [data-act="act-2"]  { --card-color: #38e5b5; --card-tint: rgba(56, 229, 181, 0.15); }
+[data-theme="night-flight"] [data-act="act-3"]  { --card-color: #ff7724; --card-tint: rgba(255, 119, 36, 0.16); }
+[data-theme="night-flight"] [data-act="act-4"]  { --card-color: #f5d110; --card-tint: rgba(245, 209, 16, 0.15); }
+[data-theme="night-flight"] [data-act="act-5"]  { --card-color: #e88cff; --card-tint: rgba(232, 140, 255, 0.15); }
+[data-theme="night-flight"] [data-act="finale"] { --card-color: #ffae38; --card-tint: rgba(255, 174, 56, 0.16); }
 
 .overview-act-row {
   display: grid;

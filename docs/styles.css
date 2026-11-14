@@ -1549,3 +1549,59 @@ body.is-presenter .presenter-console { display: grid; }
 
   .mobile-notes-body[hidden] { display: none; }
 }
+
+/* ==========================================================================
+   SHARED DECK UTILITIES & SLIDE HELPERS
+   ========================================================================== */
+
+.accent-link {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+}
+
+.subtitle.subtitle-compact {
+  margin-top: -0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.footnote {
+  font-size: 0.78rem;
+  margin-top: 0.5rem;
+}
+
+.footnote.footnote-tight {
+  margin-top: 0.25rem;
+}
+
+.big-list.big-list-md {
+  gap: clamp(0.9rem, 2vh, 1.4rem);
+}
+
+.big-list.big-list-md li {
+  font-size: clamp(1.2rem, 1.7vw, 1.6rem);
+}
+
+.center-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.25rem;
+}
+
+.center-stack > h2,
+.center-stack > .subtitle {
+  margin: 0;
+}
+
+.secret-photo {
+  max-height: 52vh;
+  max-width: 100%;
+  border-radius: 12px;
+  border: 2px solid var(--photo-border, var(--rule));
+  box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.55));
+  object-fit: contain;
+}

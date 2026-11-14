@@ -1280,6 +1280,7 @@ body.is-presenter .presenter-console { display: grid; }
 
 .presenter-notes-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   font-size: clamp(1.25rem, 1.75vw, 1.7rem);
   line-height: 1.6;

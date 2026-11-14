@@ -271,6 +271,28 @@ function cloneSlideToStage(slideEl, stage) {
   stage.appendChild(clone);
 }
 
+function fitPresenterNotes() {
+  if (!isPresenterMode || !presenterNotesBody) return;
+  presenterNotesBody.style.fontSize = '';
+  presenterNotesBody.style.lineHeight = '';
+  const available = presenterNotesBody.clientHeight;
+  if (available <= 0 || presenterNotesBody.scrollHeight <= available) return;
+
+  const maxSize = parseFloat(getComputedStyle(presenterNotesBody).fontSize) || 24;
+  presenterNotesBody.style.lineHeight = '1.45';
+  if (presenterNotesBody.scrollHeight <= available) return;
+
+  let lo = 10;
+  let hi = maxSize;
+  while (hi - lo > 0.5) {
+    const mid = (lo + hi) / 2;
+    presenterNotesBody.style.fontSize = mid + 'px';
+    if (presenterNotesBody.scrollHeight <= available) lo = mid;
+    else hi = mid;
+  }
+  presenterNotesBody.style.fontSize = Math.floor(lo * 2) / 2 + 'px';
+}
+
 function updatePresenterConsole() {
   if (!isPresenterMode) return;
   pCounter.textContent = `${index + 1} / ${publicSlideCount}`;
@@ -286,6 +308,7 @@ function updatePresenterConsole() {
     presenterNotesBody.textContent = 'No speaker notes for this slide.';
     presenterNotesBody.classList.add('presenter-notes-empty');
   }
+  fitPresenterNotes();
 
   cloneSlideToStage(slides[index], currentPreviewStage);
   scalePreviewStage(currentPreviewBox, currentPreviewStage);
@@ -503,10 +526,12 @@ if (typeof ResizeObserver !== 'undefined') {
     if (isPresenterMode) {
       scalePreviewStage(currentPreviewBox, currentPreviewStage);
       scalePreviewStage(nextPreviewBox, nextPreviewStage);
+      fitPresenterNotes();
     }
   });
   ro.observe(currentPreviewBox);
   ro.observe(nextPreviewBox);
+  ro.observe(presenterNotesBody);
 }
 
 const controlsNav = $('controlsNav');

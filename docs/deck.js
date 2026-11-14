@@ -1,20 +1,21 @@
+const $ = (id) => document.getElementById(id);
 const slides = Array.from(document.querySelectorAll('.slide'));
 const publicSlideCount = slides.filter((s) => s.dataset.secret !== 'true').length;
-const progress = document.getElementById('progress');
-const counter = document.getElementById('counter');
-const prevBtn = document.getElementById('prevBtn');
-const nextBtn = document.getElementById('nextBtn');
-const notesDrawer = document.getElementById('notesDrawer');
-const notesText = document.getElementById('notesText');
-const themeSelect = document.getElementById('themeSelect');
-const mobileThemeSelect = document.getElementById('mobileThemeSelect');
-const themeColorMeta = document.getElementById('themeColorMeta');
-const overviewOverlay = document.getElementById('overviewOverlay');
-const overviewGrid = document.getElementById('overviewGrid');
+const progress = $('progress');
+const counter = $('counter');
+const prevBtn = $('prevBtn');
+const nextBtn = $('nextBtn');
+const notesDrawer = $('notesDrawer');
+const notesText = $('notesText');
+const themeSelect = $('themeSelect');
+const mobileThemeSelect = $('mobileThemeSelect');
+const themeColorMeta = $('themeColorMeta');
+const overviewOverlay = $('overviewOverlay');
+const overviewGrid = $('overviewGrid');
 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 const themes = prefersDark
   ? ['flash-gordon', 'blue-skies', 'night-flight', 'flight-manual']
-  : ['blue-skies', 'flash-gordon', 'night-flight', 'flight-manual'];
+  : ['blue-skies', 'flash-gordon', 'flight-manual', 'night-flight'];
 
 let index = 0;
 
@@ -126,7 +127,7 @@ function ensureFlightData(callback) {
   };
   if (window.__flightData || window.__actMedia) {
     callback();
-  } else if (!document.getElementById('flightDataScript')) {
+  } else if (!$('flightDataScript')) {
     const s = document.createElement('script');
     s.id = 'flightDataScript';
     s.src = 'flight-data.js';
@@ -149,23 +150,23 @@ function loadFlightMedia() {
 }
 
 const isAudienceMode = new URLSearchParams(window.location.search).get('mode') === 'audience';
-const audienceFsPrompt = document.getElementById('audienceFsPrompt');
-const presenterConsole = document.getElementById('presenterConsole');
-const pCounter = document.getElementById('pCounter');
-const pPrevBtn = document.getElementById('pPrevBtn');
-const pNextBtn = document.getElementById('pNextBtn');
-const pThemeSelect = document.getElementById('pThemeSelect');
-const presenterNotesBody = document.getElementById('presenterNotesBody');
-const currentPreviewBox = document.getElementById('currentPreviewBox');
-const currentPreviewStage = document.getElementById('currentPreviewStage');
-const nextPreviewBox = document.getElementById('nextPreviewBox');
-const nextPreviewStage = document.getElementById('nextPreviewStage');
-const nextPreviewEnd = document.getElementById('nextPreviewEnd');
-const audienceDot = document.getElementById('audienceDot');
-const audienceStatusText = document.getElementById('audienceStatusText');
-const reopenAudienceBtn = document.getElementById('reopenAudienceBtn');
-const presenterTimerEl = document.getElementById('presenterTimer');
-const timerToggleBtn = document.getElementById('timerToggleBtn');
+const audienceFsPrompt = $('audienceFsPrompt');
+const presenterConsole = $('presenterConsole');
+const pCounter = $('pCounter');
+const pPrevBtn = $('pPrevBtn');
+const pNextBtn = $('pNextBtn');
+const pThemeSelect = $('pThemeSelect');
+const presenterNotesBody = $('presenterNotesBody');
+const currentPreviewBox = $('currentPreviewBox');
+const currentPreviewStage = $('currentPreviewStage');
+const nextPreviewBox = $('nextPreviewBox');
+const nextPreviewStage = $('nextPreviewStage');
+const nextPreviewEnd = $('nextPreviewEnd');
+const audienceDot = $('audienceDot');
+const audienceStatusText = $('audienceStatusText');
+const reopenAudienceBtn = $('reopenAudienceBtn');
+const presenterTimerEl = $('presenterTimer');
+const timerToggleBtn = $('timerToggleBtn');
 
 let audienceWin = null;
 let isPresenterMode = false;
@@ -490,10 +491,10 @@ if (typeof ResizeObserver !== 'undefined') {
   ro.observe(nextPreviewBox);
 }
 
-const controlsNav = document.getElementById('controlsNav');
-const controlsSecondary = document.getElementById('controlsSecondary');
-const controlsBurgerBtn = document.getElementById('controlsBurgerBtn');
-const shareBtn = document.getElementById('shareBtn');
+const controlsNav = $('controlsNav');
+const controlsSecondary = $('controlsSecondary');
+const controlsBurgerBtn = $('controlsBurgerBtn');
+const shareBtn = $('shareBtn');
 
 function setControlsMenuOpen(open) {
   controlsSecondary.classList.toggle('open', open);
@@ -536,18 +537,18 @@ document.addEventListener('click', (e) => {
   }
 });
 
-document.getElementById('prevBtn').addEventListener('click', () => render(index - 1));
-document.getElementById('nextBtn').addEventListener('click', () => render(index + 1));
-document.getElementById('heroNextBtn').addEventListener('click', () => render(index + 1));
-document.getElementById('presentBtn').addEventListener('click', () => {
+prevBtn.addEventListener('click', () => render(index - 1));
+nextBtn.addEventListener('click', () => render(index + 1));
+$('heroNextBtn').addEventListener('click', () => render(index + 1));
+$('presentBtn').addEventListener('click', () => {
   setControlsMenuOpen(false);
   startPresentationMode();
 });
-document.getElementById('notesBtn').addEventListener('click', () => {
+$('notesBtn').addEventListener('click', () => {
   setControlsMenuOpen(false);
   toggleNotes();
 });
-document.getElementById('gridBtn').addEventListener('click', () => {
+$('gridBtn').addEventListener('click', () => {
   setControlsMenuOpen(false);
   toggleOverview();
 });
@@ -558,7 +559,7 @@ counter.addEventListener('click', () => {
 shareBtn.addEventListener('click', () => {
   handleShareClick(shareBtn, 'Share', () => setControlsMenuOpen(false));
 });
-document.getElementById('overviewClose').addEventListener('click', () => setOverviewOpen(false));
+$('overviewClose').addEventListener('click', () => setOverviewOpen(false));
 overviewOverlay.addEventListener('click', (e) => {
   if (!e.target.closest('.overview-card, button')) {
     setOverviewOpen(false);
@@ -569,17 +570,17 @@ themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 // Presenter Console controls
 pPrevBtn.addEventListener('click', () => render(index - 1));
 pNextBtn.addEventListener('click', () => render(index + 1));
-document.getElementById('pGridBtn').addEventListener('click', toggleOverview);
+$('pGridBtn').addEventListener('click', toggleOverview);
 pCounter.addEventListener('click', toggleOverview);
 pThemeSelect.addEventListener('change', (e) => setTheme(e.target.value));
-document.getElementById('exitPresentBtn').addEventListener('click', exitPresentationMode);
+$('exitPresentBtn').addEventListener('click', exitPresentationMode);
 reopenAudienceBtn.addEventListener('click', () => {
   if (openAudienceWindow()) {
     postSync({ type: 'sync', index, theme: themeSelect.value });
   }
 });
 timerToggleBtn.addEventListener('click', () => (timerRunning ? pauseTimer() : startTimer()));
-document.getElementById('timerResetBtn').addEventListener('click', resetTimer);
+$('timerResetBtn').addEventListener('click', resetTimer);
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && controlsSecondary.classList.contains('open')) {
@@ -673,13 +674,13 @@ if (isAudienceMode) {
     }
   });
 }
-const mobileNav = document.getElementById('mobileNav');
-const mobileMenu = document.getElementById('mobileMenu');
-const mobileBurgerBtn = document.getElementById('mobileBurgerBtn');
-const mobileCounter = document.getElementById('mobileCounter');
-const mobileGridBtn = document.getElementById('mobileGridBtn');
-const mobileAllNotesBtn = document.getElementById('mobileAllNotesBtn');
-const mobileShareBtn = document.getElementById('mobileShareBtn');
+const mobileNav = $('mobileNav');
+const mobileMenu = $('mobileMenu');
+const mobileBurgerBtn = $('mobileBurgerBtn');
+const mobileCounter = $('mobileCounter');
+const mobileGridBtn = $('mobileGridBtn');
+const mobileAllNotesBtn = $('mobileAllNotesBtn');
+const mobileShareBtn = $('mobileShareBtn');
 
 function isMobileScrollMode() {
   return window.innerWidth <= 768 && !isAudienceMode && !isPresenterMode;

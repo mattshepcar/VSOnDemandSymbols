@@ -239,20 +239,19 @@
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*UK estimate: ~4 Wh/turn across 4,850 tool calls (10–25 kWh range, 95.4% cached), 0.144 kg CO₂e/kWh (DESNZ 2026 Gen + T&amp;D).</p>
       <aside class="notes">
         <p>
-          First, a caveat: these are back-of-the-envelope estimates, not telemetry from the AI
-          provider—modeled from our tool-call count, published inference energy benchmarks,
-          and UK grid averages.
+          These numbers are rough estimates, not measurements from the AI provider. They
+          come from our tool-call count, published inference benchmarks, and UK grid
+          averages.
         </p>
         <p>
-          Why care? When tokens are cheap and 95%+ cached, it's easy to treat them as free.
-          Putting them in everyday terms—electricity, water, car miles—makes the physical
-          footprint real.
+          When tokens are cheap and mostly cached, it is easy to treat them as free.
+          Everyday units like electricity and water make that physical cost easier to
+          see.
         </p>
         <p>
-          And agentic coding multiplies that footprint fast: unlike a one-shot chat question,
-          an agent loops through thousands of tool calls while re-reading huge context
-          windows—easily 10x the energy of normal chat. Being disciplined about scope isn't
-          just about your token bill.
+          Agentic coding uses much more energy than normal chat. Instead of answering
+          once, an agent runs thousands of tool calls and keeps re-reading huge contexts.
+          Keeping scope tight saves energy as well as money.
         </p>
       </aside>
     </section>
@@ -371,14 +370,14 @@
       <p class="takeaway">Ask the AI to <strong>build a self-check harness</strong>—fast feedback, even for GUI apps.</p>
       <aside class="notes">
         <p>
-          Testing a VS extension against UE5 usually means pressing F5, waiting for Lyra
-          to load, and checking output logs by hand. A solo developer wouldn't spend days
-          writing Windows ROT COM automation just to skip F5.
+          Testing a VS extension against UE5 usually means pressing F5, waiting for the
+          editor to load, and checking output logs by hand. Most solo developers would
+          not spend days writing Windows ROT COM automation just to skip F5.
         </p>
         <p>
           For the AI, building that harness was easy. It wrote a tool that launches VS,
-          loads the Unreal project, sets breakpoints, and records timings. It's an agent
-          self-check for fast iteration—not independent proof of correctness.
+          opens the project, sets breakpoints, and logs timings. Keep in mind this is a
+          self-check for fast iteration, so it does not replace real human testing.
         </p>
       </aside>
     </section>
@@ -423,16 +422,16 @@
       </div>
       <aside class="notes">
         <p>
-          A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete
-          and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5,
-          GPT-5.6 Luna, and DeepSeek V4 Flash have crossed a threshold.
+          A year or two ago, cheap 'mini' and 'flash' models were only good for
+          autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash,
+          Claude Haiku 5.5, GPT-5.6 Luna, and DeepSeek V4 Flash can handle real
+          multi-step coding.
         </p>
         <p>
-          They include lightweight reasoning ('thinking'), 1M–2M context windows (e.g.
-          Gemini 3.8 Flash), and reliable multi-step tool calling at 150–200+ tokens/sec.
-          On SWE-bench Verified (late 2026), they match last generation's frontier
-          flagships at 2–5x lower API cost per task at current pricing—which is what made
-          a £1.89 trial viable for a real Visual Studio extension.
+          They now include lightweight reasoning, huge context windows, and reliable
+          tool calling. On SWE-bench Verified, they match last generation's flagship
+          models for a fraction of the price. That is why a £1.89 trial was enough to
+          build a real Visual Studio extension.
         </p>
       </aside>
     </section>
@@ -450,8 +449,8 @@
       <img class="act-photo" data-act-img="act3" alt="Act III: Turbulence and Headwinds" />
       <aside class="notes">
         <p>
-          Now the flip side—when code is free to generate, you hit two huge traps: massive
-          churn and runaway token bills.
+          That was the good news. Now for what went wrong. When code is cheap to
+          generate, you run into heavy churn and runaway token bills.
         </p>
       </aside>
     </section>
@@ -507,18 +506,13 @@
       <p class="takeaway">Recognise dead ends early—save a <strong>handoff doc</strong> and reset.</p>
       <aside class="notes">
         <p>
-          AI generates abstractions with near-zero friction, so it will happily
-          over-engineer. Our V1 Concord + MSBuild stack burned $33 and 2h 45m in error
-          loops before we deleted 7,255 lines. It's an easy trap—a 'perpetual V1' where
-          AI writes fresh local code instead of reusing abstractions, so duplication rises
-          unless you step in.
+          AI makes it too easy to over-engineer. Our first version piled up complex
+          layers and got stuck in error loops.
         </p>
         <p>
-          With AI, resetting is cheap: you have zero attachment after a few hours' work,
-          and the AI documented what failed before handing off to V2. Once we simplified,
-          Gemini 3.8 Flash rebuilt the working extension in 4h 12m at 337 turns/hour for
-          $4.51 ($1.07/hr). Almost every big simplification happened when I asked:
-          "Do we actually need this?"
+          Because you did not type it by hand, resetting is easy. We got the AI to
+          record what failed, wiped the slate clean, and asked, "Do we actually need
+          this?" That one question drove almost every big simplification.
         </p>
       </aside>
     </section>
@@ -631,18 +625,18 @@
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Fresh Session</div>
           <div class="stat-num accent">$0.15–$1.80</div>
-          <div class="stat-label">Gemini 3.8 Flash for coding; Frontier for clean specs</div>
+          <div class="stat-label">Workhorse model for coding; Frontier for clean specs</div>
         </div>
       </div>
       <p class="takeaway">Context bloated? <strong>Start a fresh session</strong> with a 1-page handoff.</p>
       <aside class="notes">
         <p>
           Matching the model to the job worked best. I used frontier models in short,
-          fresh sessions for architecture and reviews, then stepped down to Flash once
-          the plan was locked.
+          fresh sessions for architecture and reviews, then stepped down to a fast
+          workhorse model once the plan was locked.
         </p>
         <p>
-          My most expensive mistake was switching up to Claude Opus 5.5 mid-session
+          My most expensive mistake was switching up to a frontier model mid-session
           after context had already bloated. It spent most of its time re-reading old
           chat history slowly. Next time, I would start a fresh session with a
           one-page handoff.
@@ -781,10 +775,6 @@
           Before we land: this was one person, one small tool, and one week. Some big
           questions are still open, and I do not have the answers yet.
         </p>
-        <p>
-          The next few slides look at the ethical cost, what we should still code
-          ourselves, and how we keep sharing knowledge as people.
-        </p>
       </aside>
     </section>
 
@@ -801,25 +791,24 @@
       </div>
       <aside class="notes">
         <p>
-          Three ethical questions hang over AI coding:
+          These are the three bigger questions behind the speed:
         </p>
         <ol>
           <li>
             <strong>Training data:</strong> models learned from billions of lines of
-            public open-source code without consent or credit. When an LLM trained on
-            GPL code emits a similar implementation into a proprietary repo, it raises a
-            'license laundering' concern around copyleft obligations.
+            public open-source code without consent or credit. If a model trained on
+            GPL code writes similar code into a closed repo, you risk breaking
+            copyleft rules.
           </li>
           <li>
-            <strong>Cooling water:</strong> hyperscale AI data centres consume vast
-            amounts of water for cooling—plus the indirect water behind their
-            electricity—putting real pressure on local watersheds.
+            <strong>Energy and water:</strong> large AI data centres use heavy cooling
+            water, plus the water needed to generate their power. That puts real strain
+            on local water supplies.
           </li>
           <li>
-            <strong>The job:</strong> Stanford Digital Economy data shows early-career
-            tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer
-            and review AI, while the boilerplate work that used to train juniors is
-            disappearing.
+            <strong>Changing the job:</strong> Stanford Digital Economy data shows
+            entry-level tech hiring for ages 22 to 25 dropping. Seniors now review AI
+            code, while the routine tasks that used to train juniors are shrinking.
           </li>
         </ol>
       </aside>
@@ -838,17 +827,15 @@
       </div>
       <aside class="notes">
         <p>
-          This was a small, single-author tool. Long-lived codebases are harder: AI tends
-          to create 'convenient debt'—code that compiles and passes tests, yet nobody
-          chose on purpose or understands. It is tempting to hand everything to the AI,
-          and people on r/ExperiencedDevs and r/learnprogramming already describe skill
-          atrophy and blank-screen panic when the AI is down.
+          This was a small, single-author tool. Long-lived codebases are harder, because
+          AI creates convenient debt. The code compiles and passes tests, yet nobody
+          chose the design or understands how it works.
         </p>
         <p>
-          Keep the thinking work: architecture, interfaces, core algorithms, concurrency,
-          and error recovery. Debug first by forming your own theory before pasting a
-          stack trace. Delegate boilerplate, glue code, and SDK digging—offload memory,
-          not thinking. Airline pilots hand-fly regularly to stay current.
+          It is tempting to hand everything over, and many developers already report
+          rusty skills and blank-screen panic when their AI is down. Use AI to offload
+          memory and boilerplate, while you keep the core design, debugging, and
+          judgment.
         </p>
       </aside>
     </section>
@@ -866,16 +853,15 @@
       </div>
       <aside class="notes">
         <p>
-          AI coding can be solitary: one person, one chat window, and all the lessons
-          stay in that person's transcript. The old friction that spread knowledge—juniors
-          writing boilerplate, seniors reviewing small PRs, pairing—is fading.
+          AI coding can be solitary. One person sits in one chat window, and every
+          lesson stays trapped in that transcript. The small habits that used to spread
+          knowledge across a team, like pairing and small code reviews, are fading.
         </p>
         <p>
-          Share the flight logs by committing rulebooks and decision docs
-          (<code>AGENTS.md</code>, <code>DECISIONS.md</code>) so the whole team learns.
-          Explain AI output to another person through walkthroughs and pairing. Focus on
-          the 'why' (architecture and algorithms) instead of style nitpicks: juniors try
-          first, AI critiques, and seniors coach the design.
+          Commit your rulebooks and decision docs, such as <code>AGENTS.md</code> and
+          <code>DECISIONS.md</code>, so the whole team learns. Walk through AI-written
+          code together. Juniors can try first, let AI give quick feedback, and seniors
+          can coach the design.
         </p>
       </aside>
     </section>
@@ -895,27 +881,25 @@
       <aside class="notes">
         <ol>
           <li>
-            <strong>Broader context (not our experiment):</strong> in METR's July 2025
-            RCT of experienced open-source developers, participants thought AI made them
-            20% faster, yet measured 19% slower. Feeling fast differs from shipping fast.
+            <strong>Speed:</strong> in a 2025 METR study of experienced open-source
+            developers, people thought AI made them 20% faster, yet they measured 19%
+            slower. Feeling fast is not the same as shipping fast.
           </li>
           <li>
-            <strong>Code review is now the bottleneck:</strong> AI makes it easy to
-            flood PRs, burn out reviewers, and invite rubber-stamping—so own every
-            commit.
+            <strong>Reviews:</strong> AI makes it easy to open huge PRs and wear down
+            reviewers. Own every commit you push.
           </li>
           <li>
-            <strong>Junior pipeline:</strong> if AI does the grunt work, how do juniors
-            build the experience to become seniors?
+            <strong>Juniors:</strong> if AI does the routine work, how do junior
+            developers build the judgment to become seniors?
           </li>
           <li>
-            <strong>Accountability &amp; policy:</strong> 'The AI wrote it' never works
-            in a post-mortem, and cloud models raise copyright and data-policy
-            questions.
+            <strong>Ownership:</strong> "The AI wrote it" does not hold up in a
+            post-mortem. Cloud models also raise copyright and data-policy questions.
           </li>
           <li>
-            <strong>Economics:</strong> my £1.89 trial equalled ~$100 of API usage in
-            one week—at team scale, that adds up fast once the subsidies end.
+            <strong>Cost:</strong> my £1.89 trial used about $100 of API tokens in one
+            week. At team scale, that bill grows fast once subsidies end.
           </li>
         </ol>
       </aside>

@@ -207,17 +207,12 @@
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*Estimated equivalent at Nov 2026 API list prices; actual cost was the £1.89 Google AI Pro trial.</p>
       <aside class="notes">
         <p>
-          Across 7 days (50 sessions, 4,694 turns), we logged ~19 hours of active AI and
-          pilot time, excluding idle gaps over 10 minutes.
+          Nineteen hours across seven days meant short, hands-on sprints. You still have
+          to steer and review the work. Prompt caching saved two-thirds of the cost.
         </p>
         <p>
-          Token volume hit 494M total: 22.6M uncached input, 468M cached read (a 95.4%
-          cache hit rate that saved $208), and 2.6M output. The AI made 4,850 tool calls,
-          and 20% (978) failed on the first try.
-        </p>
-        <p>
-          Total equivalent API spend was $100.27 (~$100 at Nov 2026 list prices), all
-          covered by the £1.89 trial.
+          That 20% tool-failure rate looks high, but it is normal. The agent runs a
+          build, hits an error, and fixes it on the next turn.
         </p>
       </aside>
     </section>
@@ -304,16 +299,12 @@
       </div>
       <aside class="notes">
         <p>
-          Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that
-          complex V1 approach stalled after burning ~$33, so we deleted 7,255 lines and
-          started clean. That reset was painless: it had only been a few hours of work,
-          and the AI documented all its lessons before handing off to V2.
+          The turning point was Day 2. We stopped trying to patch V1. We wrote down what
+          failed in a handoff note, then started fresh.
         </p>
         <p>
-          Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14 total, with the
-          core Flash rebuild at $4.50). Days 5–6 added automated benchmarking and
-          performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20),
-          which we simplified mid-flight.
+          Building the core extension after that was easy. Automated testing and edge
+          cases took almost three times as much effort.
         </p>
       </aside>
     </section>
@@ -489,15 +480,12 @@
       <p class="takeaway">Overspecifying on Day 1 + not asking <strong>“why?”</strong> drove the churn—surgical edits averaged <strong>$0.08</strong>.</p>
       <aside class="notes">
         <p>
-          Built over 7 days across 50 sessions (43 main, 7 subagents), 4,694 turns, and
-          71 Git commits. We had 26,251 insertions and 15,470 deletions, ending at 10,781
-          net lines of code—meaning 59% (~60%) of all lines added were later deleted.
+          Writing a detailed spec on Day 1 feels safe, but AI treats every speculative
+          idea as a firm requirement and builds it all at once.
         </p>
         <p>
-          Three things drove the churn: overspecifying on Day 1 before proving the core
-          loop, letting the AI build complex custom architectures early on, and not asking
-          'why?' soon enough when it went down a blind alley. By contrast, small surgical
-          edits later averaged $0.08 and zero compactions.
+          Normally 60% churn looks bad, yet deleting AI code costs nothing. More churn
+          might even be healthy if it pushes you toward a cleaner, simpler codebase.
         </p>
       </aside>
     </section>
@@ -598,15 +586,12 @@
       <p class="takeaway">Keep sessions short, interrupt loops early, and log quirks in <strong>AGENTS.md</strong>.</p>
       <aside class="notes">
         <p>
-          Only 6 of 50 sessions crossed context compaction, yet they caused 71% of dev
-          spend ($71.62) and 44% of all tool errors (431/978). Those 978 tool errors ate
-          ~3.8 hours of active time (~20% of dev time) and ~$20 in spend, concentrated in
-          two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock).
+          Compaction is a warning light. Once a session summarizes its own history, the
+          agent forgets subtle constraints and starts repeating failed tool calls.
         </p>
         <p>
-          Short sessions (&lt;=40 turns) had zero compactions and averaged $0.12. Document
-          environment quirks in <code>AGENTS.md</code> early: once we wrote down the
-          sandbox build flags, build hangs dropped to zero.
+          Closing bloated chats early and logging quirks in <code>AGENTS.md</code> keeps
+          costs down. A new session starts sharp instead of dragging old mistakes along.
         </p>
       </aside>
     </section>
@@ -774,19 +759,12 @@
       </div>
       <aside class="notes">
         <p>
-          If I started this project again, here are five habits from the cockpit I'd
-          carry forward:
+          My main takeaway is to stay in control of context and scope. You have to steer
+          the session and review both the behavior and the code.
         </p>
-        <ol>
-          <li>Probe undocumented APIs and write <code>AGENTS.md</code> first.</li>
-          <li>Default to a fast workhorse model and save frontier models for fresh sessions.</li>
-          <li>Work one step at a time and cross-check fresh to avoid compaction.</li>
-          <li>Start minimal and iterate.</li>
-          <li>Delete aggressively.</li>
-        </ol>
         <p>
-          Full disclosure: this was my first time vibe coding in anger, so take these as
-          early field notes.
+          Calling out obvious issues, like duplicate code or over-engineered modules,
+          quickly guides the model to a cleaner fix.
         </p>
       </aside>
     </section>

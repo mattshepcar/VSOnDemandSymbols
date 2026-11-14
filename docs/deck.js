@@ -408,7 +408,7 @@ function render(i, fromSync = false) {
   updateControlsLayout();
   if (!fromSync && !isAudienceMode) {
     try {
-      history.replaceState(null, '', `#slide=${index + 1}`);
+      history.replaceState(null, '', '#slide=' + (index + 1));
     } catch (_) {}
     postSync({ type: 'sync', index, theme: themeSelect.value });
   }
@@ -783,7 +783,7 @@ if ('IntersectionObserver' in window) {
       mobileCounter.classList.toggle('is-secret-ready', idx >= publicSlideCount - 1);
       progress.style.width = `${Math.min(100, ((idx + 1) / publicSlideCount) * 100)}%`;
       try {
-        history.replaceState(null, '', `#slide=${idx + 1}`);
+        history.replaceState(null, '', '#slide=' + (idx + 1));
       } catch (_) {}
       if (entry.target.dataset.act || slides[idx + 1]?.dataset.act) {
         loadFlightMedia();
@@ -842,7 +842,7 @@ function fitHeroTitle() {
   const available = box.clientWidth;
   if (available > 0 && h1.scrollWidth > available) {
     const current = parseFloat(getComputedStyle(h1).fontSize);
-    h1.style.fontSize = `${Math.floor(current * (available / h1.scrollWidth) * 10) / 10}px`;
+    h1.style.fontSize = Math.floor(current * (available / h1.scrollWidth) * 10) / 10 + 'px';
   }
 }
 window.addEventListener('resize', fitHeroTitle);

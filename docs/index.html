@@ -247,24 +247,20 @@
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*UK estimate: ~4 Wh/turn across 4,850 tool calls (10–25 kWh range, 95.4% cached), 0.144 kg CO₂e/kWh (DESNZ 2026 Gen + T&amp;D).</p>
       <aside class="notes">
         <p>
-          These are illustrative estimates, not measurements from the AI provider—based on
-          assumed energy consumption per tool-call turn, estimated cooling-water usage,
-          and an assumed UK electricity carbon intensity.
+          First, a caveat: these are back-of-the-envelope estimates, not telemetry from the AI
+          provider—modeled from our tool-call count, published inference energy benchmarks,
+          and UK grid averages.
         </p>
         <p>
-          Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent
-          inference benchmarks, accounting for our 95.4% prompt cache hit rate), the
-          7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh).
-          That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average),
-          or ~70 UK homes for an hour.
+          Why care? When tokens are cheap and 95%+ cached, it's easy to treat them as free.
+          Putting them in everyday terms—electricity, water, car miles—makes the physical
+          footprint real.
         </p>
         <p>
-          Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or
-          a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ
-          Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or
-          ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). Agentic coding
-          runs thousands of turns with huge contexts—easily 10x the energy of standard
-          single-turn chat.
+          And agentic coding multiplies that footprint fast: unlike a one-shot chat question,
+          an agent loops through thousands of tool calls while re-reading huge context
+          windows—easily 10x the energy of normal chat. Being disciplined about scope isn't
+          just about your token bill.
         </p>
       </aside>
     </section>

@@ -54,6 +54,11 @@ META_SESSION_IDS = {
     "aafe59be-ae47-47f5-ab67-dc6de9644ac6",  # S84: update META_ANALYSIS.md
     "a7d71f44-04e8-4d70-a87d-e483be8bd56a",  # S85: expand slide 25 details
     "8ae62220-5119-412a-805c-e2b8625f8a88",  # S86: fix energy estimates in presentation
+    "28017bc8-97fb-4c23-8e31-fc428ec7b788",  # S87: pivot presentation back to retrospective
+    "999a85e6-4f3c-42be-aeb0-5948acd0645c",  # S88: adjust themes in presentation
+    "ee73e5ff-e100-43e6-8916-734637fc91d2",  # S89: refactor presentation JS
+    "866f9416-df86-43ce-b729-fc56f8adc660",  # S90: move slide notes & polish presentation
+    "13c6adeb-7ca2-4bc9-b93e-aa76f2d2ab0c",  # S91: review latest chat_history analysis
 }
 
 META_PROMPT_PATTERNS = (

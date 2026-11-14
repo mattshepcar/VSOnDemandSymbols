@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" id="themeColorMeta" content="#d8effd" />
   <title>On Demand Symbols — Building a VS Extension with AI</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="favicon.png" />
@@ -10,94 +11,184 @@
   <script>
     try {
       const savedTheme = localStorage.getItem('deck-theme');
-      if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const activeTheme = savedTheme || (prefersDark ? 'flash-gordon' : 'blue-skies');
+      document.documentElement.setAttribute('data-theme', activeTheme);
+      const themeColors = { 'blue-skies': '#d8effd', 'swiss-light': '#f6f2e8', 'flash-gordon': '#140418', 'keynote-dark': '#070a10' };
+      const meta = document.getElementById('themeColorMeta');
+      if (meta && themeColors[activeTheme]) meta.setAttribute('content', themeColors[activeTheme]);
     } catch (_) {}
   </script>
   <style>
     /* ==========================================================================
-       THEMES (5 projection-ready palettes, Blue Skies default)
+       THEMES (4 projection-ready palettes: 2 dark, 2 light)
+       - keynote-dark ("Night Flight HC"): WCAG AAA + Okabe-Ito colorblind-safe dark
+       - flash-gordon ("Flash! A-ah!"): 1980 film Mongo crimson, gold & cosmic violet
+       - blue-skies ("Blue Skies"): Cool daylight sky gradient, navy & cobalt
+       - swiss-light ("Flight Manual"): Warm archival paper, editorial serif & teal/vermilion
        ========================================================================== */
+
+    /* 1. DARK (Accessible / High-Contrast / CVD-Safe): Okabe-Ito Sky Cyan & Vermilion-Amber
+          Anti-halation obsidian-slate canvas (#070a10) + soft white (#f4f7fb) prevents
+          projector/astigmatism bloom while maintaining >18:1 text & >3.5:1 UI border contrast. */
     :root,
     [data-theme="keynote-dark"] {
-      --bg: #09090b;
-      --bg-glow: radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.10), transparent 55%);
-      --ink: #fafafa;
-      --muted: #a1a1aa;
-      --accent: #38bdf8;
-      --accent-soft: rgba(56, 189, 248, 0.14);
-      --danger: #f43f5e;
-      --bar-muted: #27272a;
-      --rule: #27272a;
-      --nav-bg: rgba(24, 24, 27, 0.85);
-      --notes-bg: #111114;
+      --bg: #070a10;
+      --bg-glow: radial-gradient(circle at 50% -20%, rgba(92, 225, 255, 0.08), transparent 60%);
+      --ink: #f4f7fb;
+      --muted: #c8d3e0;
+      --accent: #5ce1ff;
+      --accent-soft: rgba(92, 225, 255, 0.18);
+      --danger: #ff7724;
+      --bar-muted: #1b2433;
+      --bar-neutral: #7b8da6;
+      --rule: #586982;
+      --nav-bg: rgba(7, 10, 16, 0.94);
+      --notes-bg: #0f1520;
+      --btn-ink: #070a10;
+      --photo-border: #586982;
+      --photo-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-display: Bahnschrift, "Segoe UI Variable Display", "DIN Alternate", Roboto, system-ui, sans-serif;
+      --font-kicker: Bahnschrift, "DIN Alternate", "Segoe UI", system-ui, sans-serif;
+      --h-tracking: -0.008em;
     }
 
+    /* Non-color differentiators for Night Flight (HC): pattern + double border on danger items */
+    [data-theme="keynote-dark"] .bar-fill.danger-bg {
+      background-image: repeating-linear-gradient(
+        135deg,
+        transparent 0 10px,
+        rgba(7, 10, 16, 0.32) 10px 18px
+      );
+    }
+
+    [data-theme="keynote-dark"] .contrast-block.danger-block,
+    [data-theme="keynote-dark"] .tl-step.danger-step {
+      border-left-style: double;
+      border-left-width: 8px;
+    }
+
+    [data-theme="keynote-dark"] .hero-bg-sunburst {
+      opacity: 0.32;
+    }
+
+    /* 2. LIGHT (Editorial / Technical Monograph): Warm archival paper + Avionics Teal & Vermilion
+          Width-calibrated Palatino/serif display headings + monospace technical badges. */
     [data-theme="swiss-light"] {
-      --bg: #fafaf9;
-      --bg-glow: none;
-      --ink: #09090b;
-      --muted: #52525b;
-      --accent: #dc2626;
-      --accent-soft: rgba(220, 38, 38, 0.10);
-      --danger: #ea580c;
-      --bar-muted: #e4e4e7;
-      --rule: #d4d4d8;
-      --nav-bg: rgba(255, 255, 255, 0.90);
-      --notes-bg: #f4f4f5;
+      --bg: #f6f2e8;
+      --bg-glow: radial-gradient(circle at 50% 0%, #faf8f2 0%, #f6f2e8 60%, #ece5d5 100%);
+      --ink: #161514;
+      --muted: #4a463f;
+      --accent: #096960;
+      --accent-soft: rgba(9, 105, 96, 0.11);
+      --danger: #c43216;
+      --bar-muted: #ddd5c4;
+      --bar-neutral: #787165;
+      --rule: #b8ad98;
+      --nav-bg: rgba(246, 242, 232, 0.93);
+      --notes-bg: #ebe4d4;
+      --btn-ink: #ffffff;
+      --photo-border: #b8ad98;
+      --photo-shadow: 0 16px 38px rgba(22, 21, 20, 0.16);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-display: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, Cambria, serif;
+      --font-kicker: ui-monospace, "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+      --h-tracking: -0.026em;
     }
 
+    [data-theme="swiss-light"] h1,
+    [data-theme="swiss-light"] h2,
+    [data-theme="swiss-light"] .quote-text {
+      font-family: var(--font-display);
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+
+    [data-theme="swiss-light"] .act-badge,
+    [data-theme="swiss-light"] .contrast-kicker,
+    [data-theme="swiss-light"] .tl-day,
+    [data-theme="swiss-light"] .list-num {
+      font-family: var(--font-kicker);
+      letter-spacing: 0.05em;
+    }
+
+    /* 3. DARK (1980 Movie Aesthetic): Danilo Donati's Imperial Mongo Crimson, Flash Gold & Cosmic Sky
+          Heroic humanist display headings + italic pulp-serial kickers & metallic gold accents. */
     [data-theme="flash-gordon"] {
-      --bg: #0d0518;
-      --bg-glow: radial-gradient(circle at 50% -15%, rgba(250, 204, 21, 0.16), rgba(244, 63, 94, 0.10) 45%, transparent 70%);
-      --ink: #fefce8;
-      --muted: #d6c29f;
-      --accent: #facc15;
-      --accent-soft: rgba(250, 204, 21, 0.16);
-      --danger: #f43f5e;
-      --bar-muted: #2a143d;
-      --rule: #3b1c54;
-      --nav-bg: rgba(20, 8, 34, 0.90);
-      --notes-bg: #160926;
+      --bg: #140418;
+      --bg-glow:
+        radial-gradient(ellipse 95% 55% at 50% -10%, rgba(255, 208, 0, 0.22) 0%, rgba(225, 29, 72, 0.18) 42%, rgba(96, 16, 88, 0.10) 70%, transparent 88%),
+        radial-gradient(circle at 85% 110%, rgba(225, 29, 72, 0.14) 0%, transparent 55%);
+      --ink: #fffbeb;
+      --muted: #e7c9a9;
+      --accent: #ffd000;
+      --accent-soft: rgba(255, 208, 0, 0.16);
+      --danger: #ff385c;
+      --bar-muted: #340e3d;
+      --bar-neutral: #9b5de5;
+      --rule: #682278;
+      --nav-bg: rgba(26, 6, 32, 0.92);
+      --notes-bg: #1f0726;
+      --btn-ink: #140418;
+      --photo-border: rgba(255, 208, 0, 0.35);
+      --photo-shadow: 0 20px 52px rgba(0, 0, 0, 0.6), 0 0 28px rgba(225, 29, 72, 0.18);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-display: "Trebuchet MS", "Avenir Next", "Gill Sans", "Segoe UI", system-ui, sans-serif;
+      --font-kicker: "Trebuchet MS", "Avenir Next", "Gill Sans", system-ui, sans-serif;
+      --h-tracking: -0.024em;
     }
 
-    [data-theme="flash-gordon"] .toggle-btn.active,
-    [data-theme="flash-gordon"] .controls button.next-btn {
-      color: #0d0518;
+    [data-theme="flash-gordon"] .act-badge,
+    [data-theme="flash-gordon"] .contrast-kicker,
+    [data-theme="flash-gordon"] .tl-day {
+      font-style: italic;
+      letter-spacing: 0.08em;
     }
 
-    [data-theme="warm-paper"] {
-      --bg: #f5f2eb;
-      --bg-glow: none;
-      --ink: #1c1917;
-      --muted: #57534e;
-      --accent: #2563eb;
-      --accent-soft: rgba(37, 99, 235, 0.10);
-      --danger: #dc2626;
-      --bar-muted: #e7e5e4;
-      --rule: #d6d3d1;
-      --nav-bg: rgba(245, 242, 235, 0.92);
-      --notes-bg: #ebe6dc;
+    [data-theme="flash-gordon"] .hero-bg-sunburst {
+      background:
+        repeating-conic-gradient(
+          from 0deg at 18% 48%,
+          rgba(255, 208, 0, 0.22) 0deg 6deg,
+          transparent 6deg 12deg,
+          rgba(255, 56, 92, 0.14) 12deg 18deg,
+          transparent 18deg 24deg
+        );
+      opacity: 0.85;
     }
 
+    [data-theme="flash-gordon"] .bar-fill.accent-bg,
+    [data-theme="flash-gordon"] .act-rule,
+    [data-theme="flash-gordon"] .progress {
+      background: linear-gradient(90deg, #f59e0b 0%, #ffd000 55%, #fef08a 100%);
+    }
+
+    [data-theme="flash-gordon"] h1 .accent,
+    [data-theme="flash-gordon"] h2 .accent {
+      text-shadow: 0 0 26px rgba(255, 208, 0, 0.22);
+    }
+
+    /* 4. LIGHT (Daytime Flight Deck): Cool sky gradient + deep naval ink & aero cobalt */
     [data-theme="blue-skies"] {
-      --bg: #e0f2fe;
-      --bg-glow: linear-gradient(180deg, #bae6fd 0%, #f0f9ff 65%, #ffffff 100%);
-      --ink: #0c2340;
-      --muted: #3b5b7c;
-      --accent: #0284c7;
-      --accent-soft: rgba(2, 132, 199, 0.12);
-      --danger: #e11d48;
-      --bar-muted: #bae6fd;
-      --rule: #93c5fd;
-      --nav-bg: rgba(240, 249, 255, 0.90);
-      --notes-bg: #dbeafe;
-    }
-
-    [data-theme="blue-skies"] .toggle-btn.active,
-    [data-theme="blue-skies"] .controls button.next-btn,
-    [data-theme="swiss-light"] .controls button.next-btn,
-    [data-theme="warm-paper"] .controls button.next-btn {
-      color: #ffffff;
+      --bg: #d8effd;
+      --bg-glow: linear-gradient(180deg, #cce9fc 0%, #ebf7ff 62%, #ffffff 100%);
+      --ink: #0a1e36;
+      --muted: #2d4d70;
+      --accent: #005eb0;
+      --accent-soft: rgba(0, 94, 176, 0.12);
+      --danger: #c41c44;
+      --bar-muted: #b5ddf8;
+      --bar-neutral: #567391;
+      --rule: #75b6e6;
+      --nav-bg: rgba(240, 249, 255, 0.92);
+      --notes-bg: #d8ecfc;
+      --btn-ink: #ffffff;
+      --photo-border: #75b6e6;
+      --photo-shadow: 0 18px 42px rgba(10, 30, 54, 0.18);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-display: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-kicker: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --h-tracking: -0.032em;
     }
 
     /* ==========================================================================
@@ -112,9 +203,16 @@
       background: var(--bg);
       background-image: var(--bg-glow);
       color: var(--ink);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: var(--font-sans);
       -webkit-font-smoothing: antialiased;
       transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
     }
 
     .deck {
@@ -181,18 +279,20 @@
 
     /* Projection-scale headings (36-48pt+) */
     h1 {
+      font-family: var(--font-display);
       font-size: clamp(2.8rem, 5.4vw, 5.2rem);
       font-weight: 800;
       line-height: 1.06;
-      letter-spacing: -0.035em;
+      letter-spacing: var(--h-tracking, -0.03em);
       max-width: 100%;
     }
 
     h2 {
+      font-family: var(--font-display);
       font-size: clamp(2.3rem, 4.3vw, 4.2rem);
       font-weight: 800;
       line-height: 1.1;
-      letter-spacing: -0.03em;
+      letter-spacing: var(--h-tracking, -0.028em);
       max-width: 100%;
     }
 
@@ -319,7 +419,7 @@
       height: 22px;
       border-radius: 50%;
       background: var(--danger);
-      box-shadow: 0 0 0 6px rgba(244, 63, 94, 0.18), 0 0 24px var(--danger);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--danger) 24%, transparent), 0 0 24px var(--danger);
     }
 
     .vs-bp-line {
@@ -374,11 +474,12 @@
     }
 
     .stat-num {
+      font-family: var(--font-display);
       font-size: clamp(3.6rem, 7.2vw, 6.8rem);
       font-weight: 800;
       line-height: 1;
-      letter-spacing: -0.04em;
-      font-variant-numeric: tabular-nums;
+      letter-spacing: var(--h-tracking, -0.035em);
+      font-variant-numeric: lining-nums tabular-nums;
     }
 
     [data-count] {
@@ -425,6 +526,7 @@
     }
 
     .contrast-kicker {
+      font-family: var(--font-kicker);
       font-size: clamp(1.25rem, 1.7vw, 1.6rem);
       font-weight: 700;
       text-transform: uppercase;
@@ -470,6 +572,7 @@
       width: 100%;
       height: clamp(26px, 3.6vh, 38px);
       background: var(--bar-muted);
+      border: 1px solid var(--rule);
       border-radius: 999px;
       overflow: hidden;
     }
@@ -477,7 +580,7 @@
     .bar-fill {
       height: 100%;
       border-radius: 999px;
-      background: var(--muted);
+      background: var(--bar-neutral, var(--muted));
       transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
     }
 
@@ -573,7 +676,7 @@
 
     .controls button.next-btn {
       background: var(--accent);
-      color: #09090b;
+      color: var(--btn-ink);
       font-weight: 700;
       font-size: 1.05rem;
       padding: 0.45rem 1.15rem;
@@ -631,17 +734,7 @@
 
     .slide-next-btn:hover {
       background: var(--accent);
-      color: #09090b;
-    }
-
-    [data-theme="flash-gordon"] .slide-next-btn:hover {
-      color: #0d0518;
-    }
-
-    [data-theme="blue-skies"] .slide-next-btn:hover,
-    [data-theme="swiss-light"] .slide-next-btn:hover,
-    [data-theme="warm-paper"] .slide-next-btn:hover {
-      color: #ffffff;
+      color: var(--btn-ink);
     }
 
     .slide-next-btn svg {
@@ -835,6 +928,7 @@
     }
 
     .tl-day {
+      font-family: var(--font-kicker);
       font-size: clamp(1.25rem, 1.7vw, 2rem);
       font-weight: 800;
       text-transform: uppercase;
@@ -848,6 +942,7 @@
     .tl-step.danger-step .tl-day { color: var(--danger); }
 
     .tl-title {
+      font-family: var(--font-display);
       font-size: clamp(1.55rem, 2.35vw, 2.75rem);
       font-weight: 800;
       line-height: 1.2;
@@ -923,7 +1018,7 @@
 
     .toggle-btn.active {
       background: var(--accent);
-      color: #09090b;
+      color: var(--btn-ink);
     }
 
     /* ==========================================================================
@@ -984,20 +1079,39 @@
       gap: 0.55rem;
     }
 
-    /* Per-act semantic colours (adaptive across light & dark themes) */
+    /* Per-act semantic colours (adaptive across light, dark & CVD-safe themes) */
     .overview-card,
     .overview-act-row {
       --card-color: var(--accent);
       --card-tint: var(--accent-soft);
     }
 
-    [data-act="intro"]      { --card-color: #0284c7; --card-tint: rgba(2, 132, 199, 0.12); }
-    [data-act="act-1"]      { --card-color: #0ea5e9; --card-tint: rgba(14, 165, 233, 0.13); }
-    [data-act="act-2"]      { --card-color: #10b981; --card-tint: rgba(16, 185, 129, 0.13); }
-    [data-act="act-3"]      { --card-color: #f43f5e; --card-tint: rgba(244, 63, 94, 0.12); }
-    [data-act="act-4"]      { --card-color: #6366f1; --card-tint: rgba(99, 102, 241, 0.13); }
-    [data-act="act-5"]      { --card-color: #8b5cf6; --card-tint: rgba(139, 92, 246, 0.13); }
-    [data-act="finale"]     { --card-color: #f97316; --card-tint: rgba(249, 115, 22, 0.14); }
+    /* Default / Light themes (high contrast >= 4.8:1 on light cards) */
+    [data-act="intro"]      { --card-color: #005eb0; --card-tint: rgba(0, 94, 176, 0.12); }
+    [data-act="act-1"]      { --card-color: #0369a1; --card-tint: rgba(3, 105, 161, 0.12); }
+    [data-act="act-2"]      { --card-color: #096960; --card-tint: rgba(9, 105, 96, 0.12); }
+    [data-act="act-3"]      { --card-color: #be123c; --card-tint: rgba(190, 18, 60, 0.11); }
+    [data-act="act-4"]      { --card-color: #4338ca; --card-tint: rgba(67, 56, 202, 0.11); }
+    [data-act="act-5"]      { --card-color: #6d28d9; --card-tint: rgba(109, 40, 217, 0.11); }
+    [data-act="finale"]     { --card-color: #c2410c; --card-tint: rgba(194, 65, 12, 0.12); }
+
+    /* Flash Gordon dark theme (luminous cosmic Mongo palette) */
+    [data-theme="flash-gordon"] [data-act="intro"]  { --card-color: #ffd000; --card-tint: rgba(255, 208, 0, 0.16); }
+    [data-theme="flash-gordon"] [data-act="act-1"]  { --card-color: #38bdf8; --card-tint: rgba(56, 189, 248, 0.15); }
+    [data-theme="flash-gordon"] [data-act="act-2"]  { --card-color: #fbbf24; --card-tint: rgba(251, 191, 36, 0.15); }
+    [data-theme="flash-gordon"] [data-act="act-3"]  { --card-color: #ff385c; --card-tint: rgba(255, 56, 92, 0.16); }
+    [data-theme="flash-gordon"] [data-act="act-4"]  { --card-color: #c084fc; --card-tint: rgba(192, 132, 252, 0.15); }
+    [data-theme="flash-gordon"] [data-act="act-5"]  { --card-color: #f472b6; --card-tint: rgba(244, 114, 182, 0.15); }
+    [data-theme="flash-gordon"] [data-act="finale"] { --card-color: #fb923c; --card-tint: rgba(251, 146, 60, 0.16); }
+
+    /* Night Flight HC (Okabe-Ito colorblind-safe high-luminance palette, all >= 7.5:1 AAA) */
+    [data-theme="keynote-dark"] [data-act="intro"]  { --card-color: #5ce1ff; --card-tint: rgba(92, 225, 255, 0.16); }
+    [data-theme="keynote-dark"] [data-act="act-1"]  { --card-color: #7cc4ff; --card-tint: rgba(124, 196, 255, 0.16); }
+    [data-theme="keynote-dark"] [data-act="act-2"]  { --card-color: #38e5b5; --card-tint: rgba(56, 229, 181, 0.15); }
+    [data-theme="keynote-dark"] [data-act="act-3"]  { --card-color: #ff7724; --card-tint: rgba(255, 119, 36, 0.16); }
+    [data-theme="keynote-dark"] [data-act="act-4"]  { --card-color: #f5d110; --card-tint: rgba(245, 209, 16, 0.15); }
+    [data-theme="keynote-dark"] [data-act="act-5"]  { --card-color: #e88cff; --card-tint: rgba(232, 140, 255, 0.15); }
+    [data-theme="keynote-dark"] [data-act="finale"] { --card-color: #ffae38; --card-tint: rgba(255, 174, 56, 0.16); }
 
     .overview-act-row {
       display: grid;
@@ -1109,6 +1223,7 @@
     }
 
     .act-badge {
+      font-family: var(--font-kicker);
       display: inline-flex;
       align-items: center;
       gap: 0.75rem;
@@ -1173,8 +1288,8 @@
       max-height: 58vh;
       object-fit: cover;
       border-radius: 14px;
-      border: 2px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      border: 2px solid var(--photo-border, var(--rule));
+      box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.45));
       opacity: 0;
       pointer-events: none;
       z-index: 1;
@@ -1376,18 +1491,8 @@
     .p-btn.primary {
       background: var(--accent);
       border-color: var(--accent);
-      color: #09090b;
+      color: var(--btn-ink);
       font-weight: 700;
-    }
-
-    [data-theme="flash-gordon"] .p-btn.primary {
-      color: #0d0518;
-    }
-
-    [data-theme="blue-skies"] .p-btn.primary,
-    [data-theme="swiss-light"] .p-btn.primary,
-    [data-theme="warm-paper"] .p-btn.primary {
-      color: #ffffff;
     }
 
     .p-btn.danger {
@@ -1570,6 +1675,20 @@
 
       body:not(.is-audience):not(.is-presenter) .slide-center-wrap {
         width: 100%;
+      }
+
+      body:not(.is-audience):not(.is-presenter) .rubber-stamp {
+        position: relative;
+        top: auto;
+        right: auto;
+        align-self: flex-end;
+        transform: rotate(6deg);
+        font-size: 0.85rem;
+        padding: 0.22em 0.65em;
+        border-width: 2.5px;
+        outline-width: 1.5px;
+        outline-offset: -5px;
+        margin-bottom: -0.5rem;
       }
 
       body:not(.is-audience):not(.is-presenter) h1 {
@@ -1774,21 +1893,11 @@
         border-radius: 999px;
         border: none;
         background: var(--accent);
-        color: #09090b;
+        color: var(--btn-ink);
         font-size: 1.15rem;
         font-weight: 800;
         cursor: pointer;
         line-height: 1;
-      }
-
-      [data-theme="flash-gordon"] .mobile-burger-btn {
-        color: #0d0518;
-      }
-
-      [data-theme="blue-skies"] .mobile-burger-btn,
-      [data-theme="swiss-light"] .mobile-burger-btn,
-      [data-theme="warm-paper"] .mobile-burger-btn {
-        color: #ffffff;
       }
 
       .mobile-menu {
@@ -2542,7 +2651,7 @@
     <!-- SECRET SLIDE -->
     <section class="slide" data-secret="true" data-notes="Secret Slide! We launched 6 Flash subagents in parallel.">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
-        <img id="secretSlideImg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.14); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); object-fit: contain;"/>
+        <img id="secretSlideImg" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid var(--photo-border, var(--rule)); box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.55)); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>
         <p class="subtitle" style="margin: 0;">&mdash; Prince Vultan (Brian Blessed), <em>Flash Gordon</em> (1980)</p>
       </div>
@@ -2590,11 +2699,10 @@
         <button class="p-btn primary" id="pNextBtn" title="Next (Right Arrow / Space)">Next →</button>
         <button class="p-btn" id="pGridBtn" title="Slide Overview (G / Esc)">Grid</button>
         <select id="pThemeSelect" title="Switch Theme (T)">
-          <option value="blue-skies" selected>Blue Skies</option>
+          <option value="blue-skies" selected>☀️ Blue Skies</option>
           <option value="flash-gordon">⚡ Flash! A-ah!</option>
-          <option value="keynote-dark">Night Flight</option>
-          <option value="swiss-light">Flight Manual</option>
-          <option value="warm-paper">Pilot’s Logbook</option>
+          <option value="keynote-dark">🌙 Night Flight (HC)</option>
+          <option value="swiss-light">📖 Flight Manual</option>
         </select>
         <button class="p-btn danger" id="exitPresentBtn" title="Exit Presentation Mode (P)">Exit</button>
       </div>
@@ -2649,11 +2757,10 @@
         <span class="ctrl-label">Share</span>
       </button>
       <select id="themeSelect" title="Switch Theme (T)">
-        <option value="blue-skies" selected>Blue Skies</option>
+        <option value="blue-skies" selected>☀️ Blue Skies</option>
         <option value="flash-gordon">⚡ Flash! A-ah!</option>
-        <option value="keynote-dark">Night Flight</option>
-        <option value="swiss-light">Flight Manual</option>
-        <option value="warm-paper">Pilot’s Logbook</option>
+        <option value="keynote-dark">🌙 Night Flight (HC)</option>
+        <option value="swiss-light">📖 Flight Manual</option>
       </select>
     </div>
     <button type="button" class="controls-burger-btn" id="controlsBurgerBtn" title="More controls" aria-label="More controls" aria-expanded="false" aria-controls="controlsSecondary">☰</button>
@@ -2667,11 +2774,10 @@
       <button type="button" class="mobile-menu-btn" id="mobileShareBtn" role="menuitem" title="Copy link to current slide to clipboard">Share Slide Link</button>
       <label class="mobile-menu-label" for="mobileThemeSelect">Theme</label>
       <select class="mobile-menu-select" id="mobileThemeSelect" aria-label="Switch Theme">
-        <option value="blue-skies" selected>Blue Skies</option>
+        <option value="blue-skies" selected>☀️ Blue Skies</option>
         <option value="flash-gordon">⚡ Flash! A-ah!</option>
-        <option value="keynote-dark">Night Flight</option>
-        <option value="swiss-light">Flight Manual</option>
-        <option value="warm-paper">Pilot’s Logbook</option>
+        <option value="keynote-dark">🌙 Night Flight (HC)</option>
+        <option value="swiss-light">📖 Flight Manual</option>
       </select>
     </div>
     <div class="mobile-pill">
@@ -2690,9 +2796,20 @@
     const notesDrawer = document.getElementById('notesDrawer');
     const notesText = document.getElementById('notesText');
     const themeSelect = document.getElementById('themeSelect');
+    const mobileThemeSelect = document.getElementById('mobileThemeSelect');
+    const themeColorMeta = document.getElementById('themeColorMeta');
+    const themeColors = {
+      'blue-skies': '#d8effd',
+      'swiss-light': '#f6f2e8',
+      'flash-gordon': '#140418',
+      'keynote-dark': '#070a10'
+    };
     const overviewOverlay = document.getElementById('overviewOverlay');
     const overviewGrid = document.getElementById('overviewGrid');
-    const themes = ['blue-skies', 'flash-gordon', 'keynote-dark', 'swiss-light', 'warm-paper'];
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const themes = prefersDark
+      ? ['flash-gordon', 'blue-skies', 'keynote-dark', 'swiss-light']
+      : ['blue-skies', 'flash-gordon', 'keynote-dark', 'swiss-light'];
 
     let index = 0;
 
@@ -3163,6 +3280,11 @@
       themeSelect.value = theme;
       pThemeSelect.value = theme;
       if (mobileThemeSelect) mobileThemeSelect.value = theme;
+      if (themeColorMeta && themeColors[theme]) {
+        themeColorMeta.setAttribute('content', themeColors[theme]);
+      }
+      fitHeroTitle();
+      updatePresenterConsole();
       updateControlsLayout();
       if (!fromSync) {
         try { localStorage.setItem('deck-theme', theme); } catch (_) {}
@@ -3412,15 +3534,17 @@
       render(0, true);
       postSync({ type: 'ready' });
     } else {
+      let savedTheme = null;
+      let savedNotes = null;
       try {
-        const savedTheme = localStorage.getItem('deck-theme');
-        if (savedTheme && themes.includes(savedTheme)) setTheme(savedTheme, true);
-        else setTheme(themes[0], true);
-        const savedNotes = localStorage.getItem('deck-notes-open');
-        if (savedNotes !== null) {
-          notesDrawer.classList.toggle('open', savedNotes === 'true');
-        }
+        savedTheme = localStorage.getItem('deck-theme');
+        savedNotes = localStorage.getItem('deck-notes-open');
       } catch (_) {}
+      if (savedTheme && themes.includes(savedTheme)) setTheme(savedTheme, true);
+      else setTheme(themes[0], true);
+      if (savedNotes !== null) {
+        notesDrawer.classList.toggle('open', savedNotes === 'true');
+      }
       document.body.classList.toggle('notes-open', notesDrawer.classList.contains('open'));
       setInterval(() => {
         if (isPresenterMode) updateAudienceConnectionUI();
@@ -3441,7 +3565,6 @@
     const mobileGridBtn = document.getElementById('mobileGridBtn');
     const mobileAllNotesBtn = document.getElementById('mobileAllNotesBtn');
     const mobileShareBtn = document.getElementById('mobileShareBtn');
-    const mobileThemeSelect = document.getElementById('mobileThemeSelect');
 
     function isMobileScrollMode() {
       return window.innerWidth <= 768 && !isAudienceMode && !isPresenterMode;

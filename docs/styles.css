@@ -936,6 +936,7 @@ body.controls-compact .controls-icon-btn .ctrl-label { display: inline; }
   border-radius: 11px;
   padding: 0.6rem 0.75rem;
   text-align: left;
+  text-decoration: none;
   color: var(--ink);
   cursor: pointer;
   display: flex;

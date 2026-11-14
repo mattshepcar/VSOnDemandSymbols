@@ -76,7 +76,8 @@ function buildOverview() {
     const isHeader = Boolean(s.dataset.act);
     const title = s.dataset.title || `Slide ${idx + 1}`;
     const icon = s.dataset.icon || '📄';
-    const card = document.createElement('button');
+    const card = document.createElement('a');
+    card.href = `#${getSlideSlug(idx)}`;
     card.dataset.act = actKey;
     card.className = 'overview-card' + (isHeader ? ' is-act' : '') + (idx === index ? ' current' : '');
 
@@ -89,7 +90,9 @@ function buildOverview() {
       <span class="overview-title">${title}</span>
     `;
 
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
       setOverviewOpen(false);
       if (isMobileScrollMode()) {
         slides[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });

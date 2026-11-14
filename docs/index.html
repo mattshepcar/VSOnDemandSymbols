@@ -842,6 +842,31 @@
     /* ==========================================================================
        NOTES DRAWER (Visible by default, toggle with 'N' key)
        ========================================================================== */
+    .slide > aside.notes {
+      display: none !important;
+    }
+
+    .notes-text > * + *,
+    .presenter-notes-body > * + *,
+    .mobile-notes-body > * + * {
+      margin-top: 0.55em;
+    }
+
+    .notes-text ul,
+    .notes-text ol,
+    .presenter-notes-body ul,
+    .presenter-notes-body ol,
+    .mobile-notes-body ul,
+    .mobile-notes-body ol {
+      margin-left: 1.35em;
+    }
+
+    .notes-text li + li,
+    .presenter-notes-body li + li,
+    .mobile-notes-body li + li {
+      margin-top: 0.25em;
+    }
+
     .notes-drawer {
       position: fixed;
       left: 0;
@@ -1974,7 +1999,7 @@
 
   <main class="deck" id="deck">
 
-    <section class="slide active" data-act="intro" data-act-label="Title" data-icon="🧩" id="heroSlide" data-notes="This started as a weekend project to fix slow UE5 debugging in Visual Studio. I built it with Google Antigravity inside Visual Studio 2026 on a £1.89 one-month trial of Google AI Pro. Over 7 days, that turned into 50 sessions, ~4,700 turns, and about $100 of equivalent API spend. The result is a working VSIX extension. Here is what happened and what I learned." data-title="Don't call me Shirley!">
+    <section class="slide active" data-act="intro" data-act-label="Title" data-icon="🧩" id="heroSlide" data-title="Don't call me Shirley!">
       <div class="hero-bg-layer hero-bg-sunburst" aria-hidden="true">
         <div class="sunburst-slash"></div>
       </div>
@@ -2041,10 +2066,22 @@
           <polyline points="9 5 16 12 9 19"></polyline>
         </svg>
       </button>
+      <aside class="notes">
+        <p>
+          This started as a weekend project to fix slow UE5 debugging in Visual Studio.
+          I built it with Google Antigravity inside Visual Studio 2026 on a £1.89
+          one-month trial of Google AI Pro.
+        </p>
+        <p>
+          Over 7 days, that turned into 50 sessions, ~4,700 turns, and about $100 of
+          equivalent API spend. The result is a working VSIX extension. Here is what
+          happened and what I learned.
+        </p>
+      </aside>
     </section>
 
     <!-- SLIDE 2: RETROSPECTIVE FRAMING -->
-    <section class="slide" data-icon="✈️" data-notes="Before we take off, here is what this deck is and isn't. It's a retrospective of my experience building a real software project with AI coding agents—what worked, what didn't, some surprising discoveries, and the techniques I found useful for getting better results. It isn't a guide to agentic coding or a definitive set of best practices." data-title="“What’s our vector, Victor?”">
+    <section class="slide" data-icon="✈️" data-title="“What’s our vector, Victor?”">
       <div class="slide-center-wrap">
         <h2>“What’s our <span class="accent">vector, Victor</span>?”</h2>
         <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Pre-flight briefing: what this is (and isn’t).</p>
@@ -2054,10 +2091,21 @@
           <li><span class="list-num">3.</span><span><strong>Not a manual or best-practices guide</strong> — I’m not claiming the one right way to use agents; this is just my flight log.</span></li>
         </ul>
       </div>
+      <aside class="notes">
+        <p>
+          Before we take off, here is what this deck is and isn't.
+          It's a retrospective of my experience building a real software project with AI
+          coding agents—what worked, what didn't, some surprising discoveries, and the
+          techniques I found useful for getting better results.
+        </p>
+        <p>
+          It isn't a guide to agentic coding or a definitive set of best practices.
+        </p>
+      </aside>
     </section>
 
     <!-- ACT I DIVIDER -->
-    <section class="slide act-slide" data-act="act-1" data-act-label="Act I" data-icon="🛫" data-notes="Let's start with what we built, the scale of the experiment, and how the 7 days played out." data-title="Cleared for Takeoff">
+    <section class="slide act-slide" data-act="act-1" data-act-label="Act I" data-icon="🛫" data-title="Cleared for Takeoff">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M25 155 Q90 60 175 45" stroke-dasharray="7 7"/>
         <path d="M175 45 L145 38 L155 52 L148 64 Z" fill="currentColor" stroke="none"/>
@@ -2068,10 +2116,16 @@
       <div class="act-rule"></div>
       <p class="subtitle">Fixing slow Unreal debugging—and accidentally logging <strong>4,000+ turns</strong> in the cockpit. 🛫</p>
       <img class="act-photo" data-act-img="act1" alt="Act I: Cleared for Takeoff" />
+      <aside class="notes">
+        <p>
+          Let's start with what we built, the scale of the experiment, and how the 7 days
+          played out.
+        </p>
+      </aside>
     </section>
 
     <!-- THE PROBLEM & SOLUTION: UE5 SYMBOL LOADING -->
-    <section class="slide" data-icon="🍵" data-notes="Launching Unreal Engine 5 Editor under the Visual Studio debugger takes ages. On Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and Visual Studio loads ~950 PDBs at startup by default even if you only have breakpoints in a few files. On Demand Symbols switches VS to 'load only specified modules' mode, fills IncludeList from your breakpoints before launch, and loads call-stack PDBs only when you hit a break. On Lyra, startup PDBs dropped from 950 to 11, making warm launch-to-breakpoint ~2.5x faster (22.1s down to 8.5s)." data-title="UE5 + F5 = Tea break time">
+    <section class="slide" data-icon="🍵" data-title="UE5 + F5 = Tea break time">
       <h2>UE5 + F5 = <span class="danger">Tea break time</span> 🍵</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -2086,9 +2140,23 @@
         </div>
       </div>
       <p class="takeaway">Pre-loads breakpoint PDBs; loads call-stack PDBs <strong>only when you break</strong>.</p>
+      <aside class="notes">
+        <p>
+          Launching Unreal Engine 5 Editor under the Visual Studio debugger takes ages.
+          On Lyra, UE5 maps 1,062 DLLs and 26+ GB of PDB debug symbols, and Visual Studio
+          loads ~950 PDBs at startup by default even if you only have breakpoints in a
+          few files.
+        </p>
+        <p>
+          On Demand Symbols switches VS to 'load only specified modules' mode, fills
+          <code>IncludeList</code> from your breakpoints before launch, and loads
+          call-stack PDBs only when you hit a break. On Lyra, startup PDBs dropped from
+          950 to 11, making warm launch-to-breakpoint ~2.5x faster (22.1s down to 8.5s).
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="📊" data-notes="Across 7 days (50 sessions, 4,694 turns), we logged ~19 hours of active AI and pilot time, excluding idle gaps over 10 minutes. Token volume hit 494M total: 22.6M uncached input, 468M cached read (a 95.4% cache hit rate that saved $208), and 2.6M output. The AI made 4,850 tool calls, and 20% (978) failed on the first try. Total equivalent API spend was $100.27 (~$100 at Nov 2026 list prices), all covered by the £1.89 trial." data-title="The project by the numbers">
+<section class="slide" data-icon="📊" data-title="The project by the numbers">
       <h2>The project <span class="accent">by the numbers</span>.</h2>
       <div class="stats-grid-2x2">
         <div class="stat">
@@ -2109,9 +2177,24 @@
         </div>
       </div>
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*Estimated equivalent at Nov 2026 API list prices; actual cost was the £1.89 Google AI Pro trial.</p>
+      <aside class="notes">
+        <p>
+          Across 7 days (50 sessions, 4,694 turns), we logged ~19 hours of active AI and
+          pilot time, excluding idle gaps over 10 minutes.
+        </p>
+        <p>
+          Token volume hit 494M total: 22.6M uncached input, 468M cached read (a 95.4%
+          cache hit rate that saved $208), and 2.6M output. The AI made 4,850 tool calls,
+          and 20% (978) failed on the first try.
+        </p>
+        <p>
+          Total equivalent API spend was $100.27 (~$100 at Nov 2026 list prices), all
+          covered by the £1.89 trial.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🌱" data-notes="These are illustrative estimates, not measurements from the AI provider. Based on assumed energy consumption per tool-call turn, estimated cooling-water usage and an assumed UK electricity carbon intensity. Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent inference benchmarks, accounting for our 95.4% prompt cache hit rate), the 7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh). That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average), or ~70 UK homes for an hour. Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). Agentic coding runs thousands of turns with huge contexts—easily 10x the energy of standard single-turn chat." data-title="What 494M tokens cost the planet">
+<section class="slide" data-icon="🌱" data-title="What 494M tokens cost the planet">
       <div class="rubber-stamp" aria-hidden="true">ESTIMATES</div>
       <h2>What 494M tokens <span class="accent">cost the planet</span>.</h2>
       <div class="stats-grid-2x2 compact">
@@ -2134,9 +2217,31 @@
       </div>
       <p class="takeaway">Agentic loops multiply the footprint — <strong>cheap tokens have real world cost.</strong></p>
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.5rem;">*UK estimate: ~4 Wh/turn across 4,850 tool calls (10–25 kWh range, 95.4% cached), 0.144 kg CO₂e/kWh (DESNZ 2026 Gen + T&amp;D).</p>
+      <aside class="notes">
+        <p>
+          These are illustrative estimates, not measurements from the AI provider—based on
+          assumed energy consumption per tool-call turn, estimated cooling-water usage,
+          and an assumed UK electricity carbon intensity.
+        </p>
+        <p>
+          Across 4,850 tool calls (~4 Wh/turn for reasoning/agentic workloads per recent
+          inference benchmarks, accounting for our 95.4% prompt cache hit rate), the
+          7-day build used ~20 kWh of electricity (a realistic range of ~10–25 kWh).
+          That powers 1 typical UK home for ~3 days (at Ofgem's ~6.85 kWh/day average),
+          or ~70 UK homes for an hour.
+        </p>
+        <p>
+          Direct cooling water is ~25 L (at ~1.25 L/kWh), roughly 2 dishwasher cycles or
+          a 3-minute shower. At the 2026 UK grid factor (0.144 kg CO2e/kWh, DESNZ
+          Generation + T&amp;D losses; 0.131 Generation-only), that is ~2.9 kg CO2e, or
+          ~11 petrol-car miles (~6 weeks of work for 1 rainforest tree). Agentic coding
+          runs thousands of turns with huge contexts—easily 10x the energy of standard
+          single-turn chat.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="📅" data-notes="Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that complex V1 approach stalled after burning ~$33, so we deleted 7,255 lines and started clean. That reset was painless: it had only been a few hours of work, and the AI documented all its lessons before handing off to V2. Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14 total, with the core Flash rebuild at $4.50). Days 5–6 added automated benchmarking and performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20), which we simplified mid-flight." data-title="Seven days, one aborted approach">
+<section class="slide" data-icon="📅" data-title="Seven days, one aborted approach">
       <div class="slide-center-wrap">
       <h2>Seven days, <span class="accent">one aborted approach</span>.</h2>
       <div class="timeline">
@@ -2173,10 +2278,24 @@
       </div>
       <p class="takeaway">Once we <strong>bailed out of V1</strong> on Day 2, V2 cost <strong>~$12 to build</strong> and <strong>~$33 to optimise &amp; harden</strong>. 🪂</p>
       </div>
+      <aside class="notes">
+        <p>
+          Day 1 started with a big upfront spec and SDK research (~$20). On Day 2, that
+          complex V1 approach stalled after burning ~$33, so we deleted 7,255 lines and
+          started clean. That reset was painless: it had only been a few hours of work,
+          and the AI documented all its lessons before handing off to V2.
+        </p>
+        <p>
+          Days 3–4 rebuilt and polished the lean V2 extension (~$12–$14 total, with the
+          core Flash rebuild at $4.50). Days 5–6 added automated benchmarking and
+          performance tuning (~$13). Day 7 handled multi-instance edge cases (~$19–$20),
+          which we simplified mid-flight.
+        </p>
+      </aside>
     </section>
 
     <!-- ACT II DIVIDER -->
-    <section class="slide act-slide" data-act="act-2" data-act-label="Act II" data-icon="⚡" data-notes="Before looking at what went wrong, here are the three places where AI felt like a genuine superpower." data-title="Catching a Tailwind">
+    <section class="slide act-slide" data-act="act-2" data-act-label="Act II" data-icon="⚡" data-title="Catching a Tailwind">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="110,15 45,115 95,115 85,185 155,85 105,85"/>
       </svg>
@@ -2185,9 +2304,15 @@
       <div class="act-rule"></div>
       <p class="subtitle">Where AI gave us lift—cracking undocumented APIs, self-testing, and flying in formation.</p>
       <img class="act-photo" data-act-img="act2" alt="Act II: Catching a Tailwind" />
+      <aside class="notes">
+        <p>
+          Before looking at what went wrong, here are the places where AI felt like a
+          genuine superpower.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🔍" data-notes="I could not have built this without AI, because Visual Studio's SDK is sparse and often undocumented. Instead of hunting dead forum threads, the AI ran 233 binary probes against VS's own installed DLLs to inspect interfaces, and ran 168 web searches for undocumented config schemas. Doing that by hand would have been soul-destroying." data-title="AI reflected on VS’s own DLLs when docs didn’t exist">
+<section class="slide" data-icon="🔍" data-title="AI reflected on VS’s own DLLs when docs didn’t exist">
       <h2>AI reflected on <span class="accent">VS’s own DLLs</span><br />when docs didn’t exist.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -2204,9 +2329,20 @@
         </div>
       </div>
       <p class="takeaway">When docs are missing, yell <strong>“DIVE!”</strong>—let AI plunge straight into the binaries. 🦅</p>
+      <aside class="notes">
+        <p>
+          I could not have built this without AI, because Visual Studio's SDK is sparse
+          and often undocumented.
+        </p>
+        <p>
+          Instead of hunting dead forum threads, the AI ran 233 binary probes against VS's
+          own installed DLLs to inspect interfaces, and ran 168 web searches for
+          undocumented config schemas. Doing that by hand would have been soul-destroying.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🤖" data-notes="Testing a VS extension against UE5 usually means pressing F5, waiting for Lyra to load, and checking output logs by hand. A solo developer wouldn't spend days writing Windows ROT COM automation just to skip F5. For the AI, building that harness was easy. It wrote a tool that launches VS, loads the Unreal project, sets breakpoints, and records timings. It's an agent self-check for fast iteration—not independent proof of correctness." data-title="When testing needs a human, AI finds a way to self-check">
+<section class="slide" data-icon="🤖" data-title="When testing needs a human, AI finds a way to self-check">
       <h2>When testing needs a human,<br /><span class="accent">AI finds a way</span> to self-check.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -2221,9 +2357,21 @@
         </div>
       </div>
       <p class="takeaway">Ask the AI to <strong>build a self-check harness</strong>—fast feedback, even for GUI apps.</p>
+      <aside class="notes">
+        <p>
+          Testing a VS extension against UE5 usually means pressing F5, waiting for Lyra
+          to load, and checking output logs by hand. A solo developer wouldn't spend days
+          writing Windows ROT COM automation just to skip F5.
+        </p>
+        <p>
+          For the AI, building that harness was easy. It wrote a tool that launches VS,
+          loads the Unreal project, sets breakpoints, and records timings. It's an agent
+          self-check for fast iteration—not independent proof of correctness.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🦅" data-notes="Six read-only Gemini 3.8 Flash subagents searched the Unreal Engine source tree in parallel to verify module naming rules. They ran 55 minutes 20 seconds of total research (328 turns, 305 tool calls) in 22 minutes of human clock time, for $0.57 ($0.62/hour). Subagents give you two wins: 2.5x faster wall-clock time so you stay engaged, and context isolation so 305 file searches never bloat your main session." data-title="“Fly, my beauties!” Parallel wingmen cut the wait">
+<section class="slide" data-icon="🦅" data-title="“Fly, my beauties!” Parallel wingmen cut the wait">
       <h2>“<span class="accent">Fly, my beauties!</span>”<br />Parallel wingmen cut the wait.</h2>
       <div class="split-2">
         <div class="contrast-block">
@@ -2238,9 +2386,21 @@
         </div>
       </div>
       <p class="takeaway">Send <strong>wingmen</strong> for bulk research—less waiting, zero main-context bloat. 🦅</p>
+      <aside class="notes">
+        <p>
+          Six read-only Gemini 3.8 Flash subagents searched the Unreal Engine source tree
+          in parallel to verify module naming rules. They ran 55 minutes 20 seconds of
+          total research (328 turns, 305 tool calls) in 22 minutes of human clock time,
+          for $0.57 ($0.62/hour).
+        </p>
+        <p>
+          Subagents give you two wins: 2.5x faster wall-clock time so you stay engaged,
+          and context isolation so 305 file searches never bloat your main session.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="⚡" data-notes="A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5, GPT-5.6 Luna, and DeepSeek V4 Flash have crossed a threshold. They include lightweight reasoning ('thinking'), 1M–2M context windows (e.g. Gemini 3.8 Flash), and reliable multi-step tool calling at 150–200+ tokens/sec. On SWE-bench Verified (late 2026), they match last generation's frontier flagships at 2–5x lower API cost per task at current pricing. That shift is what made a £1.89 trial viable for a real Visual Studio extension." data-title="Fast &amp; cheap models got seriously good">
+<section class="slide" data-icon="⚡" data-title="Fast &amp; cheap models got seriously good">
       <div class="slide-center-wrap">
       <h2>Fast &amp; cheap models <span class="accent">got seriously good</span>. ⚡</h2>
       <ul class="big-list big-list-lg">
@@ -2251,10 +2411,24 @@
       <p class="takeaway"><strong class="accent">Flash! A-ah!</strong> Saviour of the token budget! ⚡</p>
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.25rem;">*SWE-bench Verified &amp; API list prices as of Nov 2026.</p>
       </div>
+      <aside class="notes">
+        <p>
+          A year or two ago, cheap 'mini' and 'flash' models only worked for autocomplete
+          and boilerplate. By late 2026, models like Gemini 3.8 Flash, Claude Haiku 5.5,
+          GPT-5.6 Luna, and DeepSeek V4 Flash have crossed a threshold.
+        </p>
+        <p>
+          They include lightweight reasoning ('thinking'), 1M–2M context windows (e.g.
+          Gemini 3.8 Flash), and reliable multi-step tool calling at 150–200+ tokens/sec.
+          On SWE-bench Verified (late 2026), they match last generation's frontier
+          flagships at 2–5x lower API cost per task at current pricing—which is what made
+          a £1.89 trial viable for a real Visual Studio extension.
+        </p>
+      </aside>
     </section>
 
     <!-- ACT III DIVIDER -->
-    <section class="slide act-slide" data-act="act-3" data-act-label="Act III" data-icon="🌩️" data-notes="Now the flip side—when code is free to generate, you hit two huge traps: massive churn and runaway token bills." data-title="Turbulence &amp; Headwinds">
+    <section class="slide act-slide" data-act="act-3" data-act-label="Act III" data-icon="🌩️" data-title="Turbulence &amp; Headwinds">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M30 40 L170 40 L120 160 L80 160 Z"/>
         <circle cx="100" cy="95" r="18" stroke-dasharray="4 4"/>
@@ -2264,9 +2438,15 @@
       <div class="act-rule"></div>
       <p class="subtitle">“Please keep your seatbelts fastened at all times.” 💺</p>
       <img class="act-photo" data-act-img="act3" alt="Act III: Turbulence and Headwinds" />
+      <aside class="notes">
+        <p>
+          Now the flip side—when code is free to generate, you hit two huge traps: massive
+          churn and runaway token bills.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="✂️" data-notes="Built over 7 days across 50 sessions (43 main, 7 subagents), 4,694 turns, and 71 Git commits. We had 26,251 insertions and 15,470 deletions, ending at 10,781 net lines of code—meaning 59% (~60%) of all lines added were later deleted. Three things drove the churn: overspecifying on Day 1 before proving the core loop, letting the AI build complex custom architectures early on, and not asking 'why?' soon enough when it went down a blind alley. By contrast, small surgical edits later averaged $0.08 and zero compactions." data-title="~60% of all lines added were deleted">
+<section class="slide" data-icon="✂️" data-title="~60% of all lines added were deleted">
       <h2><span class="accent">~60%</span> of all lines added were deleted.</h2>
       <div class="stats-row">
         <div class="stat">
@@ -2283,9 +2463,22 @@
         </div>
       </div>
       <p class="takeaway">Overspecifying on Day 1 + not asking <strong>“why?”</strong> drove the churn—surgical edits averaged <strong>$0.08</strong>.</p>
+      <aside class="notes">
+        <p>
+          Built over 7 days across 50 sessions (43 main, 7 subagents), 4,694 turns, and
+          71 Git commits. We had 26,251 insertions and 15,470 deletions, ending at 10,781
+          net lines of code—meaning 59% (~60%) of all lines added were later deleted.
+        </p>
+        <p>
+          Three things drove the churn: overspecifying on Day 1 before proving the core
+          loop, letting the AI build complex custom architectures early on, and not asking
+          'why?' soon enough when it went down a blind alley. By contrast, small surgical
+          edits later averaged $0.08 and zero compactions.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🧳" data-notes="AI generates abstractions with near-zero friction, so it will happily over-engineer. Our V1 Concord + MSBuild stack burned $33 and 2h 45m in error loops before we deleted 7,255 lines. It's an easy trap—a 'perpetual V1' where AI writes fresh local code instead of reusing abstractions, so duplication rises unless you step in. With AI, resetting is cheap. You have zero attachment after a few hours' work, and the AI documented what failed before handing off to V2. Once we simplified, Gemini 3.8 Flash rebuilt the working extension in 4h 12m at 337 turns/hour for $4.51 ($1.07/hr). Almost every big simplification happened when I asked: 'Do we actually need this?'" data-title="AI overbuilds. Jettison the baggage">
+<section class="slide" data-icon="🧳" data-title="AI overbuilds. Jettison the baggage">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <path d="M35 85 A65 65 0 0 1 165 85 Z"/>
         <path d="M35 85 L100 165 M78 85 L100 165 M122 85 L100 165 M165 85 L100 165"/>
@@ -2305,9 +2498,25 @@
         </div>
       </div>
       <p class="takeaway">Recognise dead ends early—save a <strong>handoff doc</strong> and reset.</p>
+      <aside class="notes">
+        <p>
+          AI generates abstractions with near-zero friction, so it will happily
+          over-engineer. Our V1 Concord + MSBuild stack burned $33 and 2h 45m in error
+          loops before we deleted 7,255 lines. It's an easy trap—a 'perpetual V1' where
+          AI writes fresh local code instead of reusing abstractions, so duplication rises
+          unless you step in.
+        </p>
+        <p>
+          With AI, resetting is cheap: you have zero attachment after a few hours' work,
+          and the AI documented what failed before handing off to V2. Once we simplified,
+          Gemini 3.8 Flash rebuilt the working extension in 4h 12m at 337 turns/hour for
+          $4.51 ($1.07/hr). Almost every big simplification happened when I asked:
+          "Do we actually need this?"
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="💸" data-notes="People assume you need the biggest frontier model for real code. Yet Gemini 3.8 Flash handled 81% of all turns at ~6 seconds each for $11 (at Nov 2026 list prices). Claude Opus 5.5 took 1.4% of turns, cost $50, and ran up to 5x slower, turning a 100-turn session into half an hour of watching a spinner. Fast turns keep you in flow; slow ones make you tab away and stop watching closely." data-title="81% of turns cost $11. 1.4% cost $50">
+<section class="slide" data-icon="💸" data-title="81% of turns cost $11. 1.4% cost $50">
       <h2><span class="accent">81%</span> of turns cost $11.<br /><span class="danger">1.4%</span> cost <span class="danger">$50</span>.</h2>
       <div class="bars">
         <div class="bar-row">
@@ -2334,9 +2543,21 @@
       </div>
       <p class="takeaway"><strong>Flash</strong> carried 81%, <strong>6s turns keep the flow</strong>. <strong style="color: var(--accent); font-size: 1.22em; font-weight: 900; font-style: italic; letter-spacing: 0.04em;">GORDON’S ALIVE!</strong></p>
       <p class="muted" style="font-size: 0.78rem; margin-top: 0.25rem;">*Equivalent API spend at Nov 2026 list prices.</p>
+      <aside class="notes">
+        <p>
+          People assume you need the biggest frontier model for real code. Yet Gemini 3.8
+          Flash handled 81% of all turns at ~6 seconds each for $11 (at Nov 2026 list
+          prices).
+        </p>
+        <p>
+          Claude Opus 5.5 took 1.4% of turns, cost $50, and ran up to 5x slower, turning a
+          100-turn session into half an hour of watching a spinner. Fast turns keep you in
+          flow; slow ones make you tab away and stop watching closely.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🔥" data-notes="Only 6 of 50 sessions crossed context compaction, yet they caused 71% of dev spend ($71.62) and 44% of all tool errors (431/978). Those 978 tool errors ate ~3.8 hours of active time (~20% of dev time) and ~$20 in spend, concentrated in two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock). Short sessions (<=40 turns) had zero compactions and averaged $0.12. Document environment quirks in AGENTS.md early: once we wrote down the sandbox build flags, build hangs dropped to zero." data-title="6 compacted sessions caused 71% of spend">
+<section class="slide" data-icon="🔥" data-title="6 compacted sessions caused 71% of spend">
       <h2><span class="accent">6</span> compacted sessions caused <span class="accent">71%</span> of spend.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -2351,10 +2572,23 @@
         </div>
       </div>
       <p class="takeaway">Keep sessions short, interrupt loops early, and log quirks in <strong>AGENTS.md</strong>.</p>
+      <aside class="notes">
+        <p>
+          Only 6 of 50 sessions crossed context compaction, yet they caused 71% of dev
+          spend ($71.62) and 44% of all tool errors (431/978). Those 978 tool errors ate
+          ~3.8 hours of active time (~20% of dev time) and ~$20 in spend, concentrated in
+          two over-engineered loops (~29m wasted in V1 Concord, ~27m in HiveLock).
+        </p>
+        <p>
+          Short sessions (&lt;=40 turns) had zero compactions and averaged $0.12. Document
+          environment quirks in <code>AGENTS.md</code> early: once we wrote down the
+          sandbox build flags, build hangs dropped to zero.
+        </p>
+      </aside>
     </section>
 
     <!-- ACT IV DIVIDER -->
-    <section class="slide act-slide" data-act="act-4" data-act-label="Act IV" data-icon="👨‍✈️" data-notes="I actually asked the AI after reading all 50 dev transcripts if I was merely the 'human in the loop.' Its reply: 'Hardly! If anything, reading through the session transcripts proves the exact opposite: you were the Lead Architect saving the project from an over-enthusiastic junior dev who wouldn't stop typing. 😄 &quot;Human in the loop&quot; doesn't do it justice — you were the pilot steering us away from the mountain!' Here are my takeaways from 7 days in the cockpit." data-title="Lessons from the Flight Deck">
+    <section class="slide act-slide" data-act="act-4" data-act-label="Act IV" data-icon="👨‍✈️" data-title="Lessons from the Flight Deck">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
         <circle cx="100" cy="100" r="78"/>
         <path d="M32 108 L168 92" stroke-dasharray="6 5"/>
@@ -2366,9 +2600,25 @@
       <div class="act-rule"></div>
       <p class="subtitle">“You were the pilot steering us away from the mountain!”<br /><span style="font-size: 0.82em; opacity: 0.85;">My takeaways from 7 days in the cockpit.</span></p>
       <img class="act-photo" data-act-img="act4" alt="Act IV: Lessons from the Flight Deck" />
+      <aside class="notes">
+        <p>
+          I actually asked the AI after reading all 50 dev transcripts if I was merely
+          the 'human in the loop.' Its reply:
+        </p>
+        <p>
+          "Hardly! If anything, reading through the session transcripts proves the exact
+          opposite: you were the Lead Architect saving the project from an
+          over-enthusiastic junior dev who wouldn't stop typing. 😄 'Human in the loop'
+          doesn't do it justice — you were the pilot steering us away from the
+          mountain!"
+        </p>
+        <p>
+          Here are my takeaways from 7 days in the cockpit.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🎚️" data-notes="What worked best for me was matching the model to the job: Claude Opus 5.5 or Gemini 4 Argon (High) in fresh sessions (<=25 turns) for architecture and reviews, and Gemini 3.8 Flash for bounded coding and research subagents. Stepping down from Gemini 4 Argon to Gemini 3.8 Flash once a plan was locked cut turn latency 2.1x–2.7x cleanly. Escalating up to Claude Opus 5.5 mid-bloat was my most expensive mistake: two mid-session switches burned $38 in 27 minutes (42 turns) re-reading old history at 17–30s per turn. If I hit that wall again, I'd start a fresh session with a 1-page handoff instead." data-title="Don’t escalate models mid-session">
+<section class="slide" data-icon="🎚️" data-title="Don’t escalate models mid-session">
       <h2>Don’t escalate models <span class="accent">mid-session</span>.</h2>
       <div class="split-2">
         <div class="contrast-block danger-block">
@@ -2383,9 +2633,24 @@
         </div>
       </div>
       <p class="takeaway">Context bloated? <strong>Start a fresh session</strong> with a 1-page handoff.</p>
+      <aside class="notes">
+        <p>
+          What worked best for me was matching the model to the job: Claude Opus 5.5 or
+          Gemini 4 Argon (High) in fresh sessions (&lt;=25 turns) for architecture and
+          reviews, and Gemini 3.8 Flash for bounded coding and research subagents.
+          Stepping down from Gemini 4 Argon to Gemini 3.8 Flash once a plan was locked
+          cut turn latency 2.1x–2.7x cleanly.
+        </p>
+        <p>
+          Escalating up to Claude Opus 5.5 mid-bloat was my most expensive mistake: two
+          mid-session switches burned $38 in 27 minutes (42 turns) re-reading old
+          history at 17–30s per turn. If I hit that wall again, I'd start a fresh
+          session with a 1-page handoff instead.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🎯" data-notes="I found that single-focus prompts were 4x cheaper ($1.64 vs $6.93). What worked well for me was drafting a plan and lean rulebooks first (AGENTS.md for build flags, PRESENTATION_RULES.md for this deck), pasting exact logs for bugs ($2.16 perf fix), and keeping docs and comments current so stale notes didn't send agents on side quests. Cross-checking in a fresh session consistently caught drift and confirmation bias." data-title="Single-focus plans, cross-checked fresh">
+<section class="slide" data-icon="🎯" data-title="Single-focus plans, cross-checked fresh">
       <h2>Single-focus plans, <span class="accent">cross-checked</span> fresh.</h2>
       <div class="split-2" style="align-items: center;">
         <div class="bars">
@@ -2412,9 +2677,22 @@
         </ul>
       </div>
       <p class="takeaway">Cabin crew, doors to automatic and <strong>cross-check</strong>—fresh eyes catch context drift. ✈️</p>
+      <aside class="notes">
+        <p>
+          I found that single-focus prompts were 4x cheaper ($1.64 vs $6.93).
+        </p>
+        <p>
+          What worked well for me was drafting a plan and lean rulebooks first
+          (<code>AGENTS.md</code> for build flags, <code>PRESENTATION_RULES.md</code>
+          for this deck), pasting exact logs for bugs ($2.16 perf fix), and keeping docs
+          and comments current so stale notes didn't send agents on side quests.
+          Cross-checking in a fresh session consistently caught drift and confirmation
+          bias.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🎛️" data-notes="Reading back through 202 prompts, keeping the AI on track took blunt human reality checks rather than fancy prompt engineering. I caught hung builds, stopped a 44-search spiral, spotted zombie references to deleted features, flagged an off-center icon, and questioned 925 lines of over-engineering." data-title="Mid-flight course corrections">
+<section class="slide" data-icon="🎛️" data-title="Mid-flight course corrections">
       <div class="slide-center-wrap">
       <h2>Mid-flight <span class="accent">course corrections</span>. 🎛️</h2>
       <div class="quotes-list">
@@ -2440,9 +2718,20 @@
         </div>
       </div>
       </div>
+      <aside class="notes">
+        <p>
+          Reading back through 202 prompts, keeping the AI on track took blunt human
+          reality checks rather than fancy prompt engineering.
+        </p>
+        <p>
+          I caught hung builds, stopped a 44-search spiral, spotted zombie references to
+          deleted features, flagged an off-center icon, and questioned 925 lines of
+          over-engineering.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="📋" data-notes="If I started this project again, here are five habits from the cockpit I'd carry forward: (1) probe undocumented APIs and write AGENTS.md first; (2) default to a fast workhorse model and save frontier models for fresh sessions; (3) work one step at a time and cross-check fresh to avoid compaction; (4) start minimal and iterate; (5) delete aggressively. Full disclosure: this was my first time vibe coding in anger, so take these as early field notes." data-title="5 takeaways for next time">
+<section class="slide" data-icon="📋" data-title="5 takeaways for next time">
       <div class="slide-center-wrap">
       <h2>5 <span class="accent">takeaways</span> for next time. 📋</h2>
       <ul class="big-list">
@@ -2454,10 +2743,27 @@
       </ul>
       <p class="takeaway">Full disclosure: first time “vibe coding” in anger — <strong>I’m still winging it. 🤷‍♂️</strong></p>
       </div>
+      <aside class="notes">
+        <p>
+          If I started this project again, here are five habits from the cockpit I'd
+          carry forward:
+        </p>
+        <ol>
+          <li>Probe undocumented APIs and write <code>AGENTS.md</code> first.</li>
+          <li>Default to a fast workhorse model and save frontier models for fresh sessions.</li>
+          <li>Work one step at a time and cross-check fresh to avoid compaction.</li>
+          <li>Start minimal and iterate.</li>
+          <li>Delete aggressively.</li>
+        </ol>
+        <p>
+          Full disclosure: this was my first time vibe coding in anger, so take these as
+          early field notes.
+        </p>
+      </aside>
     </section>
 
     <!-- ACT V DIVIDER -->
-    <section class="slide act-slide" data-act="act-5" data-act-label="Act V" data-icon="🧭" data-notes="Before we land: this was one person, one small tool, and one week. Some big questions are still open, and I do not have the answers yet. The next few slides look at the ethical cost, what we should still code ourselves, and how we keep sharing knowledge as people." data-title="Uncharted Airspace">
+    <section class="slide act-slide" data-act="act-5" data-act-label="Act V" data-icon="🧭" data-title="Uncharted Airspace">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M40 120 C28 120 22 110 26 101 C30 92 42 90 48 95 C50 82 64 74 77 79 C84 68 102 68 109 80 C122 76 134 86 131 99 C140 100 145 110 140 117 C137 120 133 120 130 120 Z"/>
         <path d="M20 170 Q 70 150 100 150 Q 130 150 150 135" stroke-dasharray="6 6"/>
@@ -2474,9 +2780,19 @@
         <span class="accent">“No, I’ve been nervous lots of times.”</span>
       </p>
       <img class="act-photo" data-act-img="act5" alt="Act V: Uncharted Airspace" />
+      <aside class="notes">
+        <p>
+          Before we land: this was one person, one small tool, and one week. Some big
+          questions are still open, and I do not have the answers yet.
+        </p>
+        <p>
+          The next few slides look at the ethical cost, what we should still code
+          ourselves, and how we keep sharing knowledge as people.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🌍" data-notes="Three ethical questions hang over AI coding. (1) Training data: models learned from billions of lines of public open-source code without consent or credit. When an LLM trained on GPL code emits a similar implementation into a proprietary repo, it raises a 'license laundering' concern around copyleft obligations. (2) Cooling water: hyperscale AI data centres consume vast amounts of water for cooling—plus the indirect water behind their electricity—putting real pressure on local watersheds. (3) The job: Stanford Digital Economy data shows early-career tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer and review AI, while the boilerplate work that used to train juniors is disappearing." data-title="What’s the cost of the fuel?">
+<section class="slide" data-icon="🌍" data-title="What’s the cost of the fuel?">
       <div class="slide-center-wrap">
       <h2>What’s the <span class="accent">cost of the fuel</span>? 🌍</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The ethical bill behind “effortless” code.</p>
@@ -2487,9 +2803,33 @@
       </ul>
       <p class="takeaway">Fast tools still need <strong>responsible</strong> pilots.</p>
       </div>
+      <aside class="notes">
+        <p>
+          Three ethical questions hang over AI coding:
+        </p>
+        <ol>
+          <li>
+            <strong>Training data:</strong> models learned from billions of lines of
+            public open-source code without consent or credit. When an LLM trained on
+            GPL code emits a similar implementation into a proprietary repo, it raises a
+            'license laundering' concern around copyleft obligations.
+          </li>
+          <li>
+            <strong>Cooling water:</strong> hyperscale AI data centres consume vast
+            amounts of water for cooling—plus the indirect water behind their
+            electricity—putting real pressure on local watersheds.
+          </li>
+          <li>
+            <strong>The job:</strong> Stanford Digital Economy data shows early-career
+            tech hiring (ages 22–25) splitting into a 'barbell' market. Seniors steer
+            and review AI, while the boilerplate work that used to train juniors is
+            disappearing.
+          </li>
+        </ol>
+      </aside>
     </section>
 
-<section class="slide" data-icon="✍️" data-notes="This was a small, single-author tool. Long-lived codebases are harder: AI tends to create 'convenient debt'—code that compiles and passes tests, yet nobody chose on purpose or understands. It is tempting to hand everything to the AI, and people on r/ExperiencedDevs and r/learnprogramming already describe skill atrophy and blank-screen panic when the AI is down. Keep the thinking work: architecture, interfaces, core algorithms, concurrency, and error recovery. Debug first by forming your own theory before pasting a stack trace. Delegate boilerplate, glue code, and SDK digging. Offload memory, not thinking. Airline pilots hand-fly regularly to stay current." data-title="What should we still code ourselves?">
+<section class="slide" data-icon="✍️" data-title="What should we still code ourselves?">
       <div class="slide-center-wrap">
       <h2>What should we <span class="accent">still code ourselves</span>? ✍️</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Resisting the urge to let AI do everything.</p>
@@ -2500,9 +2840,24 @@
       </ul>
       <p class="takeaway">Pilots still <strong>hand-fly</strong> to stay current. ✈️</p>
       </div>
+      <aside class="notes">
+        <p>
+          This was a small, single-author tool. Long-lived codebases are harder: AI tends
+          to create 'convenient debt'—code that compiles and passes tests, yet nobody
+          chose on purpose or understands. It is tempting to hand everything to the AI,
+          and people on r/ExperiencedDevs and r/learnprogramming already describe skill
+          atrophy and blank-screen panic when the AI is down.
+        </p>
+        <p>
+          Keep the thinking work: architecture, interfaces, core algorithms, concurrency,
+          and error recovery. Debug first by forming your own theory before pasting a
+          stack trace. Delegate boilerplate, glue code, and SDK digging—offload memory,
+          not thinking. Airline pilots hand-fly regularly to stay current.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🧑‍🤝‍🧑" data-notes="AI coding can be solitary: one person, one chat window, and all the lessons stay in that person's transcript. The old friction that spread knowledge—juniors writing boilerplate, seniors reviewing small PRs, pairing—is fading. Share the flight logs by committing rulebooks and decision docs (AGENTS.md, DECISIONS.md) so the whole team learns. Explain AI output to another person through walkthroughs and pairing. Focus on the 'why' (architecture and algorithms) instead of style nitpicks: juniors try first, AI critiques, and seniors coach the design." data-title="Keeping the human in the crew">
+<section class="slide" data-icon="🧑‍🤝‍🧑" data-title="Keeping the human in the crew">
       <div class="slide-center-wrap">
       <h2>Keeping the <span class="accent">human</span> in the crew. 🧑‍🤝‍🧑</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">Sharing knowledge with each other, not just with AI.</p>
@@ -2513,9 +2868,23 @@
       </ul>
       <p class="takeaway">Use the time AI saves to <strong>talk more</strong>, not less.</p>
       </div>
+      <aside class="notes">
+        <p>
+          AI coding can be solitary: one person, one chat window, and all the lessons
+          stay in that person's transcript. The old friction that spread knowledge—juniors
+          writing boilerplate, seniors reviewing small PRs, pairing—is fading.
+        </p>
+        <p>
+          Share the flight logs by committing rulebooks and decision docs
+          (<code>AGENTS.md</code>, <code>DECISIONS.md</code>) so the whole team learns.
+          Explain AI output to another person through walkthroughs and pairing. Focus on
+          the 'why' (architecture and algorithms) instead of style nitpicks: juniors try
+          first, AI critiques, and seniors coach the design.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🧭" data-notes="(1) For broader context (not our experiment): in METR's July 2025 RCT of experienced open-source developers, participants thought AI made them 20% faster, yet measured 19% slower. Feeling fast differs from shipping fast. (2) Code review is now the bottleneck: AI makes it easy to flood PRs, burn out reviewers, and invite rubber-stamping—so own every commit. (3) If AI does the grunt work, how do juniors build the experience to become seniors? (4) 'The AI wrote it' never works in a post-mortem, and cloud models raise copyright and data-policy questions. (5) My £1.89 trial equalled ~$100 of API usage in one week—at team scale, that adds up fast once the subsidies end." data-title="Questions we should also be asking">
+<section class="slide" data-icon="🧭" data-title="Questions we should also be asking">
       <div class="slide-center-wrap">
       <h2>Questions we <span class="accent">should also</span> be asking. 🧭</h2>
       <ul class="big-list big-list-lg">
@@ -2527,10 +2896,37 @@
       </ul>
       <p class="takeaway">Code is cheap. <strong>Understanding</strong> isn’t.</p>
       </div>
+      <aside class="notes">
+        <ol>
+          <li>
+            <strong>Broader context (not our experiment):</strong> in METR's July 2025
+            RCT of experienced open-source developers, participants thought AI made them
+            20% faster, yet measured 19% slower. Feeling fast differs from shipping fast.
+          </li>
+          <li>
+            <strong>Code review is now the bottleneck:</strong> AI makes it easy to
+            flood PRs, burn out reviewers, and invite rubber-stamping—so own every
+            commit.
+          </li>
+          <li>
+            <strong>Junior pipeline:</strong> if AI does the grunt work, how do juniors
+            build the experience to become seniors?
+          </li>
+          <li>
+            <strong>Accountability &amp; policy:</strong> 'The AI wrote it' never works
+            in a post-mortem, and cloud models raise copyright and data-policy
+            questions.
+          </li>
+          <li>
+            <strong>Economics:</strong> my £1.89 trial equalled ~$100 of API usage in
+            one week—at team scale, that adds up fast once the subsidies end.
+          </li>
+        </ol>
+      </aside>
     </section>
 
     <!-- AND FINALLY DIVIDER -->
-    <section class="slide act-slide" data-act="finale" data-act-label="And Finally" data-icon="📼" data-notes="Every stat in this talk came from the AI reading its own flight recorder: all 50 development chat logs. Yes, the AI marked its own homework, then wrote the slides about how well it did." data-title="Inside the Black Box">
+    <section class="slide act-slide" data-act="finale" data-act-label="And Finally" data-icon="📼" data-title="Inside the Black Box">
       <svg class="act-art" viewBox="0 0 200 200" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <rect x="45" y="60" width="110" height="90" rx="8"/>
         <path d="M45 82 L155 82 M45 128 L155 128" stroke-dasharray="5 5"/>
@@ -2542,9 +2938,16 @@
       <div class="act-rule"></div>
       <p class="subtitle">&ldquo;This is your autopilot speaking. I&rsquo;ve reviewed my own flight logs, and I&rsquo;m delighted to report I was brilliant.&rdquo;</p>
       <img class="act-photo" data-act-img="finale" alt="And Finally: Inside the Black Box" />
+      <aside class="notes">
+        <p>
+          Every stat in this talk came from the AI reading its own flight recorder: all
+          50 development chat logs. Yes, the AI marked its own homework, then wrote the
+          slides about how well it did.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🪞" data-notes="Separate from the 7-day extension build: these slides were 'vibe decked' in 34 meta-sessions (~14 active hours, $44.23 at Nov 2026 list prices, or $1.47/slide). Four parallel subagents prototyped the deck ($0.64) and another model cross-checked it against PRESENTATION_RULES.md. Of the meta spend, 23.5% came from a single 13-minute Claude Opus 5.5 session (1.2% of turns) used to research and write the Act V open-questions slides." data-title="Introspection &amp; vibe decking">
+<section class="slide" data-icon="🪞" data-title="Introspection &amp; vibe decking">
       <h2>Introspection &amp; <span class="accent">vibe decking</span>.</h2>
       <p class="subtitle" style="margin-top: -0.35rem; margin-bottom: 1.25rem;">The bots analysed all 50+ chat logs, generated these slides, and had them cross-checked by another member of the cabin crew.</p>
       <div class="stats-grid-2x2 compact">
@@ -2565,9 +2968,22 @@
           <div class="stat-label">$34.78 deck build · $9.45 log analysis</div>
         </div>
       </div>
+      <aside class="notes">
+        <p>
+          Separate from the 7-day extension build: these slides were 'vibe decked' in 34
+          meta-sessions (~14 active hours, $44.23 at Nov 2026 list prices, or
+          $1.47/slide).
+        </p>
+        <p>
+          Four parallel subagents prototyped the deck ($0.64) and another model
+          cross-checked it against <code>PRESENTATION_RULES.md</code>. Of the meta
+          spend, 23.5% came from a single 13-minute Claude Opus 5.5 session (1.2% of
+          turns) used to research and write the Act V open-questions slides.
+        </p>
+      </aside>
     </section>
 
-<section class="slide" data-icon="🙋‍♂️" data-notes="Thanks for flying with us! Questions?" data-title="Questions?">
+<section class="slide" data-icon="🙋‍♂️" data-title="Questions?">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <svg viewBox="0 0 360 150" width="380" height="158" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-label="Aeroplane landing on runway" style="color: var(--accent);">
           <!-- Descending glide path -->
@@ -2604,15 +3020,21 @@
           <a href="https://github.com/mattshepcar/VSOnDemandSymbols" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600; text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px;">github.com/mattshepcar/VSOnDemandSymbols ↗</a>
         </p>
       </div>
+      <aside class="notes">
+        <p>Thanks for flying with us! Questions?</p>
+      </aside>
     </section>
 
     <!-- SECRET SLIDE -->
-    <section class="slide" data-icon="🦅" data-secret="true" data-notes="Secret Slide! We launched 6 Flash subagents in parallel." data-title="“Hawkmen, DIVE!”">
+    <section class="slide" data-icon="🦅" data-secret="true" data-title="“Hawkmen, DIVE!”">
       <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
         <img id="secretSlideImg" data-act-img="secret" alt="Brian Blessed as Prince Vultan in Flash Gordon (1980)" style="max-height: 52vh; max-width: 100%; border-radius: 12px; border: 2px solid var(--photo-border, var(--rule)); box-shadow: var(--photo-shadow, 0 20px 50px rgba(0, 0, 0, 0.55)); object-fit: contain;"/>
         <h2 style="margin: 0;">&ldquo;Hawkmen, <span class="accent">DIVE!</span>&rdquo;</h2>
         <p class="subtitle" style="margin: 0;">&mdash; Prince Vultan (Brian Blessed), <em>Flash Gordon</em> (1980)</p>
       </div>
+      <aside class="notes">
+        <p>Secret Slide! We launched 6 Flash subagents in parallel.</p>
+      </aside>
     </section>
 
   </main>
@@ -2983,13 +3405,18 @@
       stage.style.transform = `scale(${scale})`;
     }
 
+    function getSlideNotesHtml(slideEl) {
+      const el = slideEl?.querySelector('aside.notes');
+      return el ? el.innerHTML.trim() : '';
+    }
+
     function cloneSlideToStage(slideEl, stage) {
       stage.innerHTML = '';
       if (!slideEl) return;
       const clone = slideEl.cloneNode(true);
       clone.classList.add('active');
       clone.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
-      clone.querySelectorAll('.slide-next-btn').forEach((el) => el.remove());
+      clone.querySelectorAll('.slide-next-btn, aside.notes').forEach((el) => el.remove());
       clone.querySelectorAll('.bar-fill').forEach((bar) => {
         const w = bar.dataset.width || bar.style.width;
         if (w) bar.style.width = w;
@@ -3003,9 +3430,9 @@
       pPrevBtn.disabled = index === 0;
       pNextBtn.disabled = index === slides.length - 1;
 
-      const notes = slides[index].dataset.notes || '';
-      if (notes) {
-        presenterNotesBody.textContent = notes;
+      const notesHtml = getSlideNotesHtml(slides[index]);
+      if (notesHtml) {
+        presenterNotesBody.innerHTML = notesHtml;
         presenterNotesBody.classList.remove('presenter-notes-empty');
       } else {
         presenterNotesBody.textContent = 'No speaker notes for this slide.';
@@ -3141,7 +3568,7 @@
       nextBtn.disabled = index === slides.length - 1;
       counter.textContent = `${index + 1} / ${publicSlideCount}`;
       progress.style.width = `${Math.min(100, ((index + 1) / publicSlideCount) * 100)}%`;
-      notesText.textContent = slides[index].dataset.notes || '';
+      notesText.innerHTML = getSlideNotesHtml(slides[index]);
       if (slides[index].dataset.secret === 'true' || slides[index].dataset.act || slides[index + 1]?.dataset.act) {
         loadFlightMedia();
       }
@@ -3427,8 +3854,8 @@
     // Build per-slide inline expanding notes for mobile pageless scroll
     const mobileNoteControls = [];
     slides.forEach((slide) => {
-      const notes = (slide.dataset.notes || '').trim();
-      if (!notes) return;
+      const notesHtml = getSlideNotesHtml(slide);
+      if (!notesHtml) return;
 
       const wrap = document.createElement('div');
       wrap.className = 'mobile-notes-wrap';
@@ -3442,7 +3869,7 @@
       const body = document.createElement('div');
       body.className = 'mobile-notes-body';
       body.hidden = true;
-      body.textContent = notes;
+      body.innerHTML = notesHtml;
 
       const setSlideNoteOpen = (open) => {
         body.hidden = !open;

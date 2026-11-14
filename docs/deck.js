@@ -374,20 +374,19 @@ function exitPresentationMode() {
   audienceWin = null;
 }
 
+function getSlideSlug(idx) {
+  return slides[idx].dataset.slug;
+}
+
 function parseSlideFromUrl() {
-  const hash = window.location.hash || '';
-  const hashMatch = hash.match(/^#(?:slide[=-])?(\d+)$/i);
-  const raw = hashMatch ? hashMatch[1] : new URLSearchParams(window.location.search).get('slide');
-  if (!raw || !/^\d+$/.test(raw)) return null;
-  const num = parseInt(raw, 10);
-  if (num < 1) return 0;
-  return Math.min(slides.length - 1, num - 1);
+  const slugIdx = slides.findIndex((s) => s.dataset.slug === window.location.hash.slice(1));
+  return slugIdx !== -1 ? slugIdx : null;
 }
 
 function buildCurrentSlideUrl() {
   const url = new URL(window.location.href);
   url.searchParams.delete('mode');
-  url.hash = `slide=${index + 1}`;
+  url.hash = getSlideSlug(index);
   return url.toString();
 }
 
@@ -457,7 +456,7 @@ function render(i, fromSync = false) {
   updateControlsLayout();
   if (!fromSync && !isAudienceMode) {
     try {
-      history.replaceState(null, '', '#slide=' + (index + 1));
+      history.replaceState(null, '', '#' + getSlideSlug(index));
     } catch (_) {}
     postSync({ type: 'sync', index, theme: themeSelect.value });
   }
@@ -727,10 +726,16 @@ if (isAudienceMode) {
   }, 1000);
   const initialIndex = parseSlideFromUrl();
   render(initialIndex ?? 0);
+  if (initialIndex !== null && isMobileScrollMode() && slides[initialIndex]) {
+    slides[initialIndex].scrollIntoView({ behavior: 'auto', block: 'start' });
+  }
   window.addEventListener('hashchange', () => {
     const targetIndex = parseSlideFromUrl();
     if (targetIndex !== null && targetIndex !== index) {
       render(targetIndex);
+      if (isMobileScrollMode() && slides[targetIndex]) {
+        slides[targetIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   });
 }
@@ -844,7 +849,7 @@ if ('IntersectionObserver' in window) {
       updateSecretHint(idx === publicSlideCount - 1);
       progress.style.width = `${Math.min(100, ((idx + 1) / publicSlideCount) * 100)}%`;
       try {
-        history.replaceState(null, '', '#slide=' + (idx + 1));
+        history.replaceState(null, '', '#' + getSlideSlug(idx));
       } catch (_) {}
       if (entry.target.dataset.act || slides[idx + 1]?.dataset.act) {
         loadFlightMedia();

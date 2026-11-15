@@ -483,9 +483,56 @@ function setTheme(theme, fromSync = false) {
   }
 }
 
+// Sticky horizontal cursor X (like a text editor's goal column) preserved across Up/Down
+// so moving through a wider card on a shorter row returns to the original column.
+let overviewGoalX = null;
+
 function setOverviewOpen(open) {
   overviewOverlay.classList.toggle('open', open);
   overviewOverlay.setAttribute('aria-hidden', String(!open));
+  overviewGoalX = null;
+  if (open) {
+    requestAnimationFrame(() => {
+      (overviewGrid.querySelector('.overview-card.current') || overviewGrid.querySelector('.overview-card'))?.focus();
+    });
+  }
+}
+
+function getOverviewFocusState() {
+  const cards = [...overviewGrid.querySelectorAll('.overview-card')];
+  const cur = document.activeElement;
+  const idx = cards.indexOf(cur);
+  if (idx !== -1) return { cards, cur, idx };
+  overviewGoalX = null;
+  (overviewGrid.querySelector('.overview-card.current') || cards[0])?.focus();
+  return null;
+}
+
+function moveOverviewHorizontal(delta) {
+  const state = getOverviewFocusState();
+  if (!state) return;
+  const next = state.cards[state.idx + delta];
+  if (!next) return;
+  next.focus();
+  // Bias slightly inside the edge we entered from so Up/Down from a wide card picks that side.
+  const r = next.getBoundingClientRect();
+  overviewGoalX = r.left + r.width * (delta > 0 ? 0.05 : 0.95);
+}
+
+function moveOverviewVertical(isDown) {
+  const state = getOverviewFocusState();
+  if (!state) return;
+  const { cards, cur } = state;
+  const curRect = cur.getBoundingClientRect();
+  if (overviewGoalX === null) overviewGoalX = curRect.left + curRect.width * 0.5;
+  // Measure distance to the card's [left, right] span rather than its center so wide cards
+  // directly above/below narrow cards match with distance 0.
+  const distX = (r) => (overviewGoalX < r.left ? r.left - overviewGoalX : overviewGoalX > r.right ? overviewGoalX - r.right : 0);
+  const next = cards
+    .map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter(({ r }) => (isDown ? r.top >= curRect.bottom - 4 : r.bottom <= curRect.top + 4))
+    .sort((a, b) => Math.round(Math.abs(a.r.top - curRect.top)) - Math.round(Math.abs(b.r.top - curRect.top)) || distX(a.r) - distX(b.r))[0];
+  next?.el.focus();
 }
 
 function toggleOverview() {
@@ -660,7 +707,20 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
-  if (overviewOverlay.classList.contains('open')) return;
+  if (overviewOverlay.classList.contains('open')) {
+    if (e.key === 'Tab') {
+      overviewGoalX = null;
+      return;
+    }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      moveOverviewHorizontal(e.key === 'ArrowRight' ? 1 : -1);
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveOverviewVertical(e.key === 'ArrowDown');
+    }
+    return;
+  }
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
     e.preventDefault();
     if (!isPresenterMode && !isAudienceMode && index >= publicSlideCount - 1) return;

@@ -113,8 +113,7 @@
         </p>
         <p>
           Over 7 days, that turned into 50 sessions, ~4,700 turns, and about $100 of
-          equivalent API spend. The result is a working VSIX extension. Here is what
-          happened and what I learned.
+          equivalent API spend. The result is a mostly working VSIX extension.
         </p>
       </aside>
     </section>
@@ -149,13 +148,13 @@
       </div>
       <aside class="notes">
         <p>
-          Before we take off, here is what this deck is and isn't.
-          It's a retrospective of my experience building a real software project with AI
-          coding agents—what worked, what didn't, some surprising discoveries, and the
-          techniques I found useful for getting better results.
+          Before we take off, here is what this presentation is and isn’t.
+          It’s my experiences from building a real project with AI coding agents.
+          The good, the bad and the surprising, and the methods I
+          discovered for wrangling AI agents to do my bidding.
         </p>
         <p>
-          It isn't a guide to agentic coding or a definitive set of best practices.
+          It’s not a definitive guide or anything, just my findings from one week.
         </p>
       </aside>
     </section>
@@ -188,19 +187,21 @@
       </div>
       <aside class="notes">
         <p>
-          I was, and remain, pretty sceptical. The hype and one-prompt demos never did much for me.
-          What got my attention was seeing people tackle interesting, niche engineering problems—like
-          creators on <code>r/PS4Dreams</code> exporting sculpts to PC and patching <code>shadPS4</code>
-          so <em>Dreams</em> can run at all.
+          I’m still not completely sold on AI. There is a lot of hype and an awful lot of AI generated
+          slop going around the net.  However, there is also some pretty amazing stuff happening too.
+          Like people using it to help figure out how to resurrect and modify dead games, or rescue data
+          out of abandoned platforms like Dreams.  I love writing code, but what I do at work now is not the
+          same as it was when I started (cue grumpy old man noises).  However, I’m beginning to wonder
+          whether maybe AI could help get us back to doing the bits that are actually fun again.
         </p>
         <p>
-          Over the last few months, models have become much better at writing complicated
-          code that compiles on the first try. They stay on task longer and hallucinate far less
-          than they used to.
+          When I first tried AI for code it was pants. Going round in circles, not even being able to
+          apply patches into the code, making stupid mistakes, hallucinating non-existent APIs, and
+          generally being a pain in the arse.  However, over the last few months, the models have become
+          a LOT better and now it is actually worth considering using.
         </p>
         <p>
-          That made me curious enough to try an AI coding agent on a problem of my own.
-          The result was On-Demand Symbols.
+          So I tried. Keep reading to see how it went.
         </p>
       </aside>
     </section>
@@ -274,15 +275,19 @@
       <p class="takeaway"><strong>You set the course.</strong> The agent flies the loop.</p>
       <aside class="notes">
         <p>
-          If you haven't used an agentic coding tool like Antigravity, Cursor, Claude Code, or
-          GitHub Copilot, here is how it works. You steer the Read -> Edit -> Build -> Test loop
-          instead of writing every line yourself.
+          If you haven’t used an agentic coding tool (like Antigravity, Cursor, Claude Code, or
+          GitHub Copilot), it works like this: You give it a prompt, ask it to do something,
+          write some code, fix a bug, investigate a problem, and it goes off and tries to do it,
+          looping round that loop on the slide.  And it actually works really well nowadays and
+          somehow manages to understand your vague garbled rantings and ravings.  It doesn’t even
+          get upset when you call it a stupid numpty (or worse).
         </p>
         <p>
-          On the right is a real exchange from building this tool. I pasted a slow profiler log,
-          and the agent read the code and proposed two fixes. I picked one, so it edited the code,
-          compiled it, ran the tests, and showed the speedup. Then I told it to clean up the old
-          path and commit.
+          On the right is a real snippet of chat from building this tool. I pasted in a bit of output
+          showing something being slow and it discovered a completely different API we could use
+          to do things in a faster way. It’s unlikely I would have found that on my own. So I told
+          it to try it out, and it edited the code, compiled it, ran the tests, and showed the speedup.
+          Then I told it to get rid of the old rubbish method and commit it. Magic!
         </p>
       </aside>
     </section>
@@ -316,15 +321,18 @@
       </p>
       <aside class="notes">
         <p>
-          Nine terms you'll see throughout this presentation. An agent calls tools in a loop.
-          Subagents are isolated parallel helpers that keep your main context clean. Each AI step
-          plus its output is a turn and a tool call. Rules in AGENTS.md and a spec in SPEC.md keep
-          each session on track.
+          There’s a bit of jargon to get used to with AI. An agent calls tools in a loop. They
+          can spawn off subagents which is useful to speed things up and not pollute your main
+          agent’s memory. You can record things you don’t want to repeat in every conversation
+          into markdown files that the agents read to get up to speed and keep things on
+          track.
         </p>
         <p>
-          Everything in the session sits in the context window, billed in tokens (~3/4 of a word
-          each). Prompt caching reuses the unchanged prefix from the last turn cheaply until the
-          window fills up and triggers compaction.
+          Each chat, or session, has a limited context window, or memory, counted in tokens
+          (roughly 3/4 of a word) and you’re charged by the token in and token out (although
+          mostly it’s monthly plans right now).  There’s a cache that helps avoid resending
+          tokens but it has its limits so you have to know when to start a new chat and avoid
+          ‘compaction’.
         </p>
       </aside>
     </section>
@@ -348,8 +356,7 @@
       <img class="act-photo" data-act-img="act1" alt="Act I: Cleared for Takeoff" />
       <aside class="notes">
         <p>
-          Let's start with what we built, the scale of the experiment, and how the 7 days
-          played out.
+          Let’s start with what I (or AI) built, the size of the project, and how the week went.
         </p>
       </aside>
     </section>
@@ -374,13 +381,15 @@
       </p>
       <aside class="notes">
         <p>
-          Debugging Unreal Engine in Visual Studio causes slower editor startup because VS
-          loads almost all the debugging symbols, whether you need them or not.
+          If you launch Unreal Engine from Visual Studio with the debugger attached it can
+          take about twice as long to boot up because it’s loading the debug symbols for everything,
+          even though you’re unlikely to be debugging the internals of the engine.
         </p>
         <p>
-          This extension fixes that without changing your workflow. It tells VS to load
-          symbols only for modules with breakpoints, and pulls in the rest of the call
-          stack only when you break.
+          The idea of this plugin was to only load the symbols you actually need, when you need
+          them (like when you set a breakpoint or start tracing through some code). I wanted
+          this to be seamless, so I (AI), had to figure out all the places in VS to hook into to
+          get that to work.
         </p>
       </aside>
     </section>
@@ -413,12 +422,14 @@
       </p>
       <aside class="notes">
         <p>
-          Nineteen hours across seven days meant short, hands-on sprints. You still have
-          to steer and review the work. Prompt caching saved two-thirds of the cost.
+          This wasn’t a case of giving AI a prompt and letting it run for 19 hours. I was
+          hands on for the entire time, watching it like a hawk.  Sometimes I got lazy or told
+          it to do too much at once which caused problems as I’ll show later.
         </p>
         <p>
-          That 20% tool-failure rate looks high, but it is normal. The agent runs a
-          build, hits an error, and fixes it on the next turn.
+          The 20% failure bit is actually impressively low. Most of the code AI generated compiled
+          and ran and passed tests first time.  Failures rarely, if ever, came back to me to fix:
+          the AI ran its agentic loop and fixed them itself.
         </p>
       </aside>
     </section>
@@ -462,19 +473,20 @@
       </p>
       <aside class="notes">
         <p>
-          These numbers are rough estimates, not measurements from the AI provider. They
-          come from our turn count, published inference benchmarks, and UK grid
-          averages.
+          These are rough estimates. I’m not even 100% sure they’re correct, AI screwed them
+          up the first time which I discovered when I got ChatGPT to double check them.
+          They’re calculated from the turn count, published benchmarks and electricity grid
+          averages (or so AI tells me).
         </p>
         <p>
-          When tokens are cheap and mostly cached, it is easy to treat them as free.
-          Everyday units like electricity and water make that physical cost easier to
-          see.
+          I think it’s worth bearing the cost in mind and trying to be sensible about how
+          many bunnies you sacrifice to AI. It’s cheap right now but it’s likely going to get
+          more expensive in the near term until we figure out ways to do things more efficiently.          
         </p>
         <p>
-          Agentic coding uses much more energy than normal chat. Instead of answering
-          once, an agent runs thousands of tool calls and keeps re-reading huge contexts.
-          Keeping scope tight saves energy as well as money.
+          Agentic coding uses much more energy than normal chat because it goes round in a
+          loop trying things until it manages to solve the problem. Before you know it, you’re
+          spending tokens like you’ve left your card behind the bar on a drunken night out in Leeds.
         </p>
       </aside>
     </section>
@@ -521,12 +533,17 @@
       </div>
       <aside class="notes">
         <p>
-          The turning point was Day 2. We stopped trying to patch V1. We wrote down what
-          failed in a handoff note, then started fresh.
+          The first attempt was, well, my first attempt at using AI and I got it wrong.  I thought
+          up all the things I might want the extension to do, lots of configuration options, different
+          approaches to try, and I threw it all into one big prompt.  It churned out a whole load
+          of crazily over-engineered code and I decided the best thing to do was to just scrap it and
+          start again.
         </p>
         <p>
-          Building the core extension after that was easy. Automated testing and edge
-          cases took almost three times as much effort.
+          The thing is, I was able to save all the lessons learned from V1 and the second attempt went way
+          more smoothly.  I asked for a complete bare bones minimal implementation using hand off
+          notes and remaining skeleton code from the first version. I guided it much more carefully
+          (with my hawk eyes) and got a much better result.
         </p>
       </aside>
     </section>
@@ -546,8 +563,8 @@
       <img class="act-photo" data-act-img="act2" alt="Act II: Catching a Tailwind" />
       <aside class="notes">
         <p>
-          Before looking at what went wrong, here are the places where AI felt like a
-          genuine superpower.
+          So before digging too deeply into where things went wrong, let’s look at some of the
+          superpowers AI gives you.
         </p>
       </aside>
     </section>
@@ -577,13 +594,21 @@
       </p>
       <aside class="notes">
         <p>
-          I could not have built this without AI, because Visual Studio's SDK is sparse
-          and often undocumented.
+          I’ve started trying to build VS extensions before and always given up because the
+          documentation and samples are a nightmare and it’s no fun spending hours trawling
+          through dead forum threads. 
         </p>
         <p>
-          Instead of hunting dead forum threads, the AI ran 233 binary probes against VS's
-          own installed DLLs to inspect interfaces, and ran 168 web searches for
-          undocumented config schemas. Doing that by hand would have been soul-destroying.
+          AI actually made this a breeze and didn’t even try to use the docs most of
+          the time (despite my prompting it to).  Its preferred approach was to disassemble
+          the .NET assembly DLLs that make up Visual Studio.  I suppose it makes sense that
+          machines want to read machine code not nonsense human words that are probably wrong
+          anyway.
+        </p>
+        <p>
+          The only slight downside to this approach is that it can end up using unofficial internal
+          APIs but if it breaks on the next version of Visual Studio I can just get AI to fix
+          it for me, right?
         </p>
       </aside>
     </section>
@@ -610,14 +635,20 @@
       </p>
       <aside class="notes">
         <p>
-          Testing a VS extension against UE5 usually means pressing F5, waiting for the
-          editor to load, and checking output logs by hand. Most solo developers would
-          not spend days writing Windows ROT COM automation just to skip F5.
+          Once I (AI) had implemented something, it needed testing. I started by testing it
+          manually and kept doing that until day 3 or 4 and then wondered if it was possible
+          to fully automate even all the GUI bits like setting breakpoints and checking the
+          thread window and call stack windows all had working symbols etc.
         </p>
         <p>
-          For the AI, building that harness was easy. It wrote a tool that launches VS,
-          opens the project, sets breakpoints, and logs timings. Keep in mind this is a
-          self-check for fast iteration, so it does not replace real human testing.
+          Computer said yes, and knocked up some kind of ROT (no idea) automation harness thingy
+          and was soon launching VS, opening UE5, running it, setting breakpoints, all kinds of
+          magic, and reporting back that it was all hunky dory. I would never have attempted
+          that level of automated testing for a simple plugin!
+        </p>
+        <p>
+          The main benefit of this is to keep the agentic loop working well, you obviously still
+          need to do real human testing too.
         </p>
       </aside>
     </section>
@@ -628,7 +659,7 @@
         <div class="contrast-block">
           <div class="contrast-kicker">Aggregate AI Research</div>
           <div class="stat-num">55 min</div>
-          <div class="stat-label">6 Flash subagents exploring Unreal Engine in parallel</div>
+          <div class="stat-label">4 Flash subagents exploring Unreal Engine in parallel</div>
         </div>
         <div class="contrast-block highlight">
           <div class="contrast-kicker">Human Clock &amp; Cost</div>
@@ -641,12 +672,15 @@
       </p>
       <aside class="notes">
         <p>
-          Bulk research is a great fit for parallel read-only subagents. Here, they
-          combed through the Unreal Engine source to verify module naming rules.
+          Another thing I learned is that AI can have baby AIs that fly off and do things like
+          read code bases, research different options and then come back to the nest to tell daddy
+          AI their findings.  This is not only a good time saver, it also saves cluttering up the parent
+          AI’s memory/context with loads of irrelevant guff.          
         </p>
         <p>
-          You get your answer faster, and hundreds of file reads never clutter your main
-          chat.
+          Here I used four subagents to comb through the Unreal Engine source to verify module naming rules.
+          i.e. given a source file, which module’s symbols do I need to load?  No guessing like I would
+          have done if I was coding it myself.
         </p>
       </aside>
     </section>
@@ -681,16 +715,20 @@
       </div>
       <aside class="notes">
         <p>
-          A year or two ago, cheap 'mini' and 'flash' models were only good for
-          autocomplete and boilerplate. By late 2026, models like Gemini 3.8 Flash,
-          Claude Haiku 5.5, GPT-5.6 Luna, and DeepSeek V4 Flash can handle real
-          multi-step coding.
+          I didn’t really know much about all the different model types before this project
+          but it turns out there is a big difference in speed and price between the big fancy
+          ‘frontier’ models and smaller faster workhorse models.  On my cheap Google AI Pro plan
+          I quickly ran out of tokens for the frontier models so a lot of work was done with
+          these cheaper models (mainly Gemini 3.8 Flash).
         </p>
         <p>
-          They now include lightweight reasoning, huge context windows, and reliable
-          tool calling. On SWE-bench Verified, they match last generation's flagship
-          models for a fraction of the price. That is why a £1.89 trial was enough to
-          build a real Visual Studio extension.
+          A year or two ago, these smaller models were pretty crap and only good for
+          autocomplete or boilerplate. On this project, after the initial planning phase,
+          they are pretty much all I used and it worked out really well. 
+        </p>
+        <p>
+          Google have just released a new model called Hydrogen which is a bit of a middle
+          ground and works even better than Flash.  Flash is still great to use for its speed though.
         </p>
       </aside>
     </section>
@@ -709,8 +747,7 @@
       <img class="act-photo" data-act-img="act3" alt="Act III: Turbulence and Headwinds" />
       <aside class="notes">
         <p>
-          That was the good news. Now for what went wrong. When code is cheap to
-          generate, you run into heavy churn and runaway token bills.
+          So you had the good news first, now you get the bad news.  It’s not really all that bad though.
         </p>
       </aside>
     </section>
@@ -740,12 +777,14 @@
       </p>
       <aside class="notes">
         <p>
-          Writing a detailed spec on Day 1 feels safe, but AI treats every speculative
-          idea as a firm requirement and builds it all at once.
+          As I mentioned, writing a detailed spec on Day 1 felt like a good plan at the time,
+          but AI treats every speculative idea and thought as a firm requirement and builds
+          it all at once.
         </p>
         <p>
-          Normally 60% churn looks bad, yet deleting AI code costs nothing. More churn
-          might even be healthy if it pushes you toward a cleaner, simpler codebase.
+          Deleting nearly the entire code base probably sounds bad, but with AI generated code,
+          who cares? The AI certainly didn’t seem to care when I told it it had produced possibly
+          the smelliest most stinky over-engineered pile of crap I’d seen in a long time.          
         </p>
       </aside>
     </section>
@@ -775,13 +814,13 @@
       </p>
       <aside class="notes">
         <p>
-          AI makes it too easy to over-engineer. Our first version piled up complex
-          layers and got stuck in error loops.
+          AI loves to over-engineer, as I’ve already made clear. But we didn’t type it
+          by hand, it only took a day or two, and I felt no attachment to it.
         </p>
         <p>
-          Because you did not type it by hand, resetting is easy. We got the AI to
-          record what failed, wiped the slate clean, and asked, "Do we actually need
-          this?" That one question drove almost every big simplification.
+          Resetting is easy. I got the AI to record what failed, wipe the slate clean,
+          and then I was all over it like a cheap suit, constantly demanding it to justify
+          every extra piece of code it added. “Why are you adding that, what’s it giving us?”
         </p>
       </aside>
     </section>
@@ -836,12 +875,15 @@
       </p>
       <aside class="notes">
         <p>
-          You do not need a frontier model for every turn. Using a fast model for
-          routine coding saves money and keeps you in flow.
+          As I said, you don’t need a frontier model for every turn. They’re great for
+          architecting, planning and orchestrating, but once you have the plan, the
+          cheaper faster agents don’t need to do much complicated thinking. In fact,
+          using a fast cheap model is actually better because it keeps you in flow.
         </p>
         <p>
-          30+ second turns leave you staring at a spinner. You risk tabbing away and
-          letting mistakes slip through.
+          30+ second turns make you get impatient and you end up getting distracted and
+          start letting mistakes slip through. I’d definitely encourage everyone to try
+          using the faster models to keep more engaged with the creation process.
         </p>
       </aside>
     </section>
@@ -871,12 +913,15 @@
       </p>
       <aside class="notes">
         <p>
-          Compaction is a warning light. Once a session summarizes its own history, the
-          agent forgets subtle constraints and starts repeating failed tool calls.
+          Compaction is a warning sign. Once a chatbot decides it needs to start tearing out parts
+          of its own memory, it’s going to start forgetting subtle constraints, making mistakes, and
+          generally just going a bit doolally.
         </p>
         <p>
-          Closing bloated chats early and logging quirks in <code>AGENTS.md</code> keeps
-          costs down. A new session starts sharp instead of dragging old mistakes along.
+          Ending chats early and logging quirks and findings in <code>AGENTS.md</code> or a hand off
+          document keeps costs down too. A new session starts with a clear head instead of having
+          the hangover of old mistakes. You can even just ask in the chat, “Is it a good time to
+          hand off to a new session?”
         </p>
       </aside>
     </section>
@@ -905,14 +950,14 @@
       <aside class="notes">
         <p>
           I actually asked the AI after reading all 50 dev transcripts if I was merely
-          the 'human in the loop.' Its reply:
+          the ‘human in the loop.’ Its reply:
         </p>
         <p>
-          "Hardly! If anything, reading through the session transcripts proves the exact
+          “Hardly! If anything, reading through the session transcripts proves the exact
           opposite: you were the Lead Architect saving the project from an
-          over-enthusiastic junior dev who wouldn't stop typing. 😄 'Human in the loop'
-          doesn't do it justice — you were the pilot steering us away from the
-          mountain!"
+          over-enthusiastic junior dev who wouldn’t stop typing. 😄 ‘Human in the loop’
+          doesn’t do it justice — you were the pilot steering us away from the
+          mountain!”
         </p>
         <p>
           Here are my takeaways from 7 days in the cockpit.
@@ -941,20 +986,16 @@
       </p>
       <aside class="notes">
         <p>
-          Matching the model to the job worked best. I used frontier models in short,
-          fresh sessions for architecture and reviews, then stepped down to a fast
-          workhorse model once the plan was locked.
+          One thing I didn’t realise is how expensive it can be to switch model mid-session.
+          When a cheap model wasn’t getting the job done I decided to switch up to a frontier
+          model which resulted in it spending a huge number of tokens just to read the
+          chat history.  Now I know: get a hand off document and a new prompt and start a
+          new chat.
         </p>
         <p>
-          My most expensive mistake was switching up to a frontier model mid-session
-          after context had already bloated. It spent most of its time re-reading old
-          chat history slowly. Next time, I would start a fresh session with a
-          one-page handoff.
-        </p>
-        <p>
-          Even better in reverse: use a fast model to explore, sharpen your prompt, and
-          collate research into a short <code>brief.md</code>, then hand that clean brief
-          to a frontier model in a fresh session for creative planning.
+          It can work even better in reverse: use a fast model to explore, hone your ideas,
+          craft a focused prompt, collate any research into a short <code>brief.md</code>,
+          and then hand that over to a frontier model in a fresh session for creative planning.
         </p>
       </aside>
     </section>
@@ -1011,13 +1052,16 @@
       </p>
       <aside class="notes">
         <p>
-          Small, focused prompts beat big bundled requests every time.
+          Small, focused prompts beat epic mega-requests every time. Plan first and then do tasks
+          in small chunks and ask questions like you would in a code review (“what does this do?”
+          “why have you done it like that instead of this other way?” etc.)
         </p>
         <p>
-          Writing short rulebooks early, like <code>AGENTS.md</code> for build flags,
-          kept sessions on track. Pasting exact error logs and keeping docs current
-          stopped agents from chasing stale clues, and a fresh-session review caught
-          drift before it spread.
+          I found getting agents to write lots of documents helps but it’s easy to go overboard.
+          Start with key rules in <code>AGENTS.md</code> to keep sessions on track.
+          Have them write task lists and tick things off as they’re done.
+          Pasting exact error logs and keeping docs up to date stops agents retrying failed approaches,
+          and fresh session reviews catch problems you might have missed.
         </p>
       </aside>
     </section>
@@ -1063,18 +1107,13 @@
       </div>
       <aside class="notes">
         <p>
-          Reading back through 202 prompts, keeping the AI on track took blunt human
-          reality checks rather than fancy prompt engineering.
+          This isn’t all just from gut feeling. I got AI to read back my 200+ prompts and it
+          said that “keeping the AI on track took blunt human reality checks rather than fancy
+          prompt engineering”.
         </p>
         <p>
-          I caught hung builds, stopped a 44-search spiral, spotted zombie references to
-          deleted features, flagged an off-center icon, and questioned 925 lines of
-          over-engineering.
-        </p>
-        <p>
-          Those five fixes cover both sides of the job. One fixes the final product (the
-          off-center icon), and another cleans up the code underneath (cutting 925 lines
-          of over-engineering).
+          Some of those prompts are shown above: hung builds, search spirals, zombie references
+          to deleted features, tweaking icon designs and flagging up 925 lines of over-engineering.
         </p>
       </aside>
     </section>
@@ -1121,7 +1160,7 @@
       <aside class="notes">
         <p>
           My main takeaway is to stay in control of context and scope. You have to steer
-          the session and review both the behavior and the code.
+          the session and review both the behaviour and the code.
         </p>
         <p>
           Calling out obvious issues, like duplicate code or over-engineered modules,
@@ -1157,8 +1196,9 @@
       <img class="act-photo" data-act-img="act5" alt="Act V: Uncharted Airspace" />
       <aside class="notes">
         <p>
-          Before we land: this was one person, one small tool, and one week. Some big
-          questions are still open, and I do not have the answers yet.
+          Before we land: this was just a small one person project done in a week.
+          While I’ve learned a lot, I now have way more questions than I had before.
+          Here are a few:
         </p>
       </aside>
     </section>
@@ -1200,14 +1240,14 @@
             copyleft rules.
           </li>
           <li>
-            <strong>Energy and water:</strong> large AI data centres use heavy cooling
-            water, plus the water needed to generate their power. That puts real strain
+            <strong>Energy and water:</strong> large AI data centres make heavy use of cooling
+            water, plus the water needed to generate their power. That puts strain
             on local water supplies.
           </li>
           <li>
             <strong>Changing the job:</strong> Stanford Digital Economy data shows
             entry-level tech hiring for ages 22 to 25 dropping. Seniors now review AI
-            code, while the routine tasks that used to train juniors are shrinking.
+            code, while the routine tasks that used to train juniors are disappearing.
           </li>
         </ol>
       </aside>
@@ -1237,18 +1277,27 @@
       <p class="takeaway">Let AI do the donkey work. <strong>Focus on the work that matters.</strong></p>
       <aside class="notes">
         <p>
-          This was a small, single-author tool. In a team, the risk is convenient debt:
-          code that compiles, but nobody chose the design or understands how it works.
+          This was a small, single person project. In a team, the risk is that we quickly amass convenient
+          technical debt. The code might compile and pass the tests, but does anybody really know how it
+          works or how to fix it if it goes wrong?
         </p>
         <p>
-          Keep the core design, debugging and judgement human. Share the decisions,
-          walk through the code together, and use the time saved to mentor and collaborate.
+          We need to keep the architecture, debugging and judgement human. At the very least the AI needs
+          to be very strongly steered by us.  We need to share how we do that, and get each other to
+          critique our approaches and the code we’re getting the AI to produce. Use some of the time AI
+          saves to talk and work with colleagues, not just to try and get more stuff done. Quality over
+          quantity!
         </p>
         <p>
-          Without discipline, AI risks becoming a slippery slope. Instant answers feel
-          like a drug, so you can easily stop talking to teammates, doing your own
-          research, or prototyping by hand. Knowing when to step back from the prompt is
-          a new skill we have to learn.
+          It’s easy for AI to become a slippery slope. Instant answers are super addictive, so you can
+          easily stop talking to teammates, doing your own research, or prototyping by hand. Knowing when
+          NOT to use AI is a new skill we have to learn.
+        </p>
+        <p>
+          As an example, all these notes were drafted by AI and it was tempting to leave them as they were.
+          Some of them still are obviously largely AI like the previous slide, but even though I went
+          through many drafts and steered the AI meticulously, I’ve made an attempt to go through them all
+          and rewrite them using my own words.
         </p>
       </aside>
     </section>
@@ -1284,26 +1333,29 @@
       <aside class="notes">
         <ol>
           <li>
-            <strong>Speed:</strong> in a 2025 METR study of experienced open-source
-            developers, people thought AI made them 20% faster, yet they measured 19%
-            slower. Feeling fast is not the same as shipping fast.
+            <strong>Speed:</strong> studies have shown that people thought AI made them faster,
+            yet they measured slower! The first draft is the easy bit, shipping is HARD even
+            with AI to help out!
           </li>
           <li>
-            <strong>Reviews:</strong> AI makes it easy to open huge PRs and wear down
-            reviewers. Own every commit you push.
+            <strong>Reviews:</strong> AI makes it easy to generate huge reams of code that
+            the ‘author’ didn’t even read. It’s tempting to let it be someone else who has
+            to review that code. That goes completely against the idea of using AI to make
+            things feel fun again for the poor reviewer.
           </li>
           <li>
-            <strong>Juniors:</strong> if AI does the routine work, how do junior
-            developers build the judgment to become seniors? You only build that eye for
-            clean code and a polished product by writing and reviewing code yourself.
+            <strong>Juniors:</strong> if AI does all the routine donkey work, how do the
+            junior developers learn how to write code?  Learning what good code looks like
+            requires you to have written quite a lot of bad code first!
           </li>
           <li>
-            <strong>Ownership:</strong> "The AI wrote it" does not hold up in a
-            post-mortem. Cloud models also raise copyright and data-policy questions.
+            <strong>Ownership:</strong> “The AI wrote it” won’t fly in a post-mortem or a
+            copyright challenge. It’s still our responsibility.
           </li>
           <li>
             <strong>Cost:</strong> my £1.89 trial used about $100 of API tokens in one
-            week. At team scale, that bill grows fast once subsidies end.
+            week. Will we be able to afford for a whole team to use AI all the time once
+            these subsidies end?
           </li>
         </ol>
       </aside>
@@ -1321,7 +1373,7 @@
             <ul class="briefing-list">
               <li><strong>Throwaway helpers</strong> — scripts, visualisers, and test harnesses built for an afternoon, then binned.</li>
               <li><strong>Worth the detour</strong> — on-demand symbol loading, this web deck, or a custom editor plugin.</li>
-              <li><strong>Build from 'capabilities'</strong> — agents discovering, adapting and combining reusable pieces around your idea.</li>
+              <li><strong>Build from ‘capabilities’</strong> — agents discovering, adapting and combining reusable pieces of knowledge, not just code.</li>
             </ul>
           </div>
           <div class="contrast-block">
@@ -1329,7 +1381,7 @@
             <ul class="briefing-list">
               <li><strong>Explore unfamiliar territory</strong> — shaders, raymarching, fluid sims, cloth physics, inverse kinematics, GOAP AI, pathfinding, procedural meshes, DSP audio.</li>
               <li><strong>Cross the aisle</strong> — try ideas outside your lane, whether art, code, or design, and share them with the crew.</li>
-              <li><strong>Let the ideas lead</strong> — we can shape our tools around the games we want to make</li>
+              <li><strong>Let the ideas lead</strong> — we can shape our tools around the games we want to make.</li>
             </ul>
           </div>
         </div>
@@ -1337,28 +1389,28 @@
       </div>
       <aside class="notes">
         <p>
-          AI makes one-off tools worth building for an afternoon: a script,
-          visualiser or test harness. This deck is another example.
+          AI makes it even easier and more worthwhile to build throwaway tools:
+          a script, a visualiser or a test harness. This presentation is another example.
           I hate PowerPoint, so I made my own slides with AI.
         </p>
         <p>
-          There might be a bigger shift here.
+          But there might be a bigger shift here.
           <strong>
-            What if reusable capabilities carried the journey as well as
-            the code?
+            What if reusable capabilities carried the journey as well as the code?
           </strong> The false starts, the awkward bugs, and why the
           final approach worked. Agents could build on that experience,
-          then add lessons from the next project.
+          then feed lessons back from the next project.
         </p>
         <p>
-          Imagine a Wikipedia for agents, spread across our own collections,
-          with each of us choosing what to keep private or share.
-          An agentic capability ecosystem.
+          Imagine a Wikipedia for agents, and each individual and team with their
+          own agent wiki too, each of us choosing what to keep private or share.
+          An agentic capability ecosystem.  Agents are great at reading and
+          writing documents whereas it’s a huge effort for us mere mortals.
         </p>
         <p>
-          Think of a game idea you’ve parked because it felt too hard to
-          make. With agents and a knowledge database to draw from, could it
-          become worth trying? Tools and systems shaped around the game we
+          A game idea or project you thought was too hard to make is now
+          within your grasp. With agents and a knowledge base to draw from, it
+          becomes worth trying. Tools and systems shaped around the game we
           want to make, with us setting the direction.
         </p>
         <p>
@@ -1425,11 +1477,12 @@
       </div>
       <aside class="notes">
         <p>
-          These numbers are separate from the VSIX build sessions. Honestly, the making
-          of this deck could be a case study on its own.
+          These numbers are separate from the VSIX build sessions. Making this presentation
+          was a <strong>lot more</strong> work than the VSIX project itself. And I think
+          I learned a lot more from it too.
         </p>
         <p>
-          Parallel agents prototyped the look and feel, and we brought in Claude Opus 5.5
+          Parallel agents prototyped the look and feel, and I used Claude Opus 5.5
           to research and draft the Act V open-questions slides. Even then, I still had to
           heavily edit and prune what it wrote. ChatGPT also helped out a bit.
         </p>
@@ -1508,7 +1561,7 @@
         </p>
       </div>
       <aside class="notes">
-        <p>Secret Slide! We launched 6 Flash subagents in parallel.</p>
+        <p>Secret Slide! We launched multiple Flash subagents in parallel.</p>
       </aside>
     </section>
 

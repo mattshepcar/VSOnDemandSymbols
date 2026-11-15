@@ -483,11 +483,17 @@ function setTheme(theme, fromSync = false) {
   }
 }
 
-// Sticky horizontal cursor X (like a text editor's goal column) preserved across Up/Down
-// so moving through a wider card on a shorter row returns to the original column.
+// Sticky horizontal cursor X in pixels (like a text editor's goal column) preserved across
+// Up/Down so moving through a wider card on a shorter row returns to the original column.
 let overviewGoalX = null;
+// Pixel margin used both as subpixel/border tolerance when filtering vertical rows and as
+// the inset inside a card's left/right edge when biasing overviewGoalX after Left/Right.
+const GRID_EDGE_TOLERANCE_PX = 4;
 
 function setOverviewOpen(open) {
+  if (!open && overviewOverlay.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
   overviewOverlay.classList.toggle('open', open);
   overviewOverlay.setAttribute('aria-hidden', String(!open));
   overviewGoalX = null;
@@ -508,18 +514,21 @@ function getOverviewFocusState() {
   return null;
 }
 
-function moveOverviewHorizontal(delta) {
-  const state = getOverviewFocusState();
-  if (!state) return;
-  const next = state.cards[state.idx + delta];
-  if (!next) return;
-  next.focus();
-  // Bias slightly inside the edge we entered from so Up/Down from a wide card picks that side.
-  const r = next.getBoundingClientRect();
-  overviewGoalX = r.left + r.width * (delta > 0 ? 0.05 : 0.95);
+function focusOverviewCard(card, edgeDir) {
+  if (!card) return;
+  card.focus();
+  // Bias slightly inside the target edge (-1 = left, +1 = right) so Up/Down picks that side.
+  const r = card.getBoundingClientRect();
+  overviewGoalX = edgeDir < 0 ? r.left + GRID_EDGE_TOLERANCE_PX : r.right - GRID_EDGE_TOLERANCE_PX;
 }
 
-function moveOverviewVertical(isDown) {
+function moveOverviewHorizontal(dir) {
+  const state = getOverviewFocusState();
+  if (!state) return;
+  focusOverviewCard(state.cards[state.idx + dir], -dir);
+}
+
+function moveOverviewVertical(dir) {
   const state = getOverviewFocusState();
   if (!state) return;
   const { cards, cur } = state;
@@ -530,9 +539,24 @@ function moveOverviewVertical(isDown) {
   const distX = (r) => (overviewGoalX < r.left ? r.left - overviewGoalX : overviewGoalX > r.right ? overviewGoalX - r.right : 0);
   const next = cards
     .map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .filter(({ r }) => (isDown ? r.top >= curRect.bottom - 4 : r.bottom <= curRect.top + 4))
+    .filter(({ r }) => (dir > 0 ? r.top >= curRect.bottom - GRID_EDGE_TOLERANCE_PX : r.bottom <= curRect.top + GRID_EDGE_TOLERANCE_PX))
     .sort((a, b) => Math.round(Math.abs(a.r.top - curRect.top)) - Math.round(Math.abs(b.r.top - curRect.top)) || distX(a.r) - distX(b.r))[0];
   next?.el.focus();
+}
+
+function moveOverviewHomeEnd(dir, toGridEdge) {
+  const state = getOverviewFocusState();
+  if (!state) return;
+  const { cards, cur } = state;
+  let target;
+  if (toGridEdge) {
+    target = dir > 0 ? cards[cards.length - 1] : cards[0];
+  } else {
+    const curTop = cur.getBoundingClientRect().top;
+    const rowCards = cards.filter((el) => Math.abs(el.getBoundingClientRect().top - curTop) <= GRID_EDGE_TOLERANCE_PX);
+    target = dir > 0 ? rowCards[rowCards.length - 1] : rowCards[0];
+  }
+  focusOverviewCard(target, dir);
 }
 
 function toggleOverview() {
@@ -717,7 +741,10 @@ document.addEventListener('keydown', (e) => {
       moveOverviewHorizontal(e.key === 'ArrowRight' ? 1 : -1);
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
-      moveOverviewVertical(e.key === 'ArrowDown');
+      moveOverviewVertical(e.key === 'ArrowDown' ? 1 : -1);
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      moveOverviewHomeEnd(e.key === 'End' ? 1 : -1, e.ctrlKey || e.metaKey);
     }
     return;
   }

@@ -880,12 +880,12 @@ slides.forEach((slide) => {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'mobile-notes-toggle';
-  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-expanded', 'true');
   toggle.innerHTML = '<span>📝 Notes</span><span class="chevron" aria-hidden="true">▾</span>';
 
   const body = document.createElement('div');
   body.className = 'mobile-notes-body';
-  body.hidden = true;
+  body.hidden = false;
   body.innerHTML = notesHtml;
 
   const setSlideNoteOpen = (open) => {
@@ -911,6 +911,7 @@ function syncAllNotesButtonLabel() {
   mobileAllNotesBtn.classList.toggle('active', allOpen);
   mobileAllNotesBtn.setAttribute('aria-pressed', String(allOpen));
 }
+syncAllNotesButtonLabel();
 
 mobileBurgerBtn.addEventListener('click', (e) => {
   e.stopPropagation();

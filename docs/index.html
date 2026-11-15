@@ -296,7 +296,7 @@
           <ul class="briefing-list">
             <li><strong>Agent</strong> — AI calling tools in a loop</li>
             <li><strong>Subagent</strong> — isolated parallel helper agent</li>
-            <li><strong>Turn &amp; Tool call</strong> — one AI step + its output</li>
+            <li><strong>Turn</strong> — one AI step + its output</li>
             <li><strong>Rules</strong> — <code>AGENTS.md</code> standing guardrails</li>
             <li><strong>Spec</strong> — <code>SPEC.md</code> target design</li>
           </ul>
@@ -457,13 +457,13 @@
         Agentic loops multiply the footprint — <strong>cheap tokens have real world cost.</strong>
       </p>
       <p class="muted footnote">
-        *UK estimate: ~4 Wh/turn across 4,850 tool calls (10–25 kWh range, 95.4% cached), 0.144 kg
+        *UK estimate: ~4 Wh/turn across 4,694 turns (10–25 kWh range, 95.4% cached), 0.144 kg
         CO₂e/kWh (DESNZ 2026 Gen + T&amp;D).
       </p>
       <aside class="notes">
         <p>
           These numbers are rough estimates, not measurements from the AI provider. They
-          come from our tool-call count, published inference benchmarks, and UK grid
+          come from our turn count, published inference benchmarks, and UK grid
           averages.
         </p>
         <p>

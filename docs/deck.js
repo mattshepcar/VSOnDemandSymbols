@@ -722,6 +722,26 @@ reopenAudienceBtn.addEventListener('click', () => {
 timerToggleBtn.addEventListener('click', () => (timerRunning ? pauseTimer() : startTimer()));
 $('timerResetBtn').addEventListener('click', resetTimer);
 
+const overviewKeyActions = {
+  ArrowLeft: () => moveOverviewHorizontal(-1),
+  ArrowRight: () => moveOverviewHorizontal(1),
+  ArrowUp: () => moveOverviewVertical(-1),
+  ArrowDown: () => moveOverviewVertical(1),
+  Home: (e) => moveOverviewHomeEnd(-1, e.ctrlKey || e.metaKey),
+  End: (e) => moveOverviewHomeEnd(1, e.ctrlKey || e.metaKey),
+  Tab: () => { overviewGoalX = null; },
+};
+
+function stepSlide(delta) {
+  if (delta > 0 && !isPresenterMode && !isAudienceMode && index >= publicSlideCount - 1) return;
+  if (isAudienceMode) {
+    render(index + delta, true);
+    postSync({ type: 'nav', delta });
+  } else {
+    render(index + delta);
+  }
+}
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && controlsSecondary.classList.contains('open')) {
     e.preventDefault();
@@ -739,40 +759,25 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
+  if (e.key.toLowerCase() === 't' && !isAudienceMode) {
+    const next = themes[(themes.indexOf(themeSelect.value) + 1) % themes.length];
+    setTheme(next);
+    return;
+  }
   if (overviewOverlay.classList.contains('open')) {
-    if (e.key === 'Tab') {
-      overviewGoalX = null;
-      return;
-    }
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      moveOverviewHorizontal(e.key === 'ArrowRight' ? 1 : -1);
-    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      moveOverviewVertical(e.key === 'ArrowDown' ? 1 : -1);
-    } else if (e.key === 'Home' || e.key === 'End') {
-      e.preventDefault();
-      moveOverviewHomeEnd(e.key === 'End' ? 1 : -1, e.ctrlKey || e.metaKey);
+    const action = overviewKeyActions[e.key];
+    if (action) {
+      if (e.key !== 'Tab') e.preventDefault();
+      action(e);
     }
     return;
   }
   if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
     e.preventDefault();
-    if (!isPresenterMode && !isAudienceMode && index >= publicSlideCount - 1) return;
-    if (isAudienceMode) {
-      render(index + 1, true);
-      postSync({ type: 'nav', delta: 1 });
-    } else {
-      render(index + 1);
-    }
+    stepSlide(1);
   } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
     e.preventDefault();
-    if (isAudienceMode) {
-      render(index - 1, true);
-      postSync({ type: 'nav', delta: -1 });
-    } else {
-      render(index - 1);
-    }
+    stepSlide(-1);
   } else if (e.key.toLowerCase() === 'f' && isAudienceMode) {
     e.preventDefault();
     toggleAudienceFullscreen();
@@ -782,9 +787,6 @@ document.addEventListener('keydown', (e) => {
     else startPresentationMode();
   } else if (e.key.toLowerCase() === 'n' && !isAudienceMode && !isPresenterMode) {
     toggleNotes();
-  } else if (e.key.toLowerCase() === 't' && !isAudienceMode) {
-    const next = themes[(themes.indexOf(themeSelect.value) + 1) % themes.length];
-    setTheme(next);
   }
 });
 

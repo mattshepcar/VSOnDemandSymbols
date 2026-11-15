@@ -730,6 +730,37 @@ body.controls-compact .controls-icon-btn .ctrl-label { display: inline; }
 .presenter-notes-body li + li,
 .mobile-notes-body li + li { margin-top: 0.25em; }
 
+.notes-text a,
+.presenter-notes-body a,
+.mobile-notes-body a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.notes-text a:hover,
+.presenter-notes-body a:hover,
+.mobile-notes-body a:hover {
+  opacity: 0.8;
+}
+
+.slide a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.slide a:hover,
+.slide a:focus-visible {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
 .notes-drawer {
   position: fixed;
   left: 0;

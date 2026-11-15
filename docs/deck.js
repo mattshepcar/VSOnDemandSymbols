@@ -703,6 +703,13 @@ overviewOverlay.addEventListener('click', (e) => {
     setOverviewOpen(false);
   }
 });
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-action="open-overview"]')) {
+    e.preventDefault();
+    buildOverview();
+    setOverviewOpen(true);
+  }
+});
 themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
 
 // Presenter Console controls

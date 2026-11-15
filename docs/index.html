@@ -1458,26 +1458,31 @@
       </p>
       <div class="stats-grid-2x2 compact">
         <div class="stat">
-          <div class="stat-num accent" data-count="22" data-prefix="~" data-suffix=" hours">
-            ~22 hours
+          <div class="stat-num accent" data-count="25" data-prefix="~" data-suffix=" hours">
+            ~25 hours
           </div>
-          <div class="stat-label">Active time (41 sessions · 3,048 turns)</div>
+          <div class="stat-label">Active time (42 sessions · 705 prompts · 3,355 turns)</div>
         </div>
         <div class="stat">
-          <div class="stat-num"><span data-count="269.7" data-suffix="M">269.7M</span></div>
-          <div class="stat-label">Tokens (94.7% cache hit · 3,084 tool calls)</div>
+          <div class="stat-num"><span data-count="317.2" data-suffix="M">317.2M</span></div>
+          <div class="stat-label">Tokens (94.7% cache hit · 3,377 tool calls)</div>
         </div>
         <div class="stat">
-          <div class="stat-num accent" data-count="74.52" data-prefix="$">$74.52</div>
-          <div class="stat-label">Total spend (72% Hydrogen · 22% Opus from 1.1% of turns)</div>
+          <div class="stat-num accent" data-count="85.56" data-prefix="$">$85.56</div>
+          <div class="stat-label">Total spend (76% Hydrogen · 19.5% Opus from 1.0% of turns)</div>
         </div>
         <div class="stat">
-          <div class="stat-num" data-count="2.19" data-prefix="$" data-suffix=" / slide">
-            $2.19 / slide
+          <div class="stat-num" data-count="2.52" data-prefix="$" data-suffix=" / slide">
+            $2.52 / slide
           </div>
-          <div class="stat-label">$64.74 deck build · $9.78 log analysis</div>
+          <div class="stat-label">~21 prompts / slide (705 total)</div>
         </div>
       </div>
+      <p class="subtitle" style="margin-top: 1.15rem; font-size: 1.02rem; line-height: 1.55;">
+        <strong>103 deck commits</strong> &nbsp;·&nbsp; <span class="accent">+10,180</span> /
+        <span class="danger">-5,744</span> lines (4,436 net LOC)<br />
+        <strong>643k chars</strong> of hidden AI thinking (~117k words — a full AI novel)
+      </p>
       <aside class="notes">
         <p>
           These numbers are separate from the VSIX build sessions. Making this presentation
@@ -1485,18 +1490,23 @@
           I learned a lot more from it too.
         </p>
         <p>
-          Parallel agents prototyped the look and feel, and I used Claude Opus 5.5
-          to research and draft the Act V open-questions slides. Even then, I still had to
-          heavily edit and prune what it wrote. ChatGPT also helped out a bit.
-        </p>
-        <p>
-          Fast iteration makes tweaking and polishing work more fun. You
-          can try an idea, see it right away, and refine it until it feels right.
-        </p>
-        <p>
           Getting the AI to review its own chat logs, especially the slow or expensive
           sessions, is a great way to improve how you pick models and write prompts. Now
           that I have seen what it catches, I plan to keep doing it.
+        </p>
+        <p>
+          For this deck, parallel agents prototyped the look and feel, and I used Claude
+          to research and draft the Act V open-questions slides. Even then, I still had to
+          heavily edit and prune what it wrote. ChatGPT also helped out quite a bit with
+          reviewing the content (it’s really good!). The AI internal monologue inside
+          AntiGravity was equivalent to an entire 100k word novel.
+        </p>
+        <p>
+          Fast iteration makes tweaking and polishing work more fun. You
+          can try an idea, see it right away, and refine it until it feels right. There
+          was a lot of refining on this. Just adding keyboard controls on the grid overview
+          screen took me a good while to get right and who’s ever going to use those?
+          Have you tried changing theme (press T)? That was another big token spend..
         </p>
       </aside>
     </section>

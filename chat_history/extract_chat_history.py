@@ -60,6 +60,7 @@ META_SESSION_IDS = {
     "866f9416-df86-43ce-b729-fc56f8adc660",  # S90: move slide notes & polish presentation
     "13c6adeb-7ca2-4bc9-b93e-aa76f2d2ab0c",  # S91: review latest chat_history analysis
     "de3bcdb8-1c44-4c6d-9013-8d8c46b73226",  # S92: add final point to presentation
+    "c991cd08-6960-4ca9-b53b-b7c8d3ece091",  # S93: fix conflicting terminology on slide 20
 }
 
 META_PROMPT_PATTERNS = (

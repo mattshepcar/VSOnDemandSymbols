@@ -534,13 +534,21 @@ function moveOverviewVertical(dir) {
   const { cards, cur } = state;
   const curRect = cur.getBoundingClientRect();
   if (overviewGoalX === null) overviewGoalX = curRect.left + curRect.width * 0.5;
-  // Measure distance to the card's [left, right] span rather than its center so wide cards
-  // directly above/below narrow cards match with distance 0.
-  const distX = (r) => (overviewGoalX < r.left ? r.left - overviewGoalX : overviewGoalX > r.right ? overviewGoalX - r.right : 0);
   const next = cards
     .map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .filter(({ r }) => (dir > 0 ? r.top >= curRect.bottom - GRID_EDGE_TOLERANCE_PX : r.bottom <= curRect.top + GRID_EDGE_TOLERANCE_PX))
-    .sort((a, b) => Math.round(Math.abs(a.r.top - curRect.top)) - Math.round(Math.abs(b.r.top - curRect.top)) || distX(a.r) - distX(b.r))[0];
+    .filter(({ r }) =>
+      dir > 0
+        ? r.top >= curRect.bottom - GRID_EDGE_TOLERANCE_PX
+        : r.bottom <= curRect.top + GRID_EDGE_TOLERANCE_PX
+    )
+    .map(({ el, r }) => ({
+      el,
+      dy: Math.round(Math.abs(r.top - curRect.top)),
+      // Distance to the card's [left, right] span (0 when overviewGoalX is inside it)
+      // rather than its center, so wide cards above/below narrow cards match cleanly.
+      dx: Math.max(0, r.left - overviewGoalX, overviewGoalX - r.right)
+    }))
+    .sort((a, b) => a.dy - b.dy || a.dx - b.dx)[0];
   next?.el.focus();
 }
 
